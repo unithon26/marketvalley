@@ -1,6 +1,6 @@
-# marketvali
+# marketvalley
 
-marketvali는 아이디어를 처음 검증하려는 예비창업가와 초기 1인 사업자가 반복하던 캠페인 기획, 채널별 재작성, 조판, 파일 정리와 반응 취합을 하나의 흐름으로 없애는 UNITHON 2026 프로젝트다.
+marketvalley는 아이디어를 처음 검증하려는 예비창업가와 초기 1인 사업자가 반복하던 캠페인 기획, 채널별 재작성, 조판, 파일 정리와 반응 취합을 하나의 흐름으로 없애는 UNITHON 2026 프로젝트다.
 
 현재 저장소에는 제품 문서와 개발환경만 있다. 이전에 만든 임시 화면, mock 구현, API, fixture와 화면 테스트는 제품 디자인 기준으로 사용하지 않기 위해 모두 제거했다. 웹페이지 구현은 기존 GitHub 랜딩페이지 템플릿과 디자인 담당자가 전달할 메인 웹사이트 디자인을 확인한 뒤 시작한다.
 
@@ -12,8 +12,8 @@ marketvali는 아이디어를 처음 검증하려는 예비창업가와 초기 1
 - pnpm 10 이상
 
 ```bash
-git clone https://github.com/unithon26/marketvali.git
-cd marketvali
+git clone https://github.com/unithon26/marketvalley.git
+cd marketvalley
 pnpm install --frozen-lockfile
 cp .env.example .env.local
 pnpm check
@@ -50,7 +50,6 @@ pnpm check
 - [목데이터 계획](docs/mock-data.md): 향후 fixture와 seed 응답 기준
 - [검증 계획](docs/validation.md): 구현 후 자동·수동 완료 기준
 - [결정 기록](docs/decisions/): 제품·아키텍처 선택과 기각 대안
-- [작업 기록](WORKLOG.md): 실제 변경과 검증 결과
 
 ## 범위 경계
 

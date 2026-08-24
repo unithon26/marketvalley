@@ -1,9 +1,9 @@
 {
-  "name": "marketvali",
+  "name": "marketvalley",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "UNITHON 2026 marketvali planning and development workspace",
+  "description": "UNITHON 2026 marketvalley planning and development workspace",
   "scripts": {
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",

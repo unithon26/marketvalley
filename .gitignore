@@ -26,5 +26,17 @@ test-results/
 *.log
 pnpm-debug.log*
 
+# local agent and personal work records
+/AGENTS.md
+/CLAUDE.md
+/CODEX.md
+/GEMINI.md
+/WORKLOG.md
+/TROUBLESHOOTING.md
+/docs/worklog/
+/docs/worklogs/
+/docs/troubleshooting/
+/docs/incidents/
+
 # TypeScript
 *.tsbuildinfo
