@@ -77,7 +77,13 @@ export interface CampaignRepository {
 ### 5.2 Fixture 구현체 (이번 범위, 유일한 구현체)
 
 - `lib/demo/fixtureGenerator.ts`: `CampaignGenerator` 구현. 입력을 받지만 항상 `demoCampaign`을 반환(§6 결정 전까지).
-- `lib/demo/fixtureRepository.ts`: `CampaignRepository` 구현. 현재 `lib/client/demo-store.ts`의 localStorage 로직을 이 형태로 감싼다.
+- `lib/demo/fixtureRepository.ts`: `CampaignRepository` 구현.
+
+**저장 방식 명확화**: `CampaignRepository`는 `app/api/*` Route Handler(서버 실행 컨텍스트)에서 호출되므로 `window.localStorage`에 접근할 수 없다. 따라서 `fixtureRepository.ts`는 **서버 프로세스 메모리(모듈 스코프 `Map`)** 를 저장소로 쓴다 — `lib/client/demo-store.ts`의 localStorage 코드를 그대로 감싸는 게 아니라 같은 형태(spec.md §6 DB 스키마의 `unique(campaign_id, anonymous_id_hash)`)를 메모리로 재현한다.
+
+- `recordSignal`은 `(campaignId, visitorId)` 조합으로 중복을 막는다. 방문자 식별은 지금처럼 클라이언트가 `visitorId`를 자체 생성해 `localStorage`에 보관하고(신원 토큰만, 응답 상태 자체는 아님) 요청에 실어 보낸다 — spec.md §6이 이미 설명하는 live 모드와 동일한 모양이라 Supabase로 교체할 때 route handler 내부 구현만 바뀐다.
+- 서버 재시작 시 초기화되는 것은 fixture 모드의 알려진 한계로 받아들인다(§8에 명시). E2E 테스트는 매 실행마다 `visitorId`를 새로 생성하므로(테스트 시작 시 `localStorage.clear()`) 이 한계로 실패하지 않는다.
+- `lib/client/demo-store.ts`는 `visitorId` 생성/보관 전용 헬퍼로 축소하고, 실제 응답/다음행동 상태는 더 이상 여기서 읽고 쓰지 않는다.
 
 ### 5.3 API 라우트 (fixture 기반, 외부 SDK 호출 없음)
 
