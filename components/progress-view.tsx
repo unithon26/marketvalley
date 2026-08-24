@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CheckIcon, ChartIcon } from "@/components/icons";
 
-const stages = ["접수", "캠페인 준비", "산출물 생성", "결과 도착"];
+const stages = ["접수", "준비 중", "수집 중", "결과 도착"];
 
-export function ProgressView() {
+export function ProgressView({ campaignId }: { campaignId: string }) {
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
@@ -39,7 +39,7 @@ export function ProgressView() {
 
       <div className="progress-actions">
         {current === 3 ? (
-          <Link className="button button-primary" href="/campaigns/demo"><ChartIcon size={18} /> 검증 리포트 확인하기</Link>
+          <Link className="button button-primary" href={`/campaigns/${campaignId}`}><ChartIcon size={18} /> 검증 리포트 확인하기</Link>
         ) : (
           <button className="button button-disabled" type="button" disabled>캠페인 구성 중</button>
         )}

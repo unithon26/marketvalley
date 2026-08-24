@@ -8,7 +8,7 @@ cp .env.example .env.local
 pnpm check
 ```
 
-현재는 문서와 개발환경만 유지한다. `.env.local`의 키는 비워 두며 실제 자격증명은 Git, 이슈, 채팅, 화면 녹화와 로그에 남기지 않는다.
+현재 발표용 fixture 흐름은 환경변수 없이 실행된다. `.env.local`의 키는 live adapter 작업 전까지 비워 두며 실제 자격증명은 Git, 이슈, 채팅, 화면 녹화와 로그에 남기지 않는다.
 
 ## 화면 구현 시작 조건
 
@@ -19,7 +19,7 @@ pnpm check
 
 ## 역할과 파일 소유권
 
-개발자 A는 향후 제품 UI, 결정적 랜딩·캐러셀 렌더러, export, E2E와 배포를 맡는다. 개발자 B는 `CampaignSpec`, OpenAI·Supabase adapter, 내부 API, 공개 route 데이터 wrapper와 단위 테스트를 맡는다. 실제 이름과 경로는 구현 시작 전에 확정한다.
+개발자 A 박지성은 제품 UI, 결정적 랜딩·캐러셀 렌더러, export, E2E와 배포를 맡는다. 개발자 B 홍성주는 `CampaignSpec`, OpenAI·Supabase adapter, 내부 API, 공개 route 데이터 wrapper와 단위 테스트를 맡는다.
 
 공유 계약과 디자인 토큰은 한 명만 수정한다. 상대 소유 파일을 동시에 수정하지 않고 API 경계를 바꿀 때는 소비자와 테스트 영향을 함께 검토한다.
 

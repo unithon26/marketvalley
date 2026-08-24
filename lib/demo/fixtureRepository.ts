@@ -17,6 +17,7 @@ import {
   type DeleteCampaignInput,
   type NextActionInput,
   type PublishedCampaign,
+  type ResetCampaignInput,
   type SignalInput,
   type SignalSummary,
 } from "@/lib/contracts/repository";
@@ -35,7 +36,6 @@ type StoredCampaign = PublishedCampaign & {
 
 export type FixtureCampaignRepositoryOptions = {
   now?: () => Date;
-  reuseDemoCampaign?: boolean;
   seedDemoCampaign?: boolean;
   seedResponses?: readonly SignalOptionId[];
 };
@@ -70,13 +70,11 @@ export class FixtureCampaignRepository implements CampaignRepository {
   private readonly campaignIdsByDraft = new Map<string, string>();
   private readonly signals = new Map<string, Map<string, SignalOptionId>>();
   private readonly now: () => Date;
-  private readonly reuseDemoCampaign: boolean;
   private readonly seedResponses: readonly SignalOptionId[];
   private sequence = 1;
 
   constructor(options: FixtureCampaignRepositoryOptions = {}) {
     this.now = options.now ?? (() => new Date());
-    this.reuseDemoCampaign = options.reuseDemoCampaign ?? false;
     this.seedResponses = options.seedResponses ?? seedSignals;
 
     if (options.seedDemoCampaign ?? true) {
@@ -102,20 +100,6 @@ export class FixtureCampaignRepository implements CampaignRepository {
         throw new DraftConflictError();
       }
       return copyCampaign(existing);
-    }
-
-    if (this.reuseDemoCampaign) {
-      const currentDemo = this.campaigns.get(demoCampaignId);
-      if (currentDemo) this.removeCampaign(currentDemo);
-
-      return copyCampaign(this.insertCampaign({
-        id: demoCampaignId,
-        slug: demoCampaignSlug,
-        draftId: normalizedDraftId,
-        spec: parsedSpec,
-        publishedAt: this.now().toISOString(),
-        nextAction: null,
-      }));
     }
 
     const sequence = this.sequence++;
@@ -183,19 +167,9 @@ export class FixtureCampaignRepository implements CampaignRepository {
     this.removeCampaign(campaign);
   }
 
-  resetDemoState(): PublishedCampaign {
-    const campaign = this.campaigns.get(demoCampaignId);
-    if (!campaign) {
-      return copyCampaign(this.insertCampaign({
-        id: demoCampaignId,
-        slug: demoCampaignSlug,
-        draftId: demoCampaignId,
-        spec: demoCampaign,
-        publishedAt: demoCampaign.generation.generatedAt,
-        nextAction: null,
-      }));
-    }
-
+  async reset(input: ResetCampaignInput): Promise<PublishedCampaign> {
+    const campaign = this.requireCampaign(input.campaignId);
+    this.assertDraftOwnership(campaign, input.draftId);
     campaign.nextAction = null;
     this.signals.set(campaign.id, this.createSeedSignalMap());
     return copyCampaign(campaign);
@@ -248,7 +222,7 @@ export class FixtureCampaignRepository implements CampaignRepository {
 
   private assertDraftOwnership(campaign: StoredCampaign, draftId: string): void {
     const normalizedDraftId = draftId.trim();
-    if (campaign.draftId !== normalizedDraftId && campaign.id !== normalizedDraftId) {
+    if (campaign.draftId !== normalizedDraftId) {
       throw new DraftOwnershipError();
     }
   }

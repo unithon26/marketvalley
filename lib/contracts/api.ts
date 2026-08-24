@@ -30,6 +30,8 @@ export const deleteCampaignRequestSchema = z.object({
   draftId: identifierSchema,
 }).strict();
 
+export const resetCampaignRequestSchema = deleteCampaignRequestSchema;
+
 export const recordSignalRequestSchema = z.object({
   campaignId: identifierSchema,
   visitorId: z.string().trim().min(8).max(200),
@@ -39,6 +41,7 @@ export const recordSignalRequestSchema = z.object({
 export type PublishCampaignRequest = z.infer<typeof publishCampaignRequestSchema>;
 export type UpdateCampaignRequest = z.infer<typeof updateCampaignRequestSchema>;
 export type DeleteCampaignRequest = z.infer<typeof deleteCampaignRequestSchema>;
+export type ResetCampaignRequest = z.infer<typeof resetCampaignRequestSchema>;
 export type RecordSignalRequest = z.infer<typeof recordSignalRequestSchema>;
 
 export type GenerateCampaignResponse = {

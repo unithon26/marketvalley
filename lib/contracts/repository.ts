@@ -25,6 +25,8 @@ export type DeleteCampaignInput = {
   draftId: string;
 };
 
+export type ResetCampaignInput = DeleteCampaignInput;
+
 export type SignalCounts = Record<SignalOptionId, number>;
 
 export type SignalDecisionStatus =
@@ -85,5 +87,6 @@ export interface CampaignRepository {
   recordSignal(input: SignalInput): Promise<SignalSummary>;
   getSignalSummary(campaignId: string): Promise<SignalSummary>;
   saveNextAction(input: NextActionInput): Promise<NextAction>;
+  reset(input: ResetCampaignInput): Promise<PublishedCampaign>;
   delete(input: DeleteCampaignInput): Promise<void>;
 }

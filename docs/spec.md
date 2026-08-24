@@ -1,7 +1,7 @@
 # marketvalley 해커톤 MVP 스펙
 
-상태: 기능 구현 기준 v0.5, mock 종단 구현 완료
-작성일: 2026-08-24
+상태: 기능 구현 기준 v0.6, fixture API 종단 구현 완료
+마지막 갱신: 2026-08-25
 목표: 별도 랜딩 저장소의 시각 요소와 디자인 담당자의 메인 웹사이트 디자인을 반영해 2026 UNITHON 발표용 종단 흐름을 구현한다. 구조와 기능은 이 스펙을 따른다.
 
 현재 저장소에는 Figma 디자인을 반영한 화면, 검증된 fixture, 결정적 렌더러와 테스트가 있다. OpenAI·Supabase API와 실제 Meta 계정은 연결하지 않았으며 live 연동의 완료 기준은 이 문서를 따른다.
@@ -14,7 +14,7 @@
 
 > 아이디어 하나만 남기세요. 첫 시장 반응을 얻기 전까지의 제작 업무는 marketvalley가 지웁니다.
 
-제품은 `가설 승인 → 캠페인 자동 구성 → 공개·내보내기 → 관심 응답 회수 → 사람의 다음 판단`이라는 한 경로만 깊게 완성한다. 자유도, 채널 수, 템플릿 수보다 메시지 일관성, 실제 URL, 실제 응답 한 건, 시각적 완성도와 실패 복구를 우선한다.
+제품은 `배경·솔루션 입력 → 캠페인 자동 구성·게시 → 공개·내보내기 → 관심 응답 회수 → 사람의 다음 판단`이라는 한 경로만 깊게 완성한다. 자유도, 채널 수, 템플릿 수보다 메시지 일관성, 실제 URL, 실제 응답 한 건, 시각적 완성도와 실패 복구를 우선한다.
 
 ## 2. P0 범위
 
@@ -22,14 +22,12 @@ P0는 하나라도 빠지면 발표용 제품이 완성되지 않은 것으로 �
 
 ### P0-1. 아이디어 입력
 
-화면 `/`에서 다음을 받는다.
+화면 `/new`에서 다음을 순서대로 받는다.
 
-- 필수: 아이디어 설명, 최대 600자
-- 선택: 예상 고객, 최대 120자
-- 선택: 원하는 신호 `문제 공감` 또는 `사용 의향`
-- 선택: 분위기 `신뢰감`, `대담함`, `따뜻함` 중 하나
+- 필수 1단계: 제품을 만들게 된 배경, 20~600자
+- 필수 2단계: 제공할 솔루션, 20~500자
 
-선택값이 비어 있으면 모델이 합리적으로 추론하되 `assumptions`에 표시한다. 제출 버튼을 연속 클릭할 수 없게 하고, 오류가 나면 입력을 보존한다.
+generator가 추론한 내용은 `assumptions`에 표시한다. 제출 버튼을 연속 클릭할 수 없게 하고, 오류가 나면 현재 입력을 보존한다.
 
 완료 기준:
 
@@ -47,29 +45,28 @@ P0는 하나라도 빠지면 발표용 제품이 완성되지 않은 것으로 �
 - 타깃, 문제, 해결, 기대 신호, 반증 조건이 각각 한 문장으로 나온다.
 - 개인정보가 필요 없는 선택형 질문 1개와 선택지 3개가 나온다.
 - 이 가설을 약화시키는 관찰 결과가 `invalidationEvidence` 한 문장으로 나온다.
-- 다음 검토 기준은 모델이 임의로 만들지 않고 시스템 기본값 `응답 5개 중 긍정 3개`를 사용하며 사용자가 가설 화면에서 승인한다.
+- 판단 기준은 모델이 임의로 만들지 않고 시스템 기본값 `응답 5개 중 긍정 3개`를 사용하며 리포트에서 실제 응답과 함께 표시한다.
 - 확인되지 않은 숫자, 고객 후기, 인증, 효능을 만들어내지 않는다.
 - 사실 검토가 필요한 표현은 `claimsToReview`에 별도로 표시한다.
 - 전송 또는 스키마 오류는 한 번만 재시도하고, 이후 데모 샘플 전환을 제공한다.
 
-### P0-3. 가설 승인과 캠페인 실행
+### P0-3. 캠페인 생성과 게시
 
-생성이 끝나면 홈의 다음 단계에서 고객, 문제, 해결, 기대 신호, 반증 조건, 가정과 사실 검토 항목만 보여준다. 사용자는 이 내용을 승인하거나 입력 단계로 돌아간다. 승인하면 시스템은 별도 편집 화면 없이 캠페인을 게시하고 캐러셀·게시 문구 파일을 생성한 뒤 `/campaigns/[id]` 결과 화면으로 이동한다.
+Figma 발표 흐름은 별도 가설 승인 화면을 두지 않는다. `/new`의 두 번째 입력을 제출하면 서버가 `CampaignSpec`을 생성·검증하고 곧바로 캠페인을 게시한다. 이후 진행 화면을 거쳐 `/campaigns/[id]` 결과 화면으로 이동한다.
 
 랜딩, 캐러셀과 Meta용 사전 확인 화면은 만들지 않는다. 실제 랜딩은 발급된 공개 URL에서 확인하고, 캐러셀은 내려받은 PNG·ZIP이 최종 결과물이다. 내용을 바꾸려면 입력 단계로 돌아가 새 캠페인을 생성한다.
 
 완료 기준:
 
-- 사용자는 게시 전에 타깃, 문제, 해결, 기대 신호, 반증 조건, 사전 판단 기준과 사실 검토 항목을 승인한다.
-- 승인 전에는 공개 snapshot이나 다운로드 파일을 만들지 않는다.
-- 승인 요청은 중복 실행되지 않으며 게시 또는 파일 생성 실패를 사실대로 구분한다.
+- 두 번째 입력 제출 전에는 공개 snapshot이나 다운로드 파일을 만들지 않는다.
+- 생성·게시 요청은 중복 실행되지 않으며 실패를 성공으로 표시하지 않고 입력을 보존한다.
 - `/campaigns/[id]`는 실제 공개 URL, PNG·ZIP 다운로드, 게시 문구 복사, 응답 분포, 사전 기준과 사람의 다음 행동만 제공한다.
 - 결과 화면은 현재 응답이 사전 기준에 충분한지 사실만 보여주고, `계속 검증`, `메시지 수정`, `보류` 선택은 사용자가 한다.
 - 선택한 다음 행동은 저장되어 새로고침 뒤에도 유지된다.
 
 ### P0-4. 공개 랜딩페이지
 
-화면 `/p/[slug]`는 승인되어 게시된 `CampaignSpec` snapshot으로 렌더링된다.
+화면 `/p/[slug]`는 게시된 `CampaignSpec` snapshot으로 렌더링된다.
 
 고정 섹션:
 
@@ -160,19 +157,23 @@ P1 때문에 P0 통합이나 발표 준비가 1시간 이상 밀리면 즉시 P1
 
 ### `/`
 
-- 문제를 한 문장으로 설명하는 Hero
-- 아이디어 입력 카드
-- 선택 입력은 접힌 `조금 더 정확하게` 영역
-- 예시 불러오기
-- 생성 CTA
+- 전체 프로젝트 대시보드와 상태 필터
+- 발표 fixture 캠페인으로 이동하는 카드
+- 발표 범위 밖 목 프로젝트는 비활성 카드로 명확히 구분
+- `/new`로 이동하는 `새 캠페인` CTA
 - 제품이 없애는 기존 작업을 짧은 `before/after`로 표시
 
-### `/`의 가설 승인 단계
+### `/new`
 
-- 고객, 문제, 해결, 기대 신호, 반증 조건과 가정을 읽기 전용으로 표시
-- 사실 확인이 필요한 표현과 사전 판단 기준 표시
-- `승인하고 캠페인 만들기`와 `입력으로 돌아가기` 제공
-- 처리 중 중복 실행 차단, 단계별 실패 안내와 입력 보존
+- 제품 배경과 솔루션을 각각 받는 2단계 입력
+- 각 단계 20자 이상 검증과 `예시 불러오기`
+- `이전`, `다음`, `캠페인 만들기` 제공
+- 처리 중 중복 실행 차단, 실패 안내와 입력 보존
+
+### `/campaigns/[id]/progress`
+
+- `접수`, `준비 중`, `수집 중`, `결과 도착` 4단계 표시
+- 게시된 campaign id를 유지해 해당 리포트로 이동
 
 ### `/campaigns/[id]`
 
@@ -348,11 +349,13 @@ tests/
 
 ### API 경계
 
-- `POST /api/generate`: 입력을 검증하고 `CampaignSpec`을 반환한다. 성공 시 클라이언트가 `crypto.randomUUID()`로 `draftId`를 만들고 `localStorage`에 spec을 저장한 뒤 홈의 가설 승인 단계로 전환한다.
-- `POST /api/campaigns`: `{ draftId, spec }`을 다시 검증해 공개 snapshot으로 저장한다. 같은 `draftId`와 동일한 spec의 재요청은 중복 캠페인을 만들지 않고 기존 결과를 반환한다. 이미 게시된 `draftId`에 다른 spec이 오면 새 `draftId`를 요구하는 충돌로 처리한다. 성공하면 `{ id, slug, url, publishedAt }`을 반환한다.
+- `POST /api/generate`: 2단계 입력을 검증하고 `{ spec: CampaignSpec }`을 반환한다. 성공 시 클라이언트가 `crypto.randomUUID()`로 `draftId`를 만들고 바로 게시 요청을 보낸다.
+- `POST /api/campaigns`: `{ draftId, spec }`을 다시 검증해 공개 snapshot으로 저장한다. 같은 `draftId`와 동일한 spec의 재요청은 중복 캠페인을 만들지 않고 기존 결과를 반환한다. 이미 게시된 `draftId`에 다른 spec이 오면 충돌로 처리한다. 성공하면 게시 campaign, 공개 URL과 초기 응답 집계를 반환한다.
 - `POST /api/signals`: `{ campaignId, visitorId, optionId }`를 받아 공개 snapshot에서 `signalType`을 읽고, 방문자 식별자를 서버에서 해시한 뒤 익명 응답 한 건을 기록한다. 클라이언트가 보낸 신호 유형은 신뢰하지 않는다.
 - `PATCH /api/campaigns`: `{ campaignId, draftId, nextAction }`을 받아 소유 draft가 맞을 때만 사람의 선택 `continue`, `revise`, `pause`를 저장한다.
 - `GET /api/campaigns?id=...`: 공개된 spec과 선택지별 응답 집계를 반환한다.
+- `POST /api/campaigns/reset`: `{ campaignId, draftId }` 소유권을 검증한 뒤 발표용 추가 응답과 다음 판단을 seed 상태로 되돌린다.
+- `DELETE /api/campaigns`: `{ campaignId, draftId }` 소유권을 검증해 캠페인을 삭제한다. 본문 없는 요청은 기존 `/campaigns/demo` 발표 초기화와 E2E 호환에만 사용한다.
 
 모든 route handler에서 입력 크기와 Zod 스키마를 검사한다. `POST /api/signals`는 신호 유형을 실제 공개 snapshot의 `validation.signal.type`에서 파생하고, 요청의 선택지가 snapshot의 `validation.signal.options`에 있는지 서버에서 다시 확인한다. DB unique 충돌은 서버 오류가 아니라 `alreadyResponded` 결과로 변환한다. OpenAI 키와 Supabase 서버 키는 클라이언트 번들에 포함하지 않는다.
 
@@ -379,9 +382,9 @@ signals
 - unique (campaign_id, anonymous_id_hash)
 ```
 
-초안은 `localStorage`에 보존해 새로고침과 API 실패에 대비한다. 승인·게시 시점의 spec만 DB snapshot이 되며 게시된 snapshot은 수정하지 않는다. 새 메시지는 새 캠페인으로 생성한다.
+현재 mock 입력은 `/new` 컴포넌트 상태에 남아 API 실패 뒤 재시도할 수 있다. 같은 입력의 재시도는 한 번 만든 draft ID와 검증된 spec을 재사용하며, 게시 성공 뒤 draft 소유 토큰을 `localStorage`에 보관한다. live 단계의 새로고침 전 입력 복구는 별도 초안 저장소를 연결한다. 게시 시점의 spec만 snapshot이 되며 게시된 snapshot은 수정하지 않는다.
 
-공개 페이지는 첫 방문 시 무작위 `visitorId`를 `localStorage`에 만들고 HTTPS로 서버에 보낸다. 서버는 `SIGNAL_HASH_SECRET`으로 HMAC 해시만 저장한다. DB 접근은 서버에서만 수행하며 IP 주소와 원문 user-agent를 저장하지 않는다.
+공개 페이지는 첫 방문 시 무작위 `visitorId`를 `localStorage`에 만들고 서버에 보낸다. fixture는 원문을 남기지 않기 위해 무비밀 SHA-256을 사용한다. live Supabase adapter는 서버 전용 `SIGNAL_HASH_SECRET`으로 HMAC 해시만 저장한다. DB 접근은 서버에서만 수행하며 IP 주소와 원문 user-agent를 저장하지 않는다.
 
 ### 지표 정의
 
@@ -404,14 +407,17 @@ interface CampaignGenerator {
 
 interface CampaignRepository {
   publish(draftId: string, spec: CampaignSpec): Promise<PublishedCampaign>;
+  getById(id: string): Promise<PublishedCampaign | null>;
   getBySlug(slug: string): Promise<PublishedCampaign | null>;
   recordSignal(input: SignalInput): Promise<SignalSummary>;
   getSignalSummary(campaignId: string): Promise<SignalSummary>;
   saveNextAction(input: NextActionInput): Promise<NextAction>;
+  reset(input: ResetCampaignInput): Promise<PublishedCampaign>;
+  delete(input: DeleteCampaignInput): Promise<void>;
 }
 ```
 
-실서비스는 OpenAI·Supabase adapter를, 테스트와 데모 모드는 fixture·브라우저 저장 adapter를 사용한다. 데모 모드는 생성뿐 아니라 공개 페이지 조회, 응답 기록, 집계까지 같은 브라우저에서 실제 흐름처럼 동작해야 한다. E2E 도구는 화면 통합 후 선택하며 외부 키나 네트워크 없이 이 adapter를 검증해야 한다.
+실서비스는 OpenAI·Supabase adapter를, 테스트와 데모 모드는 fixture generator와 서버 프로세스 메모리 repository를 사용한다. 브라우저는 익명 `visitorId`와 자신이 만든 캠페인의 draft 소유 토큰만 `localStorage`에 보관한다. 데모 모드는 생성뿐 아니라 게시, 공개 페이지 조회, 중복 응답, 집계, 판단과 초기화까지 실제 Route Handler를 통과한다.
 
 ## 7. AI 생성 규칙
 
@@ -433,7 +439,7 @@ OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 �
 - OpenAI timeout: 입력 보존, 한 번 재시도, 데모 결과 열기
 - 스키마 오류: 서버 검증 실패로 처리하고 한 번 재시도
 - 이미지 생성 실패: CSS/SVG 기본 배경 유지
-- DB 저장 실패: 로컬 초안을 유지하고 공개 실패를 명시
+- 저장소 실패: 현재 입력을 유지하고 생성·게시·응답·판단·초기화 실패를 각각 명시
 - 신호 중복: 최초 응답을 유지하고 이미 참여했다는 상태 표시
 - PNG export 실패: 문제 장만 재시도하고 개별 다운로드 제공
 - 공개 URL 실패: `/p/demo`와 사전 캡처 영상으로 발표 지속
@@ -446,8 +452,8 @@ OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 �
 ### 개발자 A: 제품 화면과 통합
 
 - 앱 scaffold와 디자인 토큰 적용
-- `/` 입력·가설 승인 단계와 `/campaigns/[id]` 결과 화면
-- 폼 상태와 localStorage
+- `/new` 2단계 입력, `/campaigns/[id]/progress`와 `/campaigns/[id]` 결과 화면
+- 폼 상태와 내부 API 연결
 - 재사용 가능한 랜딩·캐러셀 결정적 렌더러
 - 공개 랜딩의 표현 컴포넌트, `Meta 게시 준비` 파일·복사 기능과 결과 UI
 - 동일 렌더러 기반 PNG/ZIP export
@@ -512,7 +518,7 @@ OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 �
 
 | 개발자 A | 개발자 B |
 | --- | --- |
-| Next.js 앱, 디자인 토큰, `/`, `/campaigns/[id]`, `LandingRenderer`, `CarouselRenderer`, localStorage 초안 | `CampaignSpec`, `demoCampaign`, generator·repository 인터페이스, 외부 키가 필요 없는 fixture adapter와 단위 테스트 |
+| Next.js 앱, 디자인 토큰, `/new`, `/campaigns/[id]`, `LandingRenderer`, `CarouselRenderer` | `CampaignSpec`, `demoCampaign`, generator·repository 인터페이스, 외부 키가 필요 없는 fixture adapter와 단위 테스트 |
 
 - Supabase와 OpenAI 계정·키 사용 가능 여부만 확인하되 아직 핵심 흐름에 연결하지 않는다.
 - Vercel 연결은 이 단계에 시작해 코드 배포 경로를 일찍 확인한다.
@@ -524,7 +530,7 @@ OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 �
 | --- | --- |
 | 공개 랜딩 표현 컴포넌트, 응답 모달, 결과 화면, `Meta 게시 준비` 파일·복사 기능, PNG/ZIP | fixture 기반 게시·slug·응답·집계·다음 판단 adapter와 API 형태 고정 |
 
-- 완료 게이트 G2: 외부 API와 실제 계정 없이 `/ → 가설 승인 → publish → /campaigns/demo → /p/demo → 응답 → 결과 → 사람의 판단 → PNG/ZIP`이 끝까지 작동한다.
+- 완료 게이트 G2: 외부 API와 실제 계정 없이 `/ → /new 2단계 입력 → 생성·게시 → /campaigns/[id] → /p/[slug] → 응답 → 결과 → 사람의 판단 → PNG/ZIP`이 끝까지 작동한다.
 - 실제 OpenAI 없이도 완성된 흐름을 Vercel 검증 배포에 올리고 디자이너 1차 QA를 받는다.
 - G2가 끝나기 전에는 Meta OAuth나 광고 객체 생성을 시작하지 않는다.
 
@@ -570,7 +576,7 @@ OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 �
 - `pnpm typecheck`
 - `pnpm test`
 - `pnpm build`
-- 개발 검증용 E2E 도구로 fixture 기반 `/ → 가설 승인 → publish → signal → 판단 → ZIP` 핵심 흐름 1개. 발표 자동 클릭 기능은 만들지 않는다.
+- Playwright로 fixture 기반 `/ → 2단계 입력 → 생성·게시 → signal → 판단·초기화 → ZIP` 핵심 흐름과 API 실패 상태를 검증한다. 발표 자동 클릭 기능은 만들지 않는다.
 
 수동 검증:
 
@@ -588,8 +594,8 @@ OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 �
 
 1. 20초: 아이디어는 있지만 캠페인 제작 때문에 검증을 미루는 예비창업가 또는 초기 1인 사업자를 보여준다.
 2. 20초: 기존 도구와 수작업 단계를 한 화면에 보여준다.
-3. 30초: 아이디어 한 줄을 입력하고 AI가 고정한 검증 가설을 확인한다.
-4. 45초: 가설을 승인해 실제 공개 URL과 캐러셀 ZIP이 한 번에 만들어지는 것을 보여준다.
+3. 30초: 배경과 솔루션을 2단계로 입력하고 캠페인 생성을 시작한다.
+4. 45초: 진행 화면 뒤 실제 공개 URL과 캐러셀 ZIP이 한 번에 만들어지는 것을 보여준다.
 5. 35초: 공개 랜딩을 다른 창 또는 휴대폰으로 열어 선택형 관심 질문에 실제로 응답한다.
 6. 20초: 결과 화면에서 응답 증가와 사전 기준을 확인한 뒤, 사람이 `계속 검증`을 선택하고 PNG ZIP을 내려받는다.
 7. 10초: “콘텐츠를 만든 것이 아니라, 고객을 만나기 전까지의 제작 업무를 없앴다”로 닫는다.

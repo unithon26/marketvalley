@@ -13,7 +13,7 @@
 - 의료·금융처럼 잘못된 효능 표현의 위험이 큰 분야가 아니다.
 - 문제 해결 효과를 사실로 단정하지 않고 사용 의향만 물을 수 있다.
 
-fixture 원본은 `lib/demo/demoCampaign.ts` 한 곳에서 관리하고 `lib/demo/demo-campaign.ts`에서 공개한다. 화면별로 문구를 복사하지 않고 랜딩, 캐러셀, 게시 문구와 신호 질문이 모두 같은 `CampaignSpec`을 읽는다.
+fixture 원본과 reference template 3종은 `lib/demo/demo-campaign.ts`에서 관리한다. `lib/demo/demoCampaign.ts`는 기존 import를 위한 하위 호환 shim이다. 화면별로 문구를 복사하지 않고 랜딩, 캐러셀, 게시 문구와 신호 질문이 모두 같은 `CampaignSpec`을 읽는다.
 
 ## 수정 절차
 
@@ -23,7 +23,7 @@ fixture 원본은 `lib/demo/demoCampaign.ts` 한 곳에서 관리하고 `lib/dem
 4. 랜딩과 캐러셀의 보조 문구를 같은 가설에 맞춘다.
 5. `safety.claimsToReview`에 검증되지 않은 효과를 적는다.
 6. 가장 가까운 단위 테스트로 Zod 계약을 확인한다.
-7. 결과 화면의 초기화 동작으로 브라우저에 저장된 응답과 판단을 지운다.
+7. 결과 화면의 초기화 동작으로 서버 메모리의 추가 응답과 판단을 seed 상태로 되돌린다.
 
 ## seed 응답
 

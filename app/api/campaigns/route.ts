@@ -3,29 +3,18 @@ import {
   deleteCampaignRequestSchema,
   publishCampaignRequestSchema,
   updateCampaignRequestSchema,
-  type CampaignResponse,
 } from "@/lib/contracts/api";
-import type { PublishedCampaign } from "@/lib/contracts/repository";
-import { campaignRepository, fixtureCampaignRepository } from "@/lib/demo/repository";
+import { campaignRepository } from "@/lib/demo/repository";
+import { demoCampaignId } from "@/lib/demo/demo-campaign";
 import {
   jsonResponse,
   readJsonBody,
   readOptionalJsonBody,
   routeErrorResponse,
 } from "@/app/api/_lib/http";
+import { toCampaignResponse } from "@/app/api/_lib/campaign-response";
 
 export const runtime = "nodejs";
-
-async function campaignResponse(
-  campaign: PublishedCampaign,
-  requestUrl: string,
-): Promise<CampaignResponse> {
-  return {
-    ...campaign,
-    url: new URL(`/p/${campaign.slug}`, requestUrl).toString(),
-    summary: await campaignRepository.getSignalSummary(campaign.id),
-  };
-}
 
 export async function GET(request: Request): Promise<Response> {
   try {
@@ -38,7 +27,7 @@ export async function GET(request: Request): Promise<Response> {
         { status: 404 },
       );
     }
-    return jsonResponse(await campaignResponse(campaign, request.url));
+    return jsonResponse(await toCampaignResponse(campaign, request.url));
   } catch (error) {
     return routeErrorResponse(error);
   }
@@ -48,7 +37,7 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const { draftId, spec } = publishCampaignRequestSchema.parse(await readJsonBody(request));
     const campaign = await campaignRepository.publish(draftId, spec);
-    return jsonResponse(await campaignResponse(campaign, request.url), { status: 201 });
+    return jsonResponse(await toCampaignResponse(campaign, request.url), { status: 201 });
   } catch (error) {
     return routeErrorResponse(error);
   }
@@ -74,7 +63,10 @@ export async function DELETE(request: Request): Promise<Response> {
     const hasQueryInput = queryInput.campaignId !== null || queryInput.draftId !== null;
     const body = hasQueryInput ? queryInput : await readOptionalJsonBody(request, 8_192);
     if (body === null) {
-      const campaign = fixtureCampaignRepository.resetDemoState();
+      const campaign = await campaignRepository.reset({
+        campaignId: demoCampaignId,
+        draftId: demoCampaignId,
+      });
       return jsonResponse({ reset: true, campaignId: campaign.id });
     }
     const input = deleteCampaignRequestSchema.parse(body);

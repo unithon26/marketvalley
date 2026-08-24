@@ -101,9 +101,9 @@ export interface CampaignRepository {
 
 이 변경 이후 개발자 B가 `FixtureCampaignGenerator`/`FixtureCampaignRepository`를 `OpenAICampaignGenerator`/`SupabaseCampaignRepository`로 교체해도 개발자 A 소유 컴포넌트·페이지는 한 줄도 바뀌지 않는다.
 
-## 6. 보류된 결정 (이번 범위 아님, 다음 논의 필요)
+## 6. 후속 결정과 보류 항목
 
-- **입력 반영 범위**: fixture 생성기가 사용자가 입력한 배경/솔루션을 얼마나 반영할지 (전혀 반영 안 함 / 일부 필드만 echo / 간단한 템플릿 기반 생성) — 프로덕트 결정이 아직 없어 이번 설계에서 확정하지 않는다. 인터페이스는 입력을 받도록 열어두되, 구현은 현행 유지(무시).
+- **입력 반영 범위 — 결정됨:** fixture 생성기는 자유 텍스트를 새로 만들지 않는다. `lib/demo/demo-campaign.ts`에 모은 검증된 레퍼런스 `CampaignSpec` 3개 중 입력 키워드와 가장 잘 맞는 하나를 선택한다. OpenAI 연동 시에도 `CampaignGenerator` 계약은 유지하고 선택 구현만 live adapter로 교체한다.
 - **`NEXT_PUBLIC_DEMO_MODE`의 정확한 분기 방식**: 실제 OpenAI/Supabase 어댑터가 생기는 시점에 결정.
 
 ## 7. 이번 범위에 만들 것 (P0)
@@ -120,7 +120,7 @@ export interface CampaignRepository {
 ## 8. 이번 범위에 만들지 않을 것 (명시적 비범위)
 
 - 실제 OpenAI Structured Outputs 연동 — `CampaignGenerator` 인터페이스만 준비, 구현은 fixture로 유지
-- 실제 Supabase 마이그레이션/영속 저장 — `CampaignRepository` 인터페이스만 준비, 구현은 localStorage 기반 fixture로 유지
+- 실제 Supabase 마이그레이션/영속 저장 — `CampaignRepository` 인터페이스만 준비하고 구현은 서버 프로세스 메모리 fixture로 유지
 - Meta OAuth, 광고 객체 생성/활성화 — 기존에도 하커톤 비범위, 변경 없음
 - 진행상황 페이지의 "실제 트랙"(다중일 대기, 실시간 응답 수집) 구현 — 라벨만 맞추고 동작은 데모 애니메이션 유지
 - 여러 프로젝트를 실제로 CRUD하는 대시보드 (현재 3개 카드 중 2개는 클릭 불가 mock) — `spec.md` "우승 전략"의 단일 경로 원칙과 충돌하므로 확장하지 않는다

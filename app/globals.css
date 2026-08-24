@@ -206,11 +206,13 @@ button { color: inherit; }
 .decision-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .decision-grid button { position: relative; padding: 18px; text-align: left; border: 1px solid var(--line); border-radius: 14px; background: #fff; cursor: pointer; }
 .decision-grid button.selected { border-color: var(--purple); background: var(--purple-soft); box-shadow: inset 0 0 0 1px var(--purple); }
+.decision-grid button:disabled, .text-button:disabled { opacity: .55; cursor: not-allowed; }
 .decision-grid button > span { font-weight: 800; }
 .decision-grid button p { margin: 6px 0 0; color: var(--muted); }
 .decision-grid button svg { position: absolute; top: 14px; right: 14px; color: var(--purple); }
 .report-footer-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
 .toast { position: fixed; z-index: 50; left: 50%; bottom: 28px; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 12px 18px; border-radius: 12px; background: var(--ink); color: white; box-shadow: var(--shadow); }
+.toast-error { background: var(--danger); }
 
 /* Export-only deterministic carousel */
 .export-stage { position: fixed; z-index: -10; left: -20000px; top: 0; display: flex; gap: 10px; pointer-events: none; }
@@ -285,6 +287,7 @@ button { color: inherit; }
 .signal-options { display: flex; flex-direction: column; gap: 9px; margin-bottom: 12px; }
 .signal-options button { display: flex; min-height: 58px; padding: 0 18px; align-items: center; justify-content: space-between; border: 1px solid #5a514b; border-radius: 5px; color: white; background: #2e2824; cursor: pointer; text-align: left; }
 .signal-options button.selected { border-color: #ffcd57; background: #403730; }
+.signal-error { margin: 0 0 12px; color: #ffd8d2; font-size: 14px; font-weight: 700; }
 .signal-success { padding: 34px; color: var(--coffee); background: #fff; }
 .signal-success > span { display: grid; place-items: center; width: 54px; height: 54px; border-radius: 50%; color: white; background: var(--orange); }
 .signal-success h3 { margin: 18px 0 4px; font-size: 25px; }
