@@ -5,9 +5,13 @@
   "type": "module",
   "description": "UNITHON 2026 marketvalley planning and development workspace",
   "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
+    "test:e2e": "playwright test",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --passWithNoTests",
     "check": "pnpm lint && pnpm typecheck && pnpm test"
@@ -19,6 +23,8 @@
   "packageManager": "pnpm@11.15.1",
   "dependencies": {
     "@supabase/supabase-js": "2.112.3",
+    "html-to-image": "^1.11.13",
+    "jszip": "^3.10.1",
     "next": "16.3.2",
     "openai": "7.5.0",
     "react": "19.2.8",
@@ -26,6 +32,7 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "4.3.3",
     "@types/node": "26.2.0",
     "@types/react": "19.2.18",

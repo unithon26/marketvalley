@@ -8,6 +8,7 @@ export default defineConfig({
     },
   },
   test: {
+    include: ["tests/unit/**/*.test.ts"],
     environment: "node",
     globals: true,
     passWithNoTests: true,
