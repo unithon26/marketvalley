@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import JSZip from "jszip";
 import { CheckIcon, CopyIcon, DownloadIcon, ExternalIcon } from "@/components/icons";
 import { CarouselCard, carouselFileNames } from "@/components/renderers/carousel-card";
-import type { NextAction } from "@/lib/contracts/campaign";
-import { readNextAction, readSignals, resetDemo, saveNextAction } from "@/lib/client/demo-store";
-import { demoCampaign, evaluateDecision, seedSignals } from "@/lib/demo/demo-campaign";
+import type { CampaignSpec, NextAction } from "@/lib/contracts/campaign";
+import type { SignalSummary } from "@/lib/contracts/repository";
 import { createNextActionState } from "@/lib/demo/campaignSignals";
 
 function triggerDownload(blob: Blob, name: string) {
@@ -20,38 +19,45 @@ function triggerDownload(blob: Blob, name: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function statusCopy(status: ReturnType<typeof evaluateDecision>["decisionStatus"]) {
+function statusCopy(status: SignalSummary["decisionStatus"]) {
   if (status === "threshold_met") return { label: "기준 도달", tone: "positive", description: "사전에 승인한 최소 표본과 긍정 신호 기준에 도달했습니다." };
   if (status === "threshold_not_met") return { label: "가설 재검토", tone: "warning", description: "표본은 모였지만 현재 메시지의 긍정 신호 기준에는 도달하지 않았습니다." };
   return { label: "표본 수 부족", tone: "neutral", description: "아직 결론을 내리지 않고 응답 분포와 남은 표본만 보여드립니다." };
 }
 
-export function CampaignReport() {
-  const [signals, setSignals] = useState(() => [...seedSignals]);
+const emptySummary: SignalSummary = {
+  positive: 0, neutral: 0, negative: 0, total: 0, positiveRate: null,
+  decisionStatus: "no_responses", isRuleMet: false, remainingResponses: 0, remainingPositiveResponses: 0,
+};
+
+export function CampaignReport({ campaignId, initialSpec }: { campaignId: string; initialSpec: CampaignSpec }) {
+  const [summary, setSummary] = useState<SignalSummary>(emptySummary);
   const [nextAction, setNextAction] = useState<NextAction | null>(null);
   const [notice, setNotice] = useState("");
   const [exporting, setExporting] = useState(false);
   const cardRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const summary = useMemo(() => evaluateDecision(signals), [signals]);
+  const spec = initialSpec;
   const state = useMemo(() => createNextActionState(nextAction), [nextAction]);
   const status = statusCopy(summary.decisionStatus);
   const positiveDegrees = summary.total ? (summary.positive / summary.total) * 360 : 0;
   const neutralDegrees = summary.total ? ((summary.positive + summary.neutral) / summary.total) * 360 : 0;
 
+  const refresh = useCallback(async () => {
+    const response = await fetch(`/api/campaigns?id=${campaignId}`, { cache: "no-store" });
+    if (!response.ok) return;
+    const body = await response.json();
+    setSummary(body.summary);
+    setNextAction(body.nextAction);
+  }, [campaignId]);
+
   useEffect(() => {
-    const refresh = () => {
-      setSignals(readSignals());
-      setNextAction(readNextAction());
-    };
     const animationFrame = window.requestAnimationFrame(refresh);
     window.addEventListener("focus", refresh);
-    window.addEventListener("marketvalley:demo-updated", refresh);
     return () => {
       window.cancelAnimationFrame(animationFrame);
       window.removeEventListener("focus", refresh);
-      window.removeEventListener("marketvalley:demo-updated", refresh);
     };
-  }, []);
+  }, [refresh]);
 
   async function copyText(text: string, label: string) {
     try {
@@ -77,7 +83,7 @@ export function CampaignReport() {
       const zip = new JSZip();
       images.forEach((dataUrl, index) => zip.file(carouselFileNames[index], dataUrl.split(",")[1], { base64: true }));
       const blob = await zip.generateAsync({ type: "blob" });
-      triggerDownload(blob, "magamhanip-carousel.zip");
+      triggerDownload(blob, `${campaignId}-carousel.zip`);
       setNotice("캐러셀 PNG 5장을 ZIP으로 만들었어요.");
     } catch {
       setNotice("PNG 생성에 실패했어요. 브라우저를 새로고침한 뒤 다시 시도해주세요.");
@@ -89,27 +95,32 @@ export function CampaignReport() {
   function downloadMetaPackage() {
     const text = [
       "[Meta 게시 준비 — 실제 게시 아님]",
-      `기본 문구: ${demoCampaign.messaging.caption}`,
-      `Headline: ${demoCampaign.messaging.hooks[0]}`,
-      `CTA: ${demoCampaign.validation.signal.ctaLabel}`,
-      `대상 고객 가설: ${demoCampaign.validation.customer}`,
+      `기본 문구: ${spec.messaging.caption}`,
+      `Headline: ${spec.messaging.hooks[0]}`,
+      `CTA: ${spec.validation.signal.ctaLabel}`,
+      `대상 고객 가설: ${spec.validation.customer}`,
       "Destination URL: /p/demo",
-      `Hashtags: ${demoCampaign.messaging.hashtags.join(" ")}`,
+      `Hashtags: ${spec.messaging.hashtags.join(" ")}`,
     ].join("\n\n");
     triggerDownload(new Blob([text], { type: "text/plain;charset=utf-8" }), "meta-ready.txt");
     setNotice("Meta 게시 준비 파일을 만들었어요. 실제 광고는 등록되지 않았습니다.");
   }
 
-  function chooseAction(action: NextAction) {
-    saveNextAction(action);
-    setNextAction(action);
-    setNotice("다음 행동을 저장했어요.");
+  async function chooseAction(action: NextAction) {
+    const response = await fetch("/api/campaigns", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ campaignId, draftId: campaignId, nextAction: action }),
+    });
+    if (response.ok) {
+      setNextAction(action);
+      setNotice("다음 행동을 저장했어요.");
+    }
   }
 
-  function reset() {
-    resetDemo();
-    setSignals(readSignals());
-    setNextAction(null);
+  async function reset() {
+    await fetch("/api/campaigns", { method: "DELETE" });
+    await refresh();
     setNotice("발표용 응답과 판단을 초기화했어요.");
   }
 
@@ -128,7 +139,7 @@ export function CampaignReport() {
       <section className="metric-grid">
         <article><span>선택형 응답</span><strong>{summary.total}<small>건</small></strong><p>개인정보 없는 데모 응답</p></article>
         <article><span>긍정 신호율</span><strong>{Math.round((summary.positiveRate ?? 0) * 100)}<small>%</small></strong><p>긍정 {summary.positive} / 전체 {summary.total}</p></article>
-        <article><span>판단 기준까지</span><strong>{summary.remainingResponses}<small>건</small></strong><p>{demoCampaign.validation.decisionRule.description}</p></article>
+        <article><span>판단 기준까지</span><strong>{summary.remainingResponses}<small>건</small></strong><p>{spec.validation.decisionRule.description}</p></article>
       </section>
 
       <section className="report-section response-section">
@@ -136,7 +147,7 @@ export function CampaignReport() {
         <div className="response-layout">
           <div className="donut" style={{ "--positive": `${positiveDegrees}deg`, "--neutral": `${neutralDegrees}deg` } as React.CSSProperties}><span><b>{summary.total}</b>응답</span></div>
           <div className="distribution-list">
-            {demoCampaign.validation.signal.options.map((option) => {
+            {spec.validation.signal.options.map((option) => {
               const count = summary[option.id];
               const percent = summary.total ? Math.round((count / summary.total) * 100) : 0;
               return <div key={option.id}><div><span><i className={option.id} />{option.label}</span><b>{count}건 · {percent}%</b></div><div className="distribution-track"><i className={option.id} style={{ width: `${percent}%` }} /></div></div>;
@@ -154,8 +165,8 @@ export function CampaignReport() {
           <article><div className="deliverable-icon meta-icon">M</div><div><h3>Meta 게시 준비</h3><p>미디어·문구·CTA·대상 고객 가설·URL을 한 파일로</p><code>실제 게시 또는 집행 아님</code></div><button className="icon-button" type="button" onClick={downloadMetaPackage} aria-label="Meta 게시 준비 다운로드"><DownloadIcon /></button></article>
         </div>
         <div className="copy-grid">
-          <div><span>게시 문구</span><p>{demoCampaign.messaging.caption}</p><button type="button" onClick={() => copyText(demoCampaign.messaging.caption, "게시 문구")}><CopyIcon size={16} /> 복사</button></div>
-          <div><span>CTA</span><p>{demoCampaign.validation.signal.ctaLabel}</p><button type="button" onClick={() => copyText(demoCampaign.validation.signal.ctaLabel, "CTA")}><CopyIcon size={16} /> 복사</button></div>
+          <div><span>게시 문구</span><p>{spec.messaging.caption}</p><button type="button" onClick={() => copyText(spec.messaging.caption, "게시 문구")}><CopyIcon size={16} /> 복사</button></div>
+          <div><span>CTA</span><p>{spec.validation.signal.ctaLabel}</p><button type="button" onClick={() => copyText(spec.validation.signal.ctaLabel, "CTA")}><CopyIcon size={16} /> 복사</button></div>
         </div>
       </section>
 
@@ -171,7 +182,7 @@ export function CampaignReport() {
       {notice && <div className="toast" role="status">{notice}</div>}
 
       <div className="export-stage" aria-hidden="true">
-        {[0, 1, 2, 3, 4].map((index) => <CarouselCard key={index} spec={demoCampaign} index={index} exportRef={(node) => { cardRefs.current[index] = node; }} />)}
+        {[0, 1, 2, 3, 4].map((index) => <CarouselCard key={index} spec={spec} index={index} exportRef={(node) => { cardRefs.current[index] = node; }} />)}
       </div>
     </main>
   );
