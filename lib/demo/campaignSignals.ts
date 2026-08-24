@@ -5,23 +5,13 @@ import {
   type NextAction,
   type SignalOptionId,
 } from "@/lib/contracts/campaign";
+import type {
+  SignalCounts,
+  SignalDecisionStatus,
+  SignalSummary,
+} from "@/lib/contracts/repository";
 
-export type SignalCounts = Record<SignalOptionId, number>;
-
-export type SignalDecisionStatus =
-  | "no_responses"
-  | "insufficient_sample"
-  | "threshold_met"
-  | "threshold_not_met";
-
-export type SignalSummary = SignalCounts & {
-  total: number;
-  positiveRate: number | null;
-  decisionStatus: SignalDecisionStatus;
-  isRuleMet: boolean;
-  remainingResponses: number;
-  remainingPositiveResponses: number;
-};
+export type { SignalCounts, SignalDecisionStatus, SignalSummary };
 
 export const emptySignalCounts = (): SignalCounts => ({ positive: 0, neutral: 0, negative: 0 });
 
