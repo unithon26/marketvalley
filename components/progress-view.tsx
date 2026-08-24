@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CheckIcon, ChartIcon } from "@/components/icons";
 
-const stages = ["접수", "캠페인 준비", "산출물 생성", "결과 도착"];
+const stages = ["접수", "준비 중", "수집 중", "결과 도착"];
 
 export function ProgressView() {
   const [current, setCurrent] = useState(0);
