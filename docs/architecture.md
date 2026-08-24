@@ -3,7 +3,7 @@
 상태: 목표 설계, 미구현
 기준일: 2026-08-24
 
-현재 저장소에는 아래 구조를 구현한 제품 코드가 없다. 기존 랜딩페이지 템플릿과 메인 웹사이트 디자인을 확인한 뒤 적용할 목표 경계만 기록한다.
+현재 저장소에는 아래 구조를 구현한 제품 코드가 없다. 별도 랜딩 저장소에서는 시각 요소만 참고하고, 메인 웹사이트 디자인을 확인한 뒤 적용할 목표 경계만 기록한다.
 
 ## 목표
 
@@ -18,9 +18,9 @@ CampaignGenerator ── mock: fixture 기반 생성
    │                live: OpenAI Structured Outputs
    ↓
 CampaignSpec (Zod 검증, 단일 진실 공급원)
-   ├─ LandingRenderer ── studio preview / public page
-   ├─ CarouselRenderer ── preview / PNG / ZIP
-   └─ Meta 게시 준비 ── 같은 문구와 공개 URL 조합
+   ├─ LandingRenderer ── published public page
+   ├─ CarouselRenderer ── PNG / ZIP
+   └─ Meta 게시 준비 ── file / copy package
    ↓
 CampaignRepository ── mock: browser localStorage
                      live: Supabase server repository
@@ -32,9 +32,9 @@ CampaignRepository ── mock: browser localStorage
 ## 상태 원칙
 
 - `CampaignSpec` 외에 화면별 카피 복제본을 만들지 않는다.
-- 프로젝트명, 가치 제안과 CTA 수정은 같은 source field를 바꾼다.
+- 프로젝트명, 가치 제안과 CTA는 결과물마다 복제하지 않고 같은 source field에서 생성한다.
 - mock 데이터는 화면에서 `데모 데이터`로 식별할 수 있게 한다.
-- 공개 snapshot과 로컬 초안을 구분한다. 재게시 전 수정은 공개 페이지에 반영되지 않는 것이 live 목표다.
+- 공개 snapshot과 로컬 초안을 구분한다. 승인된 snapshot은 수정하지 않고 변경이 필요하면 새 캠페인을 만든다.
 - P0의 선택형 응답에는 이름, 이메일, 전화번호, IP와 원문 user-agent를 저장하지 않는다.
 
 ## 계획된 실행 모드

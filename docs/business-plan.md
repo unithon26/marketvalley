@@ -73,7 +73,7 @@ P1은 실제 P0와 발표 준비가 안정된 뒤에만 진행한다. Meta는 �
 ## 3일 실행 목표
 
 - G0: `CampaignSpec`과 fixture 검증
-- G1: 같은 fixture로 스튜디오·랜딩·캐러셀 렌더링
+- G1: 같은 fixture로 실제 공개 랜딩과 캐러셀 파일 생성
 - G2: 외부 API 없는 공개·응답·판단·PNG/ZIP 전체 흐름
 - G3: Supabase 실제 공개와 시크릿 창 응답
 - G4: OpenAI adapter와 실패 fallback

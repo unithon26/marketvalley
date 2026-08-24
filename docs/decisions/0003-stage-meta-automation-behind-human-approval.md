@@ -16,8 +16,8 @@ Meta 연동을 제품 단계별로 분리한다.
 ### P0
 
 - 실제 Meta OAuth, 계정 연결, 광고 객체 쓰기와 광고비 집행을 하지 않는다.
-- `CampaignSpec`, 캐러셀 export와 공개 랜딩 URL을 사용해 `Meta 게시 준비` 화면을 만든다.
-- 기본 문구, headline, CTA, 대상 고객 가설, 미디어 파일과 destination URL을 한곳에서 복사·확인한다.
+- `CampaignSpec`, 캐러셀 export와 공개 랜딩 URL을 사용해 `Meta 게시 준비` 파일·복사 기능을 만든다.
+- 기본 문구, headline, CTA, 대상 고객 가설, 미디어 파일과 destination URL을 결과 화면에서 복사하거나 파일로 받는다.
 - 예산, 통화, 기간, 세부 타기팅과 활성화는 자동 확정하지 않는다.
 
 ### 해커톤 P1
