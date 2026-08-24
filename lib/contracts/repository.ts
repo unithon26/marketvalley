@@ -20,6 +20,11 @@ export type NextActionInput = {
   nextAction: NextAction;
 };
 
+export type DeleteCampaignInput = {
+  campaignId: string;
+  draftId: string;
+};
+
 export type SignalCounts = Record<SignalOptionId, number>;
 
 export type SignalDecisionStatus =
@@ -45,10 +50,40 @@ export class DuplicateSignalError extends Error {
   }
 }
 
+export class CampaignNotFoundError extends Error {
+  constructor() {
+    super("campaign not found");
+    this.name = "CampaignNotFoundError";
+  }
+}
+
+export class DraftConflictError extends Error {
+  constructor() {
+    super("draft is already published with a different campaign spec");
+    this.name = "DraftConflictError";
+  }
+}
+
+export class DraftOwnershipError extends Error {
+  constructor() {
+    super("draft does not own this campaign");
+    this.name = "DraftOwnershipError";
+  }
+}
+
+export class InvalidSignalOptionError extends Error {
+  constructor() {
+    super("signal option does not belong to this campaign");
+    this.name = "InvalidSignalOptionError";
+  }
+}
+
 export interface CampaignRepository {
   publish(draftId: string, spec: CampaignSpec): Promise<PublishedCampaign>;
+  getById(id: string): Promise<PublishedCampaign | null>;
   getBySlug(slug: string): Promise<PublishedCampaign | null>;
   recordSignal(input: SignalInput): Promise<SignalSummary>;
   getSignalSummary(campaignId: string): Promise<SignalSummary>;
   saveNextAction(input: NextActionInput): Promise<NextAction>;
+  delete(input: DeleteCampaignInput): Promise<void>;
 }
