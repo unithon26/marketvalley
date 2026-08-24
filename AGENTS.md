@@ -129,12 +129,12 @@
 - 기술 스택과 아키텍처: Next.js App Router·TypeScript·Tailwind 개발환경을 준비했다. OpenAI Responses API Structured Outputs, Supabase, React/CSS 결정적 렌더러와 Vercel은 목표 구조이며 아직 구현·연동하지 않았다.
 - 구현 순서: 기존 랜딩페이지 템플릿과 디자인 확정 → G0 계약·fixture → G1 동일 fixture 렌더링 → G2 외부 API 없는 전체 종단 흐름과 첫 배포 → G3 Supabase 공개·응답 → G4 OpenAI adapter → 기능 동결·리허설
 - Meta 범위: P0 미연동·미집행, 게시 준비 미리보기만 구현. 선택적 P1은 팀 테스트 계정의 `PAUSED` 생성까지만 허용. 결제수단 등록과 실제 activation은 해커톤 범위 밖
-- 구현·테스트·배포·제출: 임시 화면·API·mock·fixture·화면 테스트는 제거했다. 현재 동작하는 웹페이지와 배포본은 없으며 개발환경 검증만 수행한다.
-- 저장소: 로컬 Git `main`을 초기화했으며 첫 커밋과 원격 연결은 이 정리 작업의 검증 후 진행한다.
+- 구현·테스트·배포·제출: 임시 화면·API·mock·fixture·화면 테스트는 제거했다. 현재 동작하는 웹페이지와 배포본은 없다. 로컬 `pnpm check`, 취약점·peer 검사와 GitHub Actions 품질 job이 통과했다.
+- 저장소: 비공개 `https://github.com/unithon26/onebrief`의 `main`에 문서와 개발환경을 푸시했다. 제품 배포와 행사 제출은 하지 않았다.
 - 핵심 문서: `README.md`, `docs/brief.md`, `docs/spec.md`, `docs/architecture.md`, `docs/user-flow-and-wireframes.md`, `docs/decisions/`, `CONTRIBUTING.md`, `WORKLOG.md`
-- 가장 중요한 다음 행동: 현재 문서·개발환경을 GitHub에 전달하고, 기존 랜딩페이지 템플릿 저장소를 확인해 별도로 완성한다. 메인 웹사이트는 디자인 담당자의 확정본을 받은 뒤 시작한다.
+- 가장 중요한 다음 행동: `https://github.com/unithon26/landing-page-reference`의 기존 템플릿을 별도 작업으로 완성한다. 메인 웹사이트는 디자인 담당자의 확정본을 받은 뒤 시작한다.
 - 즉시 확인할 운영 정보: 심사 기준·배점, 제출물·마감·플랫폼, 발표 시간, AI·외부 자산·IP 규정
-- 차단 요소: 메인 웹사이트 구현에는 디자인 확정본이 필요하다. 기존 랜딩페이지 템플릿 저장소는 인증된 계정 소유 저장소 이름만으로 특정되지 않아 협업·조직 저장소까지 확인해야 한다. 정확한 제출·심사 규정과 외부 계정 사용 가능 여부도 해당 단계 전에 확인한다.
+- 차단 요소: 메인 웹사이트 구현에는 디자인 확정본이 필요하다. 정확한 제출·심사 규정과 외부 계정 사용 가능 여부도 해당 단계 전에 확인한다. 기존 랜딩페이지 템플릿 저장소는 확인했고 사용자 권한은 `ADMIN`이다.
 
 이 상태 목록은 인계 메모다. 이후 세션은 완료한 일을 단순히 덧붙이지 말고, 오래된 항목을 현재 사실로 교체해 항상 한눈에 다음 행동을 찾을 수 있게 유지한다.
 

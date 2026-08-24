@@ -29,5 +29,5 @@
 - 영향 범위: 제품 코드 전체, 패키지·테스트·CI 설정, `README.md`, `CONTRIBUTING.md`, `AGENTS.md`, `docs/`, `.github/`
 - 결정: 이전 임시 화면은 참고용으로도 보존하지 않는다. 메인 웹사이트는 디자인 담당자의 확정본 이후에만 구현하고 기존 랜딩페이지 템플릿은 해당 GitHub 저장소에서 별도로 작업한다. 발표 자동 클릭 기능은 만들지 않는다.
 - 검증: `pnpm install --frozen-lockfile`, `pnpm check`의 lint·typecheck·빈 Vitest 환경, `pnpm audit --audit-level high`, `pnpm peers check` 통과. Markdown 로컬 링크와 제품 코드 경로 제거를 확인했고 독립 읽기 전용 검토에서 범위 이탈 없음 확인
-- 전달: 진행 중. 로컬 커밋, GitHub 원격과 CI 결과는 완료 후 갱신한다.
-- 남은 일: 개발환경 검증과 독립 리뷰, 비공개 GitHub 저장소 푸시·CI 확인, 기존 랜딩페이지 템플릿 저장소 식별과 후속 구현
+- 전달: 사용자 Git 신원으로 `e791929`를 생성해 비공개 `unithon26/onebrief`의 `main`에 푸시했고 GitHub Actions 품질 job 통과 확인. Node.js 20 폐기 안내를 제거하기 위해 공식 actions를 Node.js 24 기반 최신 major로 갱신
+- 남은 일: 기존 `unithon26/landing-page-reference` 저장소의 후속 구현. 메인 웹사이트는 디자인 담당자의 확정본 대기
