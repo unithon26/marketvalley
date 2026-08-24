@@ -39,5 +39,5 @@
 - 영향 범위: 프로젝트 설정, 공개·협업 문서, 작업 기록과 GitHub 저장소 metadata
 - 결정: 브랜드 표기는 사용자가 확정한 소문자 `marketvali`로 통일
 - 검증: 기존 제품명 잔여 문자열과 파일명 0건 확인. `pnpm install --frozen-lockfile`, `pnpm check`, `pnpm audit --audit-level high`, `pnpm peers check` 통과
-- 전달: 비공개 GitHub 저장소를 `unithon26/marketvali`로 변경하고 로컬 `origin`을 새 URL에 연결. 로컬 변경의 commit·push·CI 확인은 진행 중
-- 남은 일: commit, push와 GitHub Actions 확인
+- 전달: 비공개 GitHub 저장소를 `unithon26/marketvali`로 변경하고 로컬 `origin`을 새 URL에 연결. 사용자 Git 신원으로 커밋 `20a2240`을 `main`에 푸시했고 GitHub Actions CI run `32718995408` 통과
+- 남은 일: 이 이름 변경 작업의 남은 일 없음. 메인 웹사이트 화면은 디자인 확정본을 받은 뒤 시작
