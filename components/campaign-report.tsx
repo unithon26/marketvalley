@@ -215,7 +215,7 @@ export function CampaignReport({
     <main className="report-page page-container">
       <div className="report-intro">
         <span className="report-check"><CheckIcon /></span>
-        <div><span className="eyebrow">{spec.project.name} · DEMO CAMPAIGN</span><h1>검증 리포트를 보여드릴게요</h1><p>모든 수치는 발표 흐름을 확인하기 위한 목데이터입니다.</p></div>
+        <div><span className="eyebrow">{spec.project.name} · 데모 프로젝트</span><h1>검증 리포트를 보여드릴게요</h1><p>모든 수치는 발표 흐름을 확인하기 위한 목데이터입니다.</p></div>
       </div>
 
       <section className="status-banner">
@@ -265,7 +265,7 @@ export function CampaignReport({
         </div>
       </section>
 
-      <div className="report-footer-actions"><button className="text-button danger" type="button" onClick={reset} disabled={resetting || pendingAction !== null}>{resetting ? "초기화 중..." : "데모 데이터 초기화"}</button><Link className="button button-secondary" href="/new">새 캠페인 만들기</Link></div>
+      <div className="report-footer-actions"><button className="text-button danger" type="button" onClick={reset} disabled={resetting || pendingAction !== null}>{resetting ? "초기화 중..." : "데모 데이터 초기화"}</button><Link className="button button-secondary" href="/new">새 프로젝트 만들기</Link></div>
       {mutationError || loadError
         ? <div className="toast toast-error" role="alert">{mutationError || loadError}</div>
         : notice && <div className="toast" role="status">{notice}</div>}

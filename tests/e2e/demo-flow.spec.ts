@@ -37,10 +37,10 @@ test("fixture 생성부터 응답, 판단, 초기화까지 실제 API 경계로 
   await page.goto("/");
   await page.evaluate(() => window.localStorage.clear());
 
-  await page.getByRole("link", { name: "새 캠페인" }).click();
+  await page.getByRole("link", { name: "새 프로젝트" }).click();
   await page.getByRole("button", { name: "예시 불러오기" }).click();
   await page.getByRole("button", { name: "다음" }).click();
-  await page.getByRole("button", { name: /캠페인 만들기/ }).click();
+  await page.getByRole("button", { name: /프로젝트 만들기/ }).click();
 
   await expect(page).toHaveURL(/\/campaigns\/[^/]+\/progress$/);
   const campaignId = decodeURIComponent(page.url().match(/\/campaigns\/([^/]+)\/progress$/)?.[1] ?? "");
@@ -209,12 +209,12 @@ test("게시 응답이 유실돼도 같은 draft와 생성 결과로 재시도�
   await page.goto("/new");
   await page.getByRole("button", { name: "예시 불러오기" }).click();
   await page.getByRole("button", { name: "다음" }).click();
-  await page.getByRole("button", { name: /캠페인 만들기/ }).click();
-  await expect(page.locator(".form-error")).toHaveText("캠페인 생성에 실패했어요. 다시 시도해주세요.");
+  await page.getByRole("button", { name: /프로젝트 만들기/ }).click();
+  await expect(page.locator(".form-error")).toHaveText("프로젝트 생성에 실패했어요. 다시 시도해주세요.");
   expect(firstPublishedId).not.toBe("");
 
   await page.unroute("**/api/campaigns");
-  await page.getByRole("button", { name: /캠페인 만들기/ }).click();
+  await page.getByRole("button", { name: /프로젝트 만들기/ }).click();
   await expect(page).toHaveURL(new RegExp(`/campaigns/${firstPublishedId}/progress$`));
   expect(generateRequests).toBe(1);
 });

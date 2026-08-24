@@ -19,7 +19,7 @@ export default function HomePage() {
             <h1>전체 프로젝트</h1>
             <p>아이디어에서 첫 시장 반응까지, 반복 제작 없이 한 흐름으로 관리하세요.</p>
           </div>
-          <Link className="button button-primary" href="/new"><PlusIcon size={18} /> 새 캠페인</Link>
+          <Link className="button button-primary" href="/new"><PlusIcon size={18} /> 새 프로젝트</Link>
         </div>
 
         <div className="segment-control" aria-label="프로젝트 상태 필터">

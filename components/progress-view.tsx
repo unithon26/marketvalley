@@ -17,7 +17,7 @@ export function ProgressView({ campaignId }: { campaignId: string }) {
   return (
     <main className="progress-page page-container">
       <div className="progress-heading-row">
-        <div><span className="eyebrow">DETERMINISTIC DEMO</span><h1>시장검증 캠페인을 준비하고 있어요</h1></div>
+        <div><span className="eyebrow">DETERMINISTIC DEMO</span><h1>광고 검증을 준비하고 있습니다</h1></div>
         <div className="eta-card"><span>결과 제공까지</span><strong>{current === 3 ? "완료" : "약 2분"}</strong></div>
       </div>
 
@@ -33,7 +33,7 @@ export function ProgressView({ campaignId }: { campaignId: string }) {
       <section className="processing-visual" aria-live="polite">
         <div className={`processing-orb stage-${current}`}><i /><i /><i /></div>
         <span className="processing-status">{stages[current]}</span>
-        <h2>{current === 3 ? "랜딩·캐러셀·게시 준비가 끝났어요" : "같은 가설로 모든 결과물을 맞추고 있어요"}</h2>
+        <h2>{current === 3 ? "랜딩·캐러셀·게시 준비가 끝났어요" : "검토한 내용을 바탕으로 광고 소재와 랜딩페이지를 제작하고 있습니다"}</h2>
         <p>{current === 3 ? "실제 외부 API 없이 동일한 fixture와 렌더러로 완성했습니다." : "잠시만 기다려주세요. 이 화면은 발표용 결정적 시뮬레이션입니다."}</p>
       </section>
 

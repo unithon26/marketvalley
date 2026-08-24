@@ -10,7 +10,7 @@ export function SiteHeader({ compact = false }: { compact?: boolean }) {
         </Link>
         <nav className="header-nav" aria-label="주요 메뉴">
           <Link href="/">프로젝트</Link>
-          <Link href="/new">캠페인 만들기</Link>
+          <Link href="/new">프로젝트 만들기</Link>
           <Link href="/campaigns/demo">데모 리포트</Link>
         </nav>
         <div className="header-actions">

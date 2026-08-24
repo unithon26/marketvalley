@@ -93,7 +93,7 @@ export function CampaignWizard() {
 
       router.push(`/campaigns/${campaignId}/progress`);
     } catch {
-      setError("캠페인 생성에 실패했어요. 다시 시도해주세요.");
+      setError("프로젝트 생성에 실패했어요. 다시 시도해주세요.");
     } finally {
       setSubmitting(false);
     }
@@ -129,7 +129,7 @@ export function CampaignWizard() {
         <div className="wizard-actions">
           {step === 2 && <button className="button button-secondary" type="button" onClick={() => setStep(1)}>이전</button>}
           <button className="button button-primary" type="button" onClick={next} disabled={submitting}>
-            {step === 1 ? <>다음 <ArrowRightIcon size={17} /></> : submitting ? "만드는 중..." : <>캠페인 만들기 <ArrowRightIcon size={17} /></>}
+            {step === 1 ? <>다음 <ArrowRightIcon size={17} /></> : submitting ? "만드는 중..." : <>프로젝트 만들기 <ArrowRightIcon size={17} /></>}
           </button>
         </div>
       </section>
