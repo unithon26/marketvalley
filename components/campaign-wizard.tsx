@@ -19,6 +19,7 @@ export function CampaignWizard() {
   const [background, setBackground] = useState("");
   const [solution, setSolution] = useState("");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const canContinue = step === 1 ? background.trim().length >= 20 : solution.trim().length >= 20;
 
@@ -28,7 +29,7 @@ export function CampaignWizard() {
     setError("");
   }
 
-  function next() {
+  async function next() {
     if (!canContinue) {
       setError("발표에서 이해할 수 있도록 20자 이상 구체적으로 적어주세요.");
       return;
@@ -38,11 +39,31 @@ export function CampaignWizard() {
       setStep(2);
       return;
     }
-    window.localStorage.setItem(
-      "marketvalley:demo-draft",
-      JSON.stringify({ background, solution, approvedAt: new Date().toISOString() }),
-    );
-    router.push("/campaigns/demo/progress");
+    setSubmitting(true);
+    try {
+      const generateResponse = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ background, solution }),
+      });
+      if (!generateResponse.ok) throw new Error("generate_failed");
+      const { spec } = await generateResponse.json();
+
+      const draftId = window.crypto.randomUUID();
+      const publishResponse = await fetch("/api/campaigns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ draftId, spec }),
+      });
+      if (!publishResponse.ok) throw new Error("publish_failed");
+      const published = await publishResponse.json();
+
+      router.push(`/campaigns/${published.id}/progress`);
+    } catch {
+      setError("캠페인 생성에 실패했어요. 다시 시도해주세요.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -74,8 +95,8 @@ export function CampaignWizard() {
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="wizard-actions">
           {step === 2 && <button className="button button-secondary" type="button" onClick={() => setStep(1)}>이전</button>}
-          <button className="button button-primary" type="button" onClick={next}>
-            {step === 1 ? <>다음 <ArrowRightIcon size={17} /></> : <>캠페인 만들기 <ArrowRightIcon size={17} /></>}
+          <button className="button button-primary" type="button" onClick={next} disabled={submitting}>
+            {step === 1 ? <>다음 <ArrowRightIcon size={17} /></> : submitting ? "만드는 중..." : <>캠페인 만들기 <ArrowRightIcon size={17} /></>}
           </button>
         </div>
       </section>
