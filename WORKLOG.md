@@ -29,5 +29,15 @@
 - 영향 범위: 제품 코드 전체, 패키지·테스트·CI 설정, `README.md`, `CONTRIBUTING.md`, `AGENTS.md`, `docs/`, `.github/`
 - 결정: 이전 임시 화면은 참고용으로도 보존하지 않는다. 메인 웹사이트는 디자인 담당자의 확정본 이후에만 구현하고 기존 랜딩페이지 템플릿은 해당 GitHub 저장소에서 별도로 작업한다. 발표 자동 클릭 기능은 만들지 않는다.
 - 검증: `pnpm install --frozen-lockfile`, `pnpm check`의 lint·typecheck·빈 Vitest 환경, `pnpm audit --audit-level high`, `pnpm peers check` 통과. Markdown 로컬 링크와 제품 코드 경로 제거를 확인했고 독립 읽기 전용 검토에서 범위 이탈 없음 확인
-- 전달: 사용자 Git 신원으로 `e791929`를 생성해 비공개 `unithon26/onebrief`의 `main`에 푸시했고 GitHub Actions 품질 job 통과 확인. Node.js 20 폐기 안내를 제거하기 위해 공식 actions를 Node.js 24 기반 최신 major로 갱신
+- 전달: 사용자 Git 신원으로 `e791929`를 생성해 현재 비공개 `unithon26/marketvali`의 `main`에 반영했고 GitHub Actions 품질 job 통과 확인. Node.js 20 폐기 안내를 제거하기 위해 공식 actions를 Node.js 24 기반 최신 major로 갱신
 - 남은 일: 기존 `unithon26/landing-page-reference` 저장소의 후속 구현. 메인 웹사이트는 디자인 담당자의 확정본 대기
+
+## 2026-08-24 — 제품명 `marketvali` 확정
+
+- 목적: 작업용 이름을 확정 제품명 `marketvali`로 교체해 코드, 문서와 GitHub 식별자를 일치시킴
+- 변경: 패키지명, README, 제품 브리프, 기능 스펙, 사업·시장·발표 문서, ADR, 현재 상태와 저장소 URL의 기존 제품명 표기를 전부 변경
+- 영향 범위: 프로젝트 설정, 공개·협업 문서, 작업 기록과 GitHub 저장소 metadata
+- 결정: 브랜드 표기는 사용자가 확정한 소문자 `marketvali`로 통일
+- 검증: 기존 제품명 잔여 문자열과 파일명 0건 확인. `pnpm install --frozen-lockfile`, `pnpm check`, `pnpm audit --audit-level high`, `pnpm peers check` 통과
+- 전달: 비공개 GitHub 저장소를 `unithon26/marketvali`로 변경하고 로컬 `origin`을 새 URL에 연결. 로컬 변경의 commit·push·CI 확인은 진행 중
+- 남은 일: commit, push와 GitHub Actions 확인

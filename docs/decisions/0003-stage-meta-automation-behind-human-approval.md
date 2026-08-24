@@ -33,7 +33,7 @@ Meta 연동을 제품 단계별로 분리한다.
 2. 서버가 account binding과 권한을 다시 검증하고 `PAUSED` 초안을 만든다.
 3. 계정, 통화, 시간대, identity, 소재, 랜딩 URL, 타기팅, 총예산과 종료 시각을 포함한 승인 snapshot을 보여준다.
 4. 사용자가 명시적으로 승인한 snapshot과 실제 쓰기 payload가 일치할 때만 활성화를 허용한다.
-5. Insights는 비동기로 수집하며 Meta 지표와 OneBrief의 랜딩 응답 지표를 분리한다.
+5. Insights는 비동기로 수집하며 Meta 지표와 marketvali의 랜딩 응답 지표를 분리한다.
 6. 안전 한도를 넘으면 자동 일시중지는 허용하지만 자동 재시작과 무인 예산 증액은 허용하지 않는다.
 
 외부 연동은 server-only `MetaAdsProvider` 인터페이스 뒤에 둔다. P0에서는 mock provider를 사용한다. P1 구현 시 공식 SDK 또는 얇은 Graph API adapter 중 하나를 버전 고정해 선택한다.
@@ -49,7 +49,7 @@ SDK를 사용할 경우 전역 default API, debug token logging과 crash reporti
 - 승인 snapshot에는 계정, 통화, 시간대, identity, creative, landing, targeting, lifetime budget과 end time을 포함하고 hash로 쓰기 payload와 결합한다.
 - lifetime budget과 end time을 필수로 두고 append-only 감사 로그와 계정·캠페인 kill switch를 제공한다.
 - Insights 지연과 attribution 변경을 고려해 backoff와 재동기화를 사용한다.
-- UTM에는 불투명한 campaign·creative ID만 넣고 IP, 원문 user-agent와 `fbclid`를 OneBrief 분석 데이터로 저장하지 않는다.
+- UTM에는 불투명한 campaign·creative ID만 넣고 IP, 원문 user-agent와 `fbclid`를 marketvali 분석 데이터로 저장하지 않는다.
 
 ## 지표 명칭
 

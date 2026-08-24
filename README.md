@@ -1,6 +1,6 @@
-# OneBrief
+# marketvali
 
-OneBrief는 아이디어를 처음 검증하려는 예비창업가와 초기 1인 사업자가 반복하던 캠페인 기획, 채널별 재작성, 조판, 파일 정리와 반응 취합을 하나의 흐름으로 없애는 UNITHON 2026 프로젝트다.
+marketvali는 아이디어를 처음 검증하려는 예비창업가와 초기 1인 사업자가 반복하던 캠페인 기획, 채널별 재작성, 조판, 파일 정리와 반응 취합을 하나의 흐름으로 없애는 UNITHON 2026 프로젝트다.
 
 현재 저장소에는 제품 문서와 개발환경만 있다. 이전에 만든 임시 화면, mock 구현, API, fixture와 화면 테스트는 제품 디자인 기준으로 사용하지 않기 위해 모두 제거했다. 웹페이지 구현은 기존 GitHub 랜딩페이지 템플릿과 디자인 담당자가 전달할 메인 웹사이트 디자인을 확인한 뒤 시작한다.
 
@@ -12,12 +12,16 @@ OneBrief는 아이디어를 처음 검증하려는 예비창업가와 초기 1�
 - pnpm 10 이상
 
 ```bash
+git clone https://github.com/unithon26/marketvali.git
+cd marketvali
 pnpm install --frozen-lockfile
 cp .env.example .env.local
 pnpm check
 ```
 
 `pnpm check`는 현재 개발환경의 lint, TypeScript 설정과 빈 테스트 기준을 검증한다. 앱 엔트리가 없으므로 `pnpm dev`와 `pnpm build`는 아직 제공하지 않는다.
+
+공개 캠페인 랜딩의 완성된 디자인 reference는 별도 저장소 `https://github.com/unithon26/landing-page-reference`에서 관리한다. 메인 웹사이트 화면은 디자인 담당자의 확정본을 받은 뒤 이 저장소에 구현한다.
 
 ## 구현 시작 조건
 
