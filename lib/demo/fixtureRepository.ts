@@ -123,7 +123,7 @@ export class FixtureCampaignRepository implements CampaignRepository {
   }
 
   async getBySlug(slug: string): Promise<PublishedCampaign | null> {
-    const id = this.campaignIdsBySlug.get(slug) ?? (this.campaigns.has(slug) ? slug : undefined);
+    const id = this.campaignIdsBySlug.get(slug);
     if (!id) return null;
     return copyCampaign(this.requireCampaign(id));
   }

@@ -33,7 +33,10 @@ export const campaignSpecSchema = z.object({
     solution: shortText(240),
     expectedSignal: shortText(240),
     invalidationEvidence: shortText(240),
-    assumptions: z.array(shortText(240)).max(6),
+    assumptions: z.array(shortText(240)).max(6).refine(
+      (items) => new Set(items).size === items.length,
+      { message: "검증 가정은 서로 달라야 합니다." },
+    ),
     signal: z.object({
       type: z.enum(["problem_confirmation", "solution_interest"]),
       ctaLabel: shortText(40),
@@ -41,6 +44,9 @@ export const campaignSpecSchema = z.object({
       options: z.tuple([signalOptionSchema, signalOptionSchema, signalOptionSchema])
         .refine((options) => new Set(options.map((option) => option.id)).size === 3, {
           message: "신호 선택지는 positive, neutral, negative를 각각 하나씩 포함해야 합니다.",
+        })
+        .refine((options) => new Set(options.map((option) => option.label)).size === 3, {
+          message: "신호 선택지 문구는 서로 달라야 합니다.",
         }),
       successMessage: shortText(160),
     }).strict(),
@@ -61,9 +67,15 @@ export const campaignSpecSchema = z.object({
   }).strict(),
   messaging: z.object({
     valueProposition: shortText(40),
-    hooks: z.tuple([shortText(70), shortText(70), shortText(70)]),
+    hooks: z.tuple([shortText(70), shortText(70), shortText(70)]).refine(
+      (items) => new Set(items).size === items.length,
+      { message: "후킹 문구 3개는 서로 달라야 합니다." },
+    ),
     caption: shortText(1_200),
-    hashtags: z.array(shortText(60)).min(1).max(12),
+    hashtags: z.array(shortText(60)).min(1).max(12).refine(
+      (items) => new Set(items).size === items.length,
+      { message: "해시태그는 중복될 수 없습니다." },
+    ),
   }).strict(),
   landing: z.object({
     seoTitle: shortText(100),
@@ -71,10 +83,22 @@ export const campaignSpecSchema = z.object({
       eyebrow: shortText(60),
       supportingText: shortText(180),
     }).strict(),
-    painPoints: z.array(z.object({ title: shortText(28), body: shortText(90) }).strict()).length(3),
-    benefits: z.array(z.object({ title: shortText(28), body: shortText(90) }).strict()).length(3),
-    steps: z.array(z.object({ title: shortText(28), body: shortText(90) }).strict()).length(3),
-    faq: z.array(z.object({ question: shortText(100), answer: shortText(240) }).strict()).length(3),
+    painPoints: z.array(z.object({ title: shortText(28), body: shortText(90) }).strict()).length(3).refine(
+      (items) => new Set(items.map((item) => item.title)).size === items.length,
+      { message: "문제 카드 제목은 서로 달라야 합니다." },
+    ),
+    benefits: z.array(z.object({ title: shortText(28), body: shortText(90) }).strict()).length(3).refine(
+      (items) => new Set(items.map((item) => item.title)).size === items.length,
+      { message: "가치 카드 제목은 서로 달라야 합니다." },
+    ),
+    steps: z.array(z.object({ title: shortText(28), body: shortText(90) }).strict()).length(3).refine(
+      (items) => new Set(items.map((item) => item.title)).size === items.length,
+      { message: "작동 단계 제목은 서로 달라야 합니다." },
+    ),
+    faq: z.array(z.object({ question: shortText(100), answer: shortText(240) }).strict()).length(3).refine(
+      (items) => new Set(items.map((item) => item.question)).size === items.length,
+      { message: "FAQ 질문은 서로 달라야 합니다." },
+    ),
   }).strict(),
   carousel: z.object({
     hookBody: shortText(180),

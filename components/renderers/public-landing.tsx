@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { CampaignSpec, SignalOptionId } from "@/lib/contracts/campaign";
 import { CheckIcon } from "@/components/icons";
 import { getVisitorId } from "@/lib/client/demo-store";
+import { campaignThemeStyle } from "@/lib/brand-theme";
 
 function isSignalResponse(value: unknown): value is { alreadyResponded: boolean } {
   return typeof value === "object"
@@ -49,7 +50,7 @@ export function PublicLanding({ spec, campaignId }: { spec: CampaignSpec; campai
   }
 
   return (
-    <div className="public-landing">
+    <div className="public-landing" style={campaignThemeStyle(spec.brand)} data-brand-tone={spec.brand.tone}>
       <header className="landing-header">
         <a className="landing-brand" href="#top"><span>{spec.project.name}</span></a>
         <a className="landing-nav-cta" href="#signal">{spec.validation.signal.ctaLabel}</a>
@@ -108,8 +109,8 @@ export function PublicLanding({ spec, campaignId }: { spec: CampaignSpec; campai
               <div className="signal-success duplicate"><span><CheckIcon size={28} /></span><h3>이미 참여했어요</h3><p>최초 응답을 유지하고 중복으로 집계하지 않았습니다.</p><a href={reportPath}>데모 리포트 보기</a></div>
             ) : (
               <>
-                <div className="signal-options">
-                  {spec.validation.signal.options.map((option) => <button className={selected === option.id ? "selected" : ""} type="button" key={option.id} onClick={() => { setSelected(option.id); setError(""); }}><span>{option.label}</span>{selected === option.id && <CheckIcon size={18} />}</button>)}
+                <div className="signal-options" role="group" aria-label="관심 신호 선택">
+                  {spec.validation.signal.options.map((option) => <button className={selected === option.id ? "selected" : ""} type="button" key={option.id} aria-pressed={selected === option.id} onClick={() => { setSelected(option.id); setError(""); }}><span>{option.label}</span>{selected === option.id && <CheckIcon size={18} />}</button>)}
                 </div>
                 {error && <p className="signal-error" role="alert">{error}</p>}
                 <button className="landing-primary-button full" type="button" disabled={!selected || submitting} onClick={submit}>{submitting ? "저장 중..." : "익명으로 응답하기"}</button>

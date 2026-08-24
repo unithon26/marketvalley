@@ -98,7 +98,7 @@ CTA를 누르면 `CampaignSpec.validation.signal`의 질문과 세 선택지를 
 
 AI는 문구와 선택적 배경 이미지 프롬프트만 만든다. 모든 텍스트는 디자이너가 정의한 React/CSS 템플릿으로 조판한다.
 
-`광고 등록 패키지`는 별도의 광고 카피를 다시 생성하지 않는다. `CampaignSpec`과 게시된 랜딩 URL에서 캐러셀 파일, 기본 문구, headline, CTA, 대상 고객 가설과 destination URL을 조합한다. `/campaigns/[id]`에서 파일로 받거나 각 문구를 복사할 수 있게 하며 별도의 Meta용 시각 화면은 만들지 않는다. 사용자용 이름은 `Meta 게시 준비`이고 실제 광고가 등록됐다고 표현하지 않는다.
+`광고 등록 패키지`는 별도의 광고 카피를 다시 생성하지 않는다. `CampaignSpec`과 게시된 랜딩 URL에서 캐러셀 파일, 기본 문구, headline, CTA, 대상 고객 가설과 destination URL을 조합한다. `/campaigns/[id]`에서 PNG 5장과 `meta-ready.txt`를 하나의 ZIP으로 받거나 각 문구를 복사할 수 있게 하며 별도의 Meta용 시각 화면은 만들지 않는다. 사용자용 이름은 `Meta 게시 준비`이고 실제 광고가 등록됐다고 표현하지 않는다.
 
 완료 기준:
 
@@ -106,17 +106,17 @@ AI는 문구와 선택적 배경 이미지 프롬프트만 만든다. 모든 텍
 - 모든 장을 개별 PNG 또는 하나의 ZIP으로 받을 수 있다.
 - 파일명은 `01-hook.png`부터 `05-cta.png`까지 정렬된다.
 - 캡션, 후킹 문구 3개, CTA, 해시태그를 복사할 수 있다.
-- `Meta 게시 준비` 파일과 복사 영역에서 사용할 미디어, 기본 문구, headline, CTA, 대상 고객 가설과 랜딩 URL을 한 번에 받을 수 있다.
+- `Meta 게시 준비` ZIP과 복사 영역에서 사용할 미디어, 기본 문구, headline, CTA, 대상 고객 가설과 절대 랜딩 URL을 한 번에 받을 수 있다.
 - 예산, 통화, 기간, 세부 타기팅과 활성화는 AI가 임의로 확정하지 않으며 P0에서 Meta 계정이나 결제수단에 접근하지 않는다.
 - 이미지 생성 API 없이도 완성된 기본 시각 결과가 나온다.
 
 ### P0-6. 결정적 데모 모드
 
-`demoCampaign.ts`에 완성된 샘플 `CampaignSpec`과 로컬 배경 자산을 둔다. 데모 모드는 프로덕션 결과와 같은 렌더러를 사용해야 하며 별도의 가짜 UI를 만들지 않는다.
+`lib/demo/demo-campaign.ts`에 완성된 샘플 `CampaignSpec` 3종을 둔다. 기존 camelCase import를 위한 `demoCampaign.ts`는 하위 호환 shim일 뿐 새 코드의 기준 파일로 사용하지 않는다. 데모 모드는 프로덕션 결과와 같은 API 경계와 렌더러를 사용해야 하며 별도의 가짜 UI를 만들지 않는다.
 
 완료 기준:
 
-- `NEXT_PUBLIC_DEMO_MODE=true` 또는 UI의 `데모 결과 열기`로 접근할 수 있다.
+- 서버 시작 직후 `/campaigns/demo`과 `/p/demo`으로 seed 캠페인에 접근할 수 있고, `/new` 입력은 reference fixture 3종 중 하나로 이어진다.
 - OpenAI, 이미지 생성, Supabase 중 하나가 실패해도 샘플 흐름으로 랜딩·캐러셀·응답·사람의 판단·다운로드 시연을 끝낼 수 있다.
 - 발표 전 데모용 공개 URL과 백업 화면 녹화를 준비한다.
 
@@ -178,7 +178,7 @@ P1 때문에 P0 통합이나 발표 준비가 1시간 이상 밀리면 즉시 P1
 ### `/campaigns/[id]`
 
 - 캠페인 게시 상태와 실제 공개 URL
-- 캐러셀 PNG·ZIP과 `Meta 게시 준비` 파일 다운로드
+- 캐러셀 PNG·ZIP과 `Meta 게시 준비` ZIP 다운로드
 - 캡션, 후킹 문구, CTA와 해시태그 복사
 - 실제 응답 수·분포, 사전 기준과 표본 부족 상태
 - `계속 검증`, `메시지 수정`, `보류` 중 사람의 다음 행동 저장
@@ -288,15 +288,15 @@ Zod에서 배열 길이와 문자열 최대 길이를 제한한다. 한국어 �
 | `validation.signal.ctaLabel` | Hero·마지막 CTA 버튼 | 5장 CTA headline |
 | `validation.signal.question` | CTA 응답 모달 | 5장 CTA body |
 
-`Meta 게시 준비`도 별도 문구 상태를 만들지 않는다. 기본 문구는 `messaging.caption`, headline은 `messaging.hooks[0]`, CTA는 `validation.signal.ctaLabel`, 대상 고객 가설은 `validation.customer`, destination은 게시 API가 반환한 공개 URL을 사용한다.
+`Meta 게시 준비`도 별도 문구 상태를 만들지 않는다. 기본 문구는 `messaging.caption`, headline은 `messaging.hooks[0]`, CTA는 `validation.signal.ctaLabel`, 대상 고객 가설은 `validation.customer`, destination은 게시 결과에서 만든 절대 공개 URL을 사용한다. ZIP에는 이 정보를 담은 `meta-ready.txt`와 캐러셀 PNG 5장을 함께 넣는다.
 
-`landing.hero`와 `carousel`은 위 문구를 별도 복제하지 않는다. 승인된 `CampaignSpec`은 게시 snapshot과 내보내기 입력으로 고정하며, 내용을 바꾸려면 새 캠페인을 생성한다.
+`landing.hero`와 `carousel`은 위 문구를 별도 복제하지 않는다. 게시된 `CampaignSpec`은 snapshot과 내보내기 입력으로 고정하며, 내용을 바꾸려면 새 캠페인을 생성한다.
 
 ## 6. 기술 구조
 
 ### 선택 스택
 
-- Next.js App Router, TypeScript, Tailwind CSS
+- Next.js App Router, TypeScript, React/CSS 결정적 렌더러
 - Zod
 - OpenAI JavaScript SDK와 Responses API
 - 텍스트 모델 기본값 `gpt-5.6-terra`, 환경변수 `OPENAI_TEXT_MODEL`로 교체 가능
@@ -304,7 +304,7 @@ Zod에서 배열 길이와 문자열 최대 길이를 제한한다. 한국어 �
 - Supabase Postgres
 - `html-to-image`와 JSZip
 - Vercel 배포
-- Vitest 단위 테스트, 구현 이후 선정할 핵심 흐름 E2E 도구
+- Vitest 단위 테스트와 Playwright production E2E
 - 패키지 관리자는 `pnpm`
 
 별도 백엔드 서버, 메시지 큐, 워커, 컨테이너, 벡터 데이터베이스는 사용하지 않는다.
@@ -331,19 +331,23 @@ app/
   api/campaigns/route.ts
   api/signals/route.ts
 components/
-  input/
-  campaign-result/
-  renderers/landing/
-  renderers/carousel/
+  campaign-wizard.tsx
+  campaign-report.tsx
+  progress-view.tsx
+  renderers/public-landing.tsx
+  renderers/carousel-card.tsx
 lib/
-  ai/
   contracts/campaign.ts
-  db/
-  demo/demoCampaign.ts
-  export/
-supabase/migrations/
-tests/
+  contracts/generator.ts
+  contracts/repository.ts
+  demo/demo-campaign.ts
+  demo/fixtureGenerator.ts
+  demo/fixtureRepository.ts
+tests/unit/
+tests/e2e/
 ```
+
+`lib/ai/`, `lib/db/`와 `supabase/migrations/`는 live adapter를 구현할 때 추가한다. 현재 존재하지 않는 경로를 구현 완료로 간주하지 않는다.
 
 `lib/contracts/campaign.ts`는 두 개발자가 함께 합의한 뒤 한 명만 소유한다. 랜딩과 캐러셀 렌더러는 API를 직접 호출하지 않는다.
 
@@ -441,7 +445,7 @@ OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 �
 - 이미지 생성 실패: CSS/SVG 기본 배경 유지
 - 저장소 실패: 현재 입력을 유지하고 생성·게시·응답·판단·초기화 실패를 각각 명시
 - 신호 중복: 최초 응답을 유지하고 이미 참여했다는 상태 표시
-- PNG export 실패: 문제 장만 재시도하고 개별 다운로드 제공
+- PNG export 실패: 실패 안내 뒤 브라우저 새로고침과 재시도를 제공하고, 발표에서는 사전 검증한 백업 ZIP으로 전환
 - 공개 URL 실패: `/p/demo`와 사전 캡처 영상으로 발표 지속
 - 긴 문구: UI에서 잘라 숨기지 않고 스키마 오류와 입력 수정·재생성 안내
 
@@ -455,7 +459,7 @@ OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 �
 - `/new` 2단계 입력, `/campaigns/[id]/progress`와 `/campaigns/[id]` 결과 화면
 - 폼 상태와 내부 API 연결
 - 재사용 가능한 랜딩·캐러셀 결정적 렌더러
-- 공개 랜딩의 표현 컴포넌트, `Meta 게시 준비` 파일·복사 기능과 결과 UI
+- 공개 랜딩의 표현 컴포넌트, `Meta 게시 준비` ZIP·복사 기능과 결과 UI
 - 동일 렌더러 기반 PNG/ZIP export
 - 로딩·빈 상태·오류·데모 fallback UI
 - 최종 E2E 흐름과 Vercel 앱 배포 책임
@@ -528,7 +532,7 @@ OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 �
 
 | 개발자 A | 개발자 B |
 | --- | --- |
-| 공개 랜딩 표현 컴포넌트, 응답 모달, 결과 화면, `Meta 게시 준비` 파일·복사 기능, PNG/ZIP | fixture 기반 게시·slug·응답·집계·다음 판단 adapter와 API 형태 고정 |
+| 공개 랜딩 표현 컴포넌트, 응답 모달, 결과 화면, `Meta 게시 준비` ZIP·복사 기능, PNG/ZIP | fixture 기반 게시·slug·응답·집계·다음 판단 adapter와 API 형태 고정 |
 
 - 완료 게이트 G2: 외부 API와 실제 계정 없이 `/ → /new 2단계 입력 → 생성·게시 → /campaigns/[id] → /p/[slug] → 응답 → 결과 → 사람의 판단 → PNG/ZIP`이 끝까지 작동한다.
 - 실제 OpenAI 없이도 완성된 흐름을 Vercel 검증 배포에 올리고 디자이너 1차 QA를 받는다.
@@ -581,13 +585,13 @@ OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 �
 수동 검증:
 
 - 375px 모바일과 발표 노트북 해상도
-- 한글 줄바꿈, 5장 PNG 1080×1350, ZIP 파일명
+- 한글 줄바꿈, 5장 PNG 1080×1350, 캐러셀·Meta ZIP 파일명과 내부 항목
 - 시크릿 창에서 공개 URL, 선택형 응답, 판단 화면
 - 새로고침 후 초안 복구
 - API 키가 브라우저, 로그, 저장소에 나타나지 않음
 - OpenAI·DB를 각각 끈 상태에서 실패 안내와 데모 fallback
 - 랜딩과 카드의 고객·문제·CTA 일치
-- `Meta 게시 준비`의 문구·CTA·대상 고객·destination이 동일 spec과 공개 URL에서 파생됨
+- `Meta 게시 준비`의 PNG·문구·CTA·대상 고객·절대 destination URL이 동일 spec과 공개 URL에서 파생됨
 - 랜딩과 캐러셀에 근거 없는 후기·수치·인증이 없음
 
 ## 12. 3분 데모 시나리오

@@ -1,8 +1,22 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PublicLanding } from "@/components/renderers/public-landing";
 import { campaignRepository } from "@/lib/demo/repository";
 
-export default async function PublicCampaignPage({ params }: { params: Promise<{ slug: string }> }) {
+type PublicCampaignPageProps = { params: Promise<{ slug: string }> };
+
+export async function generateMetadata({ params }: PublicCampaignPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const published = await campaignRepository.getBySlug(slug);
+  if (!published) return {};
+
+  return {
+    title: published.spec.landing.seoTitle,
+    description: published.spec.landing.hero.supportingText,
+  };
+}
+
+export default async function PublicCampaignPage({ params }: PublicCampaignPageProps) {
   const { slug } = await params;
   const published = await campaignRepository.getBySlug(slug);
   if (!published) notFound();

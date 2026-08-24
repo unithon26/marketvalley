@@ -1,4 +1,9 @@
-import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { readFile } from "node:fs/promises";
+
+import { expect, test, type APIRequestContext, type APIResponse, type Download, type Page } from "@playwright/test";
+import JSZip from "jszip";
+
+import { carouselFileNames } from "@/components/renderers/carousel-card";
 
 function captureRuntimeErrors(page: Page, runtimeErrors: string[]) {
   page.on("pageerror", (error) => runtimeErrors.push(error.message));
@@ -9,6 +14,72 @@ function captureRuntimeErrors(page: Page, runtimeErrors: string[]) {
 
 function responseMetric(page: Page) {
   return page.locator(".metric-grid article").filter({ hasText: "선택형 응답" }).locator("strong");
+}
+
+function positiveRateMetric(page: Page) {
+  return page.locator(".metric-grid article").filter({ hasText: "긍정 신호율" }).locator("strong");
+}
+
+function remainingDecisionMetric(page: Page) {
+  return page.locator(".metric-grid article").filter({ hasText: "기준 충족 최소 추가" }).locator("strong");
+}
+
+async function downloadBytes(download: Download): Promise<Buffer> {
+  const path = await download.path();
+  expect(path).not.toBeNull();
+  return readFile(path!);
+}
+
+function pngDimensions(bytes: Uint8Array): { width: number; height: number } {
+  expect([...bytes.slice(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return { width: view.getUint32(16), height: view.getUint32(20) };
+}
+
+async function expectCarouselEntries(zip: JSZip): Promise<void> {
+  for (const fileName of carouselFileNames) {
+    const entry = zip.file(fileName);
+    expect(entry, `${fileName} should exist`).not.toBeNull();
+    const bytes = await entry!.async("uint8array");
+    expect(pngDimensions(bytes)).toEqual({ width: 1080, height: 1350 });
+  }
+}
+
+async function expectApiError(response: APIResponse, status: number, code: string): Promise<void> {
+  expect(response.status()).toBe(status);
+  expect(response.headers()["cache-control"]).toBe("no-store");
+  await expect(response.json()).resolves.toMatchObject({ error: { code } });
+}
+
+async function expectNoHorizontalOverflow(page: Page): Promise<void> {
+  const sizes = await page.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    content: document.documentElement.scrollWidth,
+  }));
+  expect(sizes.content).toBeLessThanOrEqual(sizes.viewport);
+}
+
+async function computedContrastRatio(
+  page: Page,
+  textSelector: string,
+  backgroundSelector = textSelector,
+): Promise<number> {
+  return page.evaluate(({ textSelector, backgroundSelector }) => {
+    const channels = (color: string) => color.match(/[\d.]+/g)!.slice(0, 3).map(Number);
+    const luminance = (color: string) => channels(color)
+      .map((channel) => {
+        const normalized = channel / 255;
+        return normalized <= 0.04045
+          ? normalized / 12.92
+          : ((normalized + 0.055) / 1.055) ** 2.4;
+      })
+      .reduce((total, channel, index) => total + channel * [0.2126, 0.7152, 0.0722][index], 0);
+    const foreground = getComputedStyle(document.querySelector<HTMLElement>(textSelector)!).color;
+    const background = getComputedStyle(document.querySelector<HTMLElement>(backgroundSelector)!).backgroundColor;
+    const first = luminance(foreground);
+    const second = luminance(background);
+    return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
+  }, { textSelector, backgroundSelector });
 }
 
 async function publishFixtureCampaign(
@@ -30,9 +101,10 @@ test.beforeEach(async ({ request }) => {
   expect(response.ok()).toBe(true);
 });
 
-test("fixture 생성부터 응답, 판단, 초기화까지 실제 API 경계로 이어진다", async ({ context, page }) => {
+test("fixture 생성부터 산출물, 응답, 판단, 초기화까지 실제 API 경계로 이어진다", async ({ context, page, request }) => {
   const runtimeErrors: string[] = [];
   captureRuntimeErrors(page, runtimeErrors);
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: "http://127.0.0.1:3100" });
 
   await page.goto("/");
   await page.evaluate(() => window.localStorage.clear());
@@ -54,11 +126,44 @@ test("fixture 생성부터 응답, 판단, 초기화까지 실제 API 경계로 
   await expect(page.getByText("긍정 2 / 전체 4", { exact: true })).toBeVisible();
   await expect(page.getByText("표본 수 부족", { exact: true })).toBeVisible();
 
+  const campaignResponse = await request.get(`/api/campaigns?id=${campaignId}`);
+  expect(campaignResponse.ok()).toBe(true);
+  const campaign = await campaignResponse.json();
+  const copyCases = [
+    { cardLabel: "게시 문구", noticeLabel: "게시 문구", value: campaign.spec.messaging.caption },
+    { cardLabel: "후킹 문구 3개", noticeLabel: "후킹 문구", value: campaign.spec.messaging.hooks.join("\n") },
+    { cardLabel: "CTA", noticeLabel: "CTA", value: campaign.spec.validation.signal.ctaLabel },
+    { cardLabel: "해시태그", noticeLabel: "해시태그", value: campaign.spec.messaging.hashtags.join(" ") },
+  ];
+  for (const copyCase of copyCases) {
+    const copyCard = page.locator(".copy-grid > div").filter({ hasText: copyCase.cardLabel });
+    await copyCard.getByRole("button", { name: "복사" }).click();
+    await expect(page.getByRole("status")).toHaveText(`${copyCase.noticeLabel} 복사를 완료했어요.`);
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(copyCase.value);
+  }
+
   const [download] = await Promise.all([
     page.waitForEvent("download"),
     page.getByRole("button", { name: "캐러셀 ZIP 다운로드" }).click(),
   ]);
   expect(download.suggestedFilename()).toBe(`${campaignId}-carousel.zip`);
+  const carouselZip = await JSZip.loadAsync(await downloadBytes(download));
+  expect(Object.keys(carouselZip.files).sort()).toEqual([...carouselFileNames].sort());
+  await expectCarouselEntries(carouselZip);
+
+  const [metaDownload] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Meta 게시 준비 다운로드" }).click(),
+  ]);
+  expect(metaDownload.suggestedFilename()).toBe(`${campaignId}-meta-ready.zip`);
+  const metaZip = await JSZip.loadAsync(await downloadBytes(metaDownload));
+  expect(Object.keys(metaZip.files).sort()).toEqual([...carouselFileNames, "meta-ready.txt"].sort());
+  await expectCarouselEntries(metaZip);
+  const metaText = await metaZip.file("meta-ready.txt")!.async("string");
+  expect(metaText).toContain("[Meta 게시 준비 — 실제 게시 아님]");
+  expect(metaText).toContain(`Destination URL: ${new URL(page.url()).origin}/p/${campaign.slug}`);
+  expect(metaText).toContain(`Media files: ${carouselFileNames.join(", ")}`);
+  expect(metaText).toContain(campaign.spec.brand.visualDirection);
 
   const [landingPage] = await Promise.all([
     context.waitForEvent("page"),
@@ -107,6 +212,174 @@ test("fixture 생성부터 응답, 판단, 초기화까지 실제 API 경계로 
   expect(runtimeErrors.filter((message) => message.includes("status of 409 (Conflict)"))).toHaveLength(1);
 });
 
+test("API가 잘못된 입력, 크기 제한, 소유권과 없는 리소스를 명시적으로 거절한다", async ({ request }) => {
+  await expectApiError(await request.post("/api/generate", {
+    data: { background: "짧음", solution: "역시 짧음" },
+  }), 400, "invalid_request");
+
+  await expectApiError(await request.post("/api/generate", {
+    headers: { "Content-Type": "application/json" },
+    data: Buffer.from("{", "utf8"),
+  }), 400, "invalid_json");
+
+  await expectApiError(await request.post("/api/generate", {
+    headers: { "Content-Type": "application/json" },
+    data: JSON.stringify({ background: "가".repeat(9_000), solution: "나".repeat(20) }),
+  }), 413, "payload_too_large");
+
+  await expectApiError(await request.get("/api/campaigns"), 400, "invalid_request");
+  await expectApiError(await request.get("/api/campaigns?id=missing"), 404, "campaign_not_found");
+  await expectApiError(await request.patch("/api/campaigns", {
+    data: { campaignId: "demo", draftId: "wrong-draft", nextAction: "continue" },
+  }), 403, "draft_mismatch");
+  await expectApiError(await request.post("/api/signals", {
+    data: { campaignId: "missing", visitorId: "visitor-api-boundary", optionId: "positive" },
+  }), 404, "campaign_not_found");
+  await expectApiError(await request.post("/api/signals", {
+    data: { campaignId: "demo", visitorId: "visitor-api-boundary", optionId: "unsupported" },
+  }), 400, "invalid_request");
+
+  expect((await request.put("/api/generate", { data: {} })).status()).toBe(405);
+  expect((await request.get("/campaigns/missing")).status()).toBe(404);
+  expect((await request.get("/campaigns/missing/progress")).status()).toBe(404);
+  expect((await request.get("/p/missing")).status()).toBe(404);
+});
+
+test("무응답과 긍정 기준 부족 상태를 숫자로 왜곡하지 않는다", async ({ page }) => {
+  let state: "empty" | "positive-gap" = "empty";
+  await page.route("**/api/campaigns*", async (route) => {
+    if (route.request().method() !== "GET") {
+      await route.continue();
+      return;
+    }
+    const response = await route.fetch();
+    const body = await response.json();
+    const summary = state === "empty"
+      ? {
+          positive: 0,
+          neutral: 0,
+          negative: 0,
+          total: 0,
+          positiveRate: null,
+          decisionStatus: "no_responses",
+          isRuleMet: false,
+          remainingResponses: 5,
+          remainingPositiveResponses: 3,
+        }
+      : {
+          positive: 2,
+          neutral: 2,
+          negative: 1,
+          total: 5,
+          positiveRate: 0.4,
+          decisionStatus: "threshold_not_met",
+          isRuleMet: false,
+          remainingResponses: 0,
+          remainingPositiveResponses: 1,
+        };
+    await route.fulfill({ response, json: { ...body, summary } });
+  });
+
+  await page.goto("/campaigns/demo");
+  await expect(positiveRateMetric(page)).toHaveText("—");
+  await expect(page.getByText("응답 없음", { exact: true })).toBeVisible();
+  await expect(remainingDecisionMetric(page)).toHaveText("5건");
+
+  state = "positive-gap";
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(positiveRateMetric(page)).toHaveText("40%");
+  await expect(page.getByText("가설 재검토", { exact: true })).toBeVisible();
+  await expect(remainingDecisionMetric(page)).toHaveText("1건");
+});
+
+test("375px과 키보드에서 필터, 생성, 공개 응답과 사람 판단을 조작할 수 있다", async ({ page }) => {
+  const runtimeErrors: string[] = [];
+  captureRuntimeErrors(page, runtimeErrors);
+  await page.setViewportSize({ width: 375, height: 812 });
+
+  await page.goto("/");
+  await expectNoHorizontalOverflow(page);
+  const completedFilter = page.getByRole("button", { name: /검증 완료/ });
+  await completedFilter.click();
+  await expect(completedFilter).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText("완료된 검증이 아직 없어요.")).toBeVisible();
+  await page.getByRole("button", { name: "진행 중 프로젝트 보기" }).click();
+
+  await page.goto("/new");
+  await expectNoHorizontalOverflow(page);
+  await page.getByRole("button", { name: "예시 불러오기" }).focus();
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "다음" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("2/2", { exact: true })).toBeVisible();
+
+  await page.goto("/campaigns/demo");
+  await expectNoHorizontalOverflow(page);
+  const continueButton = page.getByRole("button", { name: /계속 검증/ });
+  await continueButton.focus();
+  await page.keyboard.press("Enter");
+  await expect(continueButton).toHaveAttribute("aria-pressed", "true");
+
+  await page.goto("/p/demo#signal");
+  await expectNoHorizontalOverflow(page);
+  const positiveOption = page.getByRole("button", { name: "네, 써보고 싶어요" });
+  await positiveOption.focus();
+  await page.keyboard.press("Space");
+  await expect(positiveOption).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "익명으로 응답하기" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("heading", { name: "응답이 기록됐어요" })).toBeVisible();
+  expect(runtimeErrors).toEqual([]);
+});
+
+test("각 reference fixture가 고유 slug, SEO와 브랜드 테마를 유지한다", async ({ page, request }) => {
+  const campaigns = await Promise.all([
+    publishFixtureCampaign(request, {
+      background: "예약 취소로 생기는 동네 공방 빈자리를 매번 다시 알리는 반복 업무를 줄이려 합니다.",
+      solution: "공방 취소 자리를 공개 안내하고 개인정보 없이 참여 의향을 받는 캠페인입니다.",
+    }),
+    publishFixtureCampaign(request, {
+      background: "독립 클래스 강사가 일정과 준비물 문의를 매번 반복해서 답하는 일을 줄이려 합니다.",
+      solution: "강사 수업 정보를 안내 페이지와 익명 수강 의향 질문으로 한 번에 연결합니다.",
+    }),
+  ]);
+
+  for (const campaign of campaigns) {
+    expect(campaign.id).not.toBe(campaign.slug);
+    expect((await request.get(`/p/${campaign.id}`)).status()).toBe(404);
+    await page.goto(`/p/${campaign.slug}`);
+    await expect(page).toHaveTitle(campaign.spec.landing.seoTitle);
+    const theme = await page.locator(".public-landing").evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        primary: style.getPropertyValue("--campaign-primary").trim(),
+        accent: style.getPropertyValue("--campaign-accent").trim(),
+      };
+    });
+    expect(theme).toEqual({
+      primary: campaign.spec.brand.primaryColor,
+      accent: campaign.spec.brand.accentColor,
+    });
+    const contrastPairs = [
+      [".landing-primary-button"],
+      [".landing-statement mark"],
+      [".landing-kicker", ".public-landing"],
+      [".landing-hero-copy small", ".public-landing"],
+      [".landing-card-grid article > span", ".landing-card-grid article"],
+      [".landing-statement > span", ".landing-statement"],
+      [".benefit-list article > b", ".public-landing"],
+      [".landing-how h2", ".landing-how"],
+      [".how-track p", ".landing-how"],
+      [".signal-copy p", ".signal-panel"],
+    ] as const;
+    for (const [textSelector, backgroundSelector] of contrastPairs) {
+      expect(await computedContrastRatio(page, textSelector, backgroundSelector)).toBeGreaterThanOrEqual(4.5);
+    }
+  }
+
+  expect(campaigns.map((campaign) => campaign.spec.project.name)).toEqual(["동네공방 빈자리", "클래스 문의형"]);
+});
+
 test("공개 응답 저장 실패를 성공으로 표시하지 않고 재시도한다", async ({ page }) => {
   await page.goto("/p/demo");
   await page.route("**/api/signals", async (route) => {
@@ -120,6 +393,7 @@ test("공개 응답 저장 실패를 성공으로 표시하지 않고 재시도�
   await page.getByRole("button", { name: "네, 써보고 싶어요" }).click();
   await page.getByRole("button", { name: "익명으로 응답하기" }).click();
   await expect(page.locator(".signal-error")).toHaveText("응답을 저장하지 못했어요. 잠시 후 다시 시도해주세요.");
+  expect(await computedContrastRatio(page, ".signal-error")).toBeGreaterThanOrEqual(4.5);
   await expect(page.getByRole("heading", { name: "응답이 기록됐어요" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "익명으로 응답하기" })).toBeEnabled();
 

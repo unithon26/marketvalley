@@ -18,7 +18,7 @@ export function ProgressView({ campaignId }: { campaignId: string }) {
     <main className="progress-page page-container">
       <div className="progress-heading-row">
         <div><span className="eyebrow">DETERMINISTIC DEMO</span><h1>시장검증 캠페인을 준비하고 있어요</h1></div>
-        <div className="eta-card"><span>결과 제공까지</span><strong>{current === 3 ? "완료" : "약 2분"}</strong></div>
+        <div className="eta-card"><span>결과 제공까지</span><strong>{current === 3 ? "완료" : "약 2초"}</strong></div>
       </div>
 
       <ol className="stage-line" aria-label="캠페인 생성 진행 상황">

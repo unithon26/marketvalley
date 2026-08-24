@@ -24,6 +24,7 @@ function triggerDownload(blob: Blob, name: string) {
 function statusCopy(status: SignalSummary["decisionStatus"]) {
   if (status === "threshold_met") return { label: "기준 도달", tone: "positive", description: "미리 정한 최소 표본과 긍정 신호 기준에 도달했습니다." };
   if (status === "threshold_not_met") return { label: "가설 재검토", tone: "warning", description: "표본은 모였지만 현재 메시지의 긍정 신호 기준에는 도달하지 않았습니다." };
+  if (status === "no_responses") return { label: "응답 없음", tone: "neutral", description: "아직 응답이 없어 판단하지 않고 사전 기준만 보여드립니다." };
   return { label: "표본 수 부족", tone: "neutral", description: "아직 결론을 내리지 않고 응답 분포와 남은 표본만 보여드립니다." };
 }
 
@@ -58,6 +59,7 @@ export function CampaignReport({
   const publicPath = `/p/${encodeURIComponent(publicSlug)}`;
   const state = useMemo(() => createNextActionState(nextAction), [nextAction]);
   const status = statusCopy(summary.decisionStatus);
+  const remainingToDecision = Math.max(summary.remainingResponses, summary.remainingPositiveResponses);
   const positiveDegrees = summary.total ? (summary.positive / summary.total) * 360 : 0;
   const neutralDegrees = summary.total ? ((summary.positive + summary.neutral) / summary.total) * 360 : 0;
 
@@ -103,7 +105,7 @@ export function CampaignReport({
   async function copyText(text: string, label: string) {
     try {
       await navigator.clipboard.writeText(text);
-      setNotice(`${label}을 복사했어요.`);
+      setNotice(`${label} 복사를 완료했어요.`);
     } catch {
       setNotice("복사 권한을 확인한 뒤 다시 시도해주세요.");
     }
@@ -133,18 +135,34 @@ export function CampaignReport({
     }
   }
 
-  function downloadMetaPackage() {
+  async function downloadMetaPackage() {
+    setExporting(true);
+    setNotice("");
+    const destinationUrl = new URL(publicPath, window.location.origin).toString();
     const text = [
       "[Meta 게시 준비 — 실제 게시 아님]",
       `기본 문구: ${spec.messaging.caption}`,
       `Headline: ${spec.messaging.hooks[0]}`,
       `CTA: ${spec.validation.signal.ctaLabel}`,
       `대상 고객 가설: ${spec.validation.customer}`,
-      `Destination URL: ${publicPath}`,
+      `Destination URL: ${destinationUrl}`,
       `Hashtags: ${spec.messaging.hashtags.join(" ")}`,
+      `Visual direction: ${spec.brand.visualDirection}`,
+      `Media files: ${carouselFileNames.join(", ")}`,
     ].join("\n\n");
-    triggerDownload(new Blob([text], { type: "text/plain;charset=utf-8" }), "meta-ready.txt");
-    setNotice("Meta 게시 준비 파일을 만들었어요. 실제 광고는 등록되지 않았습니다.");
+    try {
+      const images = await renderCards();
+      const zip = new JSZip();
+      images.forEach((dataUrl, index) => zip.file(carouselFileNames[index], dataUrl.split(",")[1], { base64: true }));
+      zip.file("meta-ready.txt", text);
+      const blob = await zip.generateAsync({ type: "blob" });
+      triggerDownload(blob, `${campaignId}-meta-ready.zip`);
+      setNotice("PNG와 문구를 Meta 게시 준비 ZIP으로 만들었어요. 실제 광고는 등록되지 않았습니다.");
+    } catch {
+      setNotice("Meta 게시 준비 파일 생성에 실패했어요. 브라우저를 새로고침한 뒤 다시 시도해주세요.");
+    } finally {
+      setExporting(false);
+    }
   }
 
   async function chooseAction(action: NextAction) {
@@ -225,8 +243,8 @@ export function CampaignReport({
 
       <section className="metric-grid">
         <article><span>선택형 응답</span><strong>{summary.total}<small>건</small></strong><p>개인정보 없는 데모 응답</p></article>
-        <article><span>긍정 신호율</span><strong>{Math.round((summary.positiveRate ?? 0) * 100)}<small>%</small></strong><p>긍정 {summary.positive} / 전체 {summary.total}</p></article>
-        <article><span>판단 기준까지</span><strong>{summary.remainingResponses}<small>건</small></strong><p>{spec.validation.decisionRule.description}</p></article>
+        <article><span>긍정 신호율</span><strong>{summary.positiveRate === null ? "—" : <>{Math.round(summary.positiveRate * 100)}<small>%</small></>}</strong><p>긍정 {summary.positive} / 전체 {summary.total}</p></article>
+        <article><span>기준 충족 최소 추가</span><strong>{remainingToDecision}<small>건</small></strong><p>{spec.validation.decisionRule.description}</p></article>
       </section>
 
       <section className="report-section response-section">
@@ -249,11 +267,13 @@ export function CampaignReport({
         <div className="deliverable-grid">
           <article><div className="deliverable-icon landing-icon">↗</div><div><h3>공개 랜딩페이지</h3><p>같은 CampaignSpec으로 렌더링되는 발표용 공개 경로</p><code>{publicPath}</code></div><Link className="icon-button" href={publicPath} target="_blank" aria-label="공개 랜딩 열기"><ExternalIcon /></Link></article>
           <article><div className="deliverable-icon carousel-icon">05</div><div><h3>Instagram 캐러셀</h3><p>1080×1350 PNG 5장 · 결정적 React/CSS 렌더러</p><code>01-hook.png — 05-cta.png</code></div><button className="icon-button" type="button" onClick={downloadZip} disabled={exporting} aria-label="캐러셀 ZIP 다운로드"><DownloadIcon /></button></article>
-          <article><div className="deliverable-icon meta-icon">M</div><div><h3>Meta 게시 준비</h3><p>미디어·문구·CTA·대상 고객 가설·URL을 한 파일로</p><code>실제 게시 또는 집행 아님</code></div><button className="icon-button" type="button" onClick={downloadMetaPackage} aria-label="Meta 게시 준비 다운로드"><DownloadIcon /></button></article>
+          <article><div className="deliverable-icon meta-icon">M</div><div><h3>Meta 게시 준비</h3><p>PNG 5장·문구·CTA·대상 고객 가설·절대 URL을 ZIP 하나로</p><code>실제 게시 또는 집행 아님</code></div><button className="icon-button" type="button" onClick={downloadMetaPackage} disabled={exporting} aria-busy={exporting} aria-label="Meta 게시 준비 다운로드"><DownloadIcon /></button></article>
         </div>
         <div className="copy-grid">
           <div><span>게시 문구</span><p>{spec.messaging.caption}</p><button type="button" onClick={() => copyText(spec.messaging.caption, "게시 문구")}><CopyIcon size={16} /> 복사</button></div>
+          <div><span>후킹 문구 3개</span><p>{spec.messaging.hooks.join("\n")}</p><button type="button" onClick={() => copyText(spec.messaging.hooks.join("\n"), "후킹 문구")}><CopyIcon size={16} /> 복사</button></div>
           <div><span>CTA</span><p>{spec.validation.signal.ctaLabel}</p><button type="button" onClick={() => copyText(spec.validation.signal.ctaLabel, "CTA")}><CopyIcon size={16} /> 복사</button></div>
+          <div><span>해시태그</span><p>{spec.messaging.hashtags.join(" ")}</p><button type="button" onClick={() => copyText(spec.messaging.hashtags.join(" "), "해시태그")}><CopyIcon size={16} /> 복사</button></div>
         </div>
       </section>
 
@@ -261,7 +281,7 @@ export function CampaignReport({
         <div className="section-heading"><div><span className="eyebrow">HUMAN DECISION</span><h2>다음 행동은 직접 선택해주세요</h2></div></div>
         <p>AI가 시장성을 판정하지 않습니다. 사전 기준과 현재 표본을 보고 사람이 다음 행동을 남깁니다.</p>
         <div className="decision-grid">
-          {state.options.map((option) => <button className={option.selected ? "selected" : ""} type="button" key={option.action} onClick={() => chooseAction(option.action)} disabled={pendingAction !== null || resetting} aria-busy={pendingAction === option.action}><span>{option.label}</span><p>{option.description}</p>{option.selected && <CheckIcon size={18} />}</button>)}
+          {state.options.map((option) => <button className={option.selected ? "selected" : ""} type="button" key={option.action} onClick={() => chooseAction(option.action)} disabled={pendingAction !== null || resetting} aria-busy={pendingAction === option.action} aria-pressed={option.selected}><span>{option.label}</span><p>{option.description}</p>{option.selected && <CheckIcon size={18} />}</button>)}
         </div>
       </section>
 

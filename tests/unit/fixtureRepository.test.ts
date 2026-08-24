@@ -66,6 +66,8 @@ describe("FixtureCampaignRepository", () => {
     await repository.saveNextAction({ campaignId: published.id, draftId: "new-draft", nextAction: "revise" });
 
     expect(published).toMatchObject({ id: "fixture-1", slug: "workshop-vacancy-1" });
+    await expect(repository.getBySlug(published.slug)).resolves.toMatchObject({ id: published.id });
+    await expect(repository.getBySlug(published.id)).resolves.toBeNull();
     await expect(repository.saveNextAction({ campaignId: published.id, draftId: published.id, nextAction: "continue" }))
       .rejects.toBeInstanceOf(DraftOwnershipError);
     const reset = await repository.reset({ campaignId: published.id, draftId: "new-draft" });

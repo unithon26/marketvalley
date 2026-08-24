@@ -1,6 +1,6 @@
 # 검증 체크리스트
 
-상태: mock 종단 흐름 검증 완료
+상태: 발표용 fixture 종단 QA 완료
 
 다음 명령으로 정적 검사, 단위 테스트, production build와 핵심 브라우저 흐름을 확인한다.
 
@@ -10,7 +10,9 @@ pnpm build
 pnpm test:e2e
 ```
 
-2026-08-25에 `pnpm check`, `pnpm build`, `pnpm test:e2e`가 모두 성공했다. E2E 7개는 2단계 예시 입력과 API 생성·게시, 진행 완료, ZIP 다운로드, 공개 랜딩 응답·중복 방지, 리포트 갱신, 사람 판단 저장·초기화, 각 요청 실패, 게시 응답 유실 재시도, 캠페인 간 격리, polling 순서 경쟁과 3초 이상 지연되는 조회의 중복 방지를 Chromium에서 재현한다.
+2026-08-25에 `pnpm check`, `pnpm build`, `pnpm test:e2e`, `pnpm test:coverage`, `pnpm audit --audit-level high`, `pnpm peers check`가 모두 성공했다. 단위 테스트는 5개 파일 24개, production `next start`를 사용하는 Chromium E2E는 11개다. 단위 테스트 커버리지는 statements 81.86%, branches 73.23%, functions 92.3%, lines 83.85%였고 알려진 취약점과 peer dependency 문제는 없었다.
+
+E2E는 2단계 입력과 생성·게시, 약 2초의 진행 완료, 문구 4종 clipboard 복사, 캐러셀·Meta ZIP 내부 항목과 PNG 5장의 1080×1350 크기, 절대 destination URL, 공개 응답·중복 방지, 무응답 비율, 사전 기준 gap, 사람 판단 저장·초기화, API 입력·크기·소유권·404 경계, 요청 실패와 게시 응답 유실 재시도, 캠페인 격리, 3개 fixture의 slug·SEO·브랜드, 375px overflow·키보드·ARIA, polling 순서 경쟁과 3초 이상 지연되는 조회의 중복 방지를 재현한다.
 
 ## 자동 검증
 
@@ -23,7 +25,7 @@ pnpm test:e2e
 ```
 
 - `lint`, `typecheck`, 단위 테스트와 production build가 오류 없이 끝난다.
-- Playwright가 외부 키와 네트워크 없이 핵심 수동 흐름을 재현한다.
+- Playwright가 매번 새 production build를 전용 3100 포트의 `next start`로 실행하고, 기존 개발 서버를 재사용하지 않은 채 외부 키와 네트워크 없이 핵심 수동 흐름을 재현한다.
 - E2E는 개발 회귀 검증에만 사용하며 발표 자동 재생이나 자동 클릭 기능으로 제공하지 않는다.
 
 ## 핵심 기능
@@ -36,19 +38,20 @@ pnpm test:e2e
 - 응답·판단·초기화 API 실패는 성공으로 표시되지 않으며 재시도할 수 있다.
 - 응답 분포와 사전 판단 기준이 사실대로 표시된다.
 - 사람이 선택한 다음 행동이 새로고침 뒤에도 유지된다.
-- 5장 PNG를 하나의 ZIP으로 내려받을 수 있다.
-- `Meta 게시 준비`는 실제 등록 완료로 표현되지 않는다.
+- 1080×1350 PNG 5장을 정렬된 파일명의 캐러셀 ZIP으로 내려받을 수 있다.
+- `Meta 게시 준비` ZIP에는 같은 PNG 5장과 문구·절대 destination URL이 들어 있고 실제 등록 완료로 표현되지 않는다.
 
 ## 화면과 접근성
 
 - 375px에서 가로 스크롤 없이 핵심 CTA가 보인다.
 - 발표 노트북 해상도에서 2단계 입력, 진행과 결과 상태가 구분된다.
 - 키보드만으로 입력, 생성, 공개, 응답과 판단을 조작할 수 있다.
-- focus 상태, label, dialog 설명과 오류 문구가 있다.
+- focus 상태, label, 선택 버튼의 `aria-pressed`와 오류 문구가 있다.
+- 계약상 허용되는 모든 브랜드 색은 주요 텍스트에 4.5:1 이상의 fallback 대비를 사용하고, reference fixture의 실제 computed style 대비를 E2E로 확인한다.
 - 긴 한글 문구가 잘리거나 `undefined`로 보이지 않는다.
 - PNG 결과가 1080×1350이고 `01-hook.png`부터 `05-cta.png` 순서다.
 
-데스크톱 전체 흐름과 375px의 공개 랜딩·결과 화면을 브라우저에서 확인했다. 375px에서 가로 overflow가 없었고 공개 응답 뒤 결과가 4건에서 5건, 긍정 2건에서 3건으로 갱신되는 것을 확인했다.
+데스크톱 전체 흐름과 375px의 홈·입력·공개 랜딩·결과 화면을 브라우저에서 확인했다. 375px에서 가로 overflow가 없었고 공개 응답 뒤 결과가 4건에서 5건, 긍정 2건에서 3건으로 갱신되는 것을 확인했다. 브라우저 확장이 hydration 전에 `style` 속성을 주입해 개발 모드 경고를 만든 현상은 깨끗한 Chromium production E2E에서는 재현되지 않았다.
 
 ## 안전성과 진실성
 

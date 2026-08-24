@@ -21,14 +21,14 @@ pnpm test:e2e
 pnpm dev
 ```
 
-개발 서버를 시작하면 `http://localhost:3000`에서 데모를 볼 수 있다. `pnpm check`는 lint, TypeScript와 단위 테스트를, `pnpm test:e2e`는 Chromium에서 핵심 발표 흐름과 ZIP 다운로드를 검증한다.
+개발 서버를 시작하면 `http://localhost:3000`에서 데모를 볼 수 있다. `pnpm check`는 lint, TypeScript와 단위 테스트를 검증한다. `pnpm test:e2e`는 코드를 새로 빌드한 뒤 전용 3100 포트의 `next start`로 실행해 Chromium에서 핵심 발표 흐름, API 오류 경계, 모바일·키보드, SEO·브랜드 대비와 두 ZIP의 실제 내용을 검증한다. 이미 실행 중인 개발 서버는 재사용하지 않는다.
 
 ## 발표용 경로
 
 - `/`: 프로젝트와 사라지는 업무를 보여주는 홈
 - `/new`: 배경과 솔루션을 받는 2단계 아이디어 입력
 - `/campaigns/[id]/progress`: 게시된 캠페인의 결정적인 4단계 생성 진행 화면
-- `/campaigns/[id]`: 목 응답 리포트, PNG ZIP, Meta 게시 준비와 다음 판단
+- `/campaigns/[id]`: 목 응답 리포트, PNG ZIP, PNG·문구·절대 URL이 든 Meta 게시 준비 ZIP과 다음 판단
 - `/p/[slug]`: 개인정보 없이 관심 신호 하나를 받는 공개 랜딩
 
 서버 시작 시 발표용 `/campaigns/demo`와 `/p/demo`가 준비되며, `/new`에서 만든 캠페인은 기존 탭과 섞이지 않도록 별도 id와 slug를 받는다.

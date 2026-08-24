@@ -1,4 +1,5 @@
 import type { CampaignSpec } from "@/lib/contracts/campaign";
+import { campaignThemeStyle } from "@/lib/brand-theme";
 
 export const carouselFileNames = [
   "01-hook.png",
@@ -21,7 +22,7 @@ function cardCopy(spec: CampaignSpec, index: number) {
 export function CarouselCard({ spec, index, exportRef }: { spec: CampaignSpec; index: number; exportRef?: (node: HTMLDivElement | null) => void }) {
   const copy = cardCopy(spec, index);
   return (
-    <div ref={exportRef} className={`carousel-card carousel-card-${index + 1}`}>
+    <div ref={exportRef} className={`carousel-card carousel-card-${index + 1}`} style={campaignThemeStyle(spec.brand)} data-brand-tone={spec.brand.tone}>
       <div className="carousel-grain" />
       <div className="carousel-index">0{index + 1}</div>
       <div className="carousel-content">
