@@ -51,3 +51,12 @@ CampaignRepository ── mock: browser localStorage
 Vercel에는 Next.js 앱 하나만 배포한다. live 단계에서 캠페인을 공개하는 행위는 새 앱을 배포하는 작업이 아니라 Supabase snapshot에 slug를 발급하고 기존 `/p/[slug]`가 읽게 하는 작업이다.
 
 현재 `/p/demo`는 같은 브라우저 저장소를 사용하므로 다른 기기와 데이터를 공유하지 않는다. 결과 화면은 모든 수치를 목데이터라고 명시한다. 실제 공개 시연은 Supabase adapter가 연결된 뒤 수행한다.
+
+## 진행 상황 화면 (데모/실제 이원화)
+
+`ProgressView`의 4단계(접수 → 준비 중 → 수집 중 → 결과 도착)는 두 트랙을 가진다.
+
+- 데모 트랙(현재 구현): 라벨만 이 4단계를 따르고, 동작은 ~2초 자동 진행 애니메이션이다. "수집 중"은 실제 대기가 아니라 라벨이다.
+- 실제 트랙(Supabase 연동 이후): "수집 중"이 실제 다중일 대기 상태가 되고, 결과 제공까지의 기간은 고정값이 아니라 계산된 추정치가 된다.
+
+상세 근거는 `docs/superpowers/specs/2026-08-24-figma-alignment-and-dependency-split-design.md` §3.2를 따른다.
