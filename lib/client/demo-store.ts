@@ -1,44 +1,11 @@
-import {
-  nextActionSchema,
-  signalOptionIdSchema,
-  type NextAction,
-  type SignalOptionId,
-} from "@/lib/contracts/campaign";
-import { seedSignals } from "@/lib/demo/demo-campaign";
+const visitorIdKey = "marketvalley:visitor-id";
 
-const responseKey = "marketvalley:demo-response";
-const actionKey = "marketvalley:demo-next-action";
-
-export function readSignals(): SignalOptionId[] {
-  if (typeof window === "undefined") return [...seedSignals];
-  const response = signalOptionIdSchema.safeParse(window.localStorage.getItem(responseKey));
-  return response.success ? [...seedSignals, response.data] : [...seedSignals];
-}
-
-export function hasResponded(): boolean {
-  return typeof window !== "undefined" && window.localStorage.getItem(responseKey) !== null;
-}
-
-export function saveSignal(optionId: SignalOptionId): boolean {
-  if (hasResponded()) return false;
-  window.localStorage.setItem(responseKey, optionId);
-  window.dispatchEvent(new Event("marketvalley:demo-updated"));
-  return true;
-}
-
-export function readNextAction(): NextAction | null {
-  if (typeof window === "undefined") return null;
-  const action = nextActionSchema.safeParse(window.localStorage.getItem(actionKey));
-  return action.success ? action.data : null;
-}
-
-export function saveNextAction(action: NextAction): void {
-  window.localStorage.setItem(actionKey, action);
-}
-
-export function resetDemo(): void {
-  window.localStorage.removeItem(responseKey);
-  window.localStorage.removeItem(actionKey);
-  window.localStorage.removeItem("marketvalley:demo-draft");
-  window.dispatchEvent(new Event("marketvalley:demo-updated"));
+/** 브라우저별 익명 신원 토큰만 보관한다. 응답 상태 자체는 서버(API)가 갖고 있다. */
+export function getVisitorId(): string {
+  if (typeof window === "undefined") return "server";
+  const existing = window.localStorage.getItem(visitorIdKey);
+  if (existing) return existing;
+  const created = window.crypto.randomUUID();
+  window.localStorage.setItem(visitorIdKey, created);
+  return created;
 }

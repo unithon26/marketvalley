@@ -3,20 +3,32 @@
 import { useState } from "react";
 import type { CampaignSpec, SignalOptionId } from "@/lib/contracts/campaign";
 import { CheckIcon } from "@/components/icons";
-import { hasResponded, saveSignal } from "@/lib/client/demo-store";
+import { getVisitorId } from "@/lib/client/demo-store";
 
-export function PublicLanding({ spec }: { spec: CampaignSpec }) {
+export function PublicLanding({ spec, campaignId }: { spec: CampaignSpec; campaignId: string }) {
   const [selected, setSelected] = useState<SignalOptionId | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [duplicate, setDuplicate] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  function submit() {
-    if (!selected) return;
-    if (hasResponded() || !saveSignal(selected)) {
-      setDuplicate(true);
-      return;
+  async function submit() {
+    if (!selected || submitting) return;
+    setSubmitting(true);
+    try {
+      const response = await fetch("/api/signals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId, visitorId: getVisitorId(), optionId: selected }),
+      });
+      const body = await response.json();
+      if (body.alreadyResponded) {
+        setDuplicate(true);
+      } else {
+        setSubmitted(true);
+      }
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitted(true);
   }
 
   return (
@@ -82,7 +94,7 @@ export function PublicLanding({ spec }: { spec: CampaignSpec }) {
                 <div className="signal-options">
                   {spec.validation.signal.options.map((option) => <button className={selected === option.id ? "selected" : ""} type="button" key={option.id} onClick={() => setSelected(option.id)}><span>{option.label}</span>{selected === option.id && <CheckIcon size={18} />}</button>)}
                 </div>
-                <button className="landing-primary-button full" type="button" disabled={!selected} onClick={submit}>익명으로 응답하기</button>
+                <button className="landing-primary-button full" type="button" disabled={!selected || submitting} onClick={submit}>익명으로 응답하기</button>
               </>
             )}
           </div>
