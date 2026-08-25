@@ -134,7 +134,7 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
   const usesLiveAI = generatorStatus.mode !== "fixture";
   const generatorNotice = usesLiveAI
     ? generatorStatus.ready
-      ? "AI가 랜딩·카드뉴스 문구를 생성해요"
+      ? null
       : "AI 문구 생성 · 회전된 API 키 설정 필요"
     : "안전 데모 · AI 호출 없음";
 
@@ -238,9 +238,11 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
     <main className="wizard-page page-container">
       <div className="wizard-topline">
         <button type="button" className="text-button" onClick={loadExample}>예시 불러오기</button>
-        <span className="mock-notice" role="status">
-          <i /> {generatorNotice}
-        </span>
+        {generatorNotice ? (
+          <span className="mock-notice" role="status">
+            <i /> {generatorNotice}
+          </span>
+        ) : null}
       </div>
 
       <section className="wizard-panel">
