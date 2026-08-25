@@ -1,5 +1,8 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 
 import { CheckIcon } from "@/components/icons";
 
@@ -43,21 +46,27 @@ function stepState(index: number, current: ValidationProgressStage): "done" | "a
 export function ValidationProgress({
   current,
   reportHref,
-  demoMode = false,
-  onDemoAdvance,
 }: {
   current: ValidationProgressStage;
   reportHref: string;
-  demoMode?: boolean;
-  onDemoAdvance?: () => void;
 }) {
   const activeStage = progressStages[current];
-  const lineProgress = current <= 1 ? 1 : 2;
+  const lineProgress = current === 0 ? 1 : current;
+  const isComplete = current === 3;
+  const headingRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    headingRef.current?.focus({ preventScroll: true });
+  }, []);
 
   return (
     <main className="validation-progress-page page-container">
-      <section className="validation-progress-copy" aria-live="polite">
+      <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {activeStage.title}
+      </p>
+      <section className="validation-progress-copy">
         <Image
+          key={current}
           className="validation-progress-illustration"
           src={activeStage.image}
           width={560}
@@ -66,7 +75,7 @@ export function ValidationProgress({
           loading="eager"
           unoptimized
         />
-        <h1>{activeStage.title}</h1>
+        <h1 ref={headingRef} tabIndex={-1}>{activeStage.title}</h1>
         <p>{activeStage.description}</p>
       </section>
 
@@ -88,10 +97,8 @@ export function ValidationProgress({
       </section>
 
       <div className="progress-actions">
-        {current === 3 ? (
+        {isComplete ? (
           <Link className="button button-primary" href={reportHref}>시장 검증 리포트 확인하기</Link>
-        ) : demoMode && current === 2 ? (
-          <button className="button button-secondary" type="button" onClick={onDemoAdvance}>다음 단계로</button>
         ) : (
           <Link className="button button-secondary" href="/">메인으로</Link>
         )}

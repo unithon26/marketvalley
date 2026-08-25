@@ -176,6 +176,7 @@ body:has(.login-modal-layer) > :not(.login-modal-layer) { filter: blur(3px); }
 .validation-progress-copy { display: flex; align-items: center; flex-direction: column; }
 .validation-progress-illustration { display: block; width: 280px; height: 165px; margin-bottom: 22px; }
 .validation-progress-copy h1 { margin: 0; font-size: 24px; line-height: 1.35; letter-spacing: -.035em; }
+.validation-progress-copy h1:focus { outline: none; }
 .validation-progress-copy p { margin: 10px 0 0; color: var(--muted); font-size: 15px; }
 .validation-stage-card { position: relative; width: min(1000px, 100%); min-height: 224px; padding: 105px 52px 34px; margin: 39px auto 0; border: 1px solid #edf0f2; border-radius: 24px; background: #fff; box-shadow: 0 6px 18px rgba(25,31,40,.08); }
 .validation-eta { position: absolute; top: 25px; right: 28px; padding: 9px 13px; border-radius: 8px; color: var(--progress-purple); background: #f5f1ff; font-size: 13px; font-weight: 650; }
@@ -185,6 +186,7 @@ body:has(.login-modal-layer) > :not(.login-modal-layer) { filter: blur(3px); }
 .stage-line::after { background: var(--progress-purple); }
 .stage-line.stage-progress-1::after { width: 25%; }
 .stage-line.stage-progress-2::after { width: 50%; }
+.stage-line.stage-progress-3::after { width: 75%; }
 .stage-line li { position: relative; z-index: 1; display: flex; align-items: center; flex-direction: column; gap: 9px; color: #c1c7ce; font-size: 13px; }
 .stage-line li > span { display: grid; width: 26px; height: 26px; place-items: center; border-radius: 50%; color: #fff; background: #d7dbe0; }
 .stage-line li.done { color: var(--progress-purple); }

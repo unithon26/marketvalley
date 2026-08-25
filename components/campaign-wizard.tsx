@@ -47,7 +47,7 @@ type CampaignWizardProps = {
   generatorStatus: CampaignGeneratorStatus;
 };
 
-const submissionAcknowledgementDelayMs = 700;
+const submissionAcknowledgementDelayMs = 1_600;
 
 function delay(milliseconds: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -210,8 +210,8 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
       setCompletedCampaignId(campaignId);
       requestControllerRef.current = null;
 
-      // 발표용 fixture만 사용자가 다음 단계로 넘긴다. 실제 모드는 Meta 시장 데이터의
-      // 수집 완료 신호를 서버에서 확인한 뒤에만 결과 단계로 전환해야 한다.
+      // 생성 모드와 관계없이 실제 게시 응답이 끝난 시점에만 결과를 연다.
+      setProgressStage(3);
     } catch (caught) {
       if (requestController.signal.aborted) return;
       setError(generationErrorMessage(caught instanceof Error ? caught.message : null));
@@ -229,8 +229,6 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
       <GenerationProgressView
         current={progressStage}
         reportHref={completedCampaignId ? `/campaigns/${completedCampaignId}` : "/"}
-        demoMode={!usesLiveAI}
-        onDemoAdvance={() => setProgressStage(3)}
       />
     );
   }
