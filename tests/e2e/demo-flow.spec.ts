@@ -380,7 +380,7 @@ test("fixture 생성부터 Figma 리포트, 산출물과 예약까지 실제 API
   await page.getByRole("button", { name: "다음 카드뉴스" }).click();
   await expect.poll(() => cardNewsPreview.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
   await expect(page.getByRole("button", { name: "이전 카드뉴스" })).toBeEnabled();
-  await expect(page.getByTitle("AI가 생성한 랜딩페이지 미리보기")).toHaveAttribute("src", `/p/${campaign.slug}`);
+  await expect(page.getByTitle("AI가 생성한 랜딩페이지 미리보기")).toHaveAttribute("src", `/p/${campaign.slug}?preview=1`);
   await expect(page.frameLocator('iframe[title="AI가 생성한 랜딩페이지 미리보기"]').locator(".public-landing")).toHaveAttribute("data-product-name", "마감한입");
 
   const [download] = await Promise.all([

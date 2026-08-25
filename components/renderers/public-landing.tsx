@@ -165,10 +165,12 @@ export function PublicLanding({
   spec,
   campaignId,
   turnstileSiteKey,
+  trackVisit = true,
 }: {
   spec: CampaignSpec;
   campaignId: string;
   turnstileSiteKey?: string;
+  trackVisit?: boolean;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -232,6 +234,7 @@ export function PublicLanding({
   }, [renderTurnstile]);
 
   useEffect(() => {
+    if (!trackVisit) return;
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(campaignId)) {
       return;
     }
@@ -243,7 +246,7 @@ export function PublicLanding({
       signal: controller.signal,
     }).catch(() => undefined);
     return () => controller.abort();
-  }, [campaignId]);
+  }, [campaignId, trackVisit]);
 
   function resetTurnstile() {
     setTurnstileToken("");

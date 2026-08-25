@@ -54,6 +54,44 @@ describe("Meta draft client boundary", () => {
     expect(disabled).toContain("실제 게시 또는 집행 아님");
   });
 
+  it("labels presentation data and blocks Meta execution actions", () => {
+    const markup = renderToStaticMarkup(createElement(CampaignReport, {
+      ...props,
+      initialAnalytics: {
+        status: "final" as const,
+        impressions: 1_920,
+        reach: 1_486,
+        clicks: 76,
+        linkClicks: 63,
+        spendMinor: 4_870,
+        currency: "KRW",
+        landingVisits: 51,
+        reservations: 8,
+        updatedAt: "2026-08-27T00:00:00.000Z",
+      },
+      initialSummary: { total: 0, recent: [] },
+      metaAdsEnabled: false,
+      presentationMode: { collectedHours: 24 },
+    }));
+
+    expect(markup).toContain("24시간 수집 구간 스킵");
+    expect(markup).toContain("발표용 수집 완료 예시");
+    expect(markup).toContain("실제 제품 리포트는 Meta Insights");
+    expect(markup).toContain("Meta 집계 상세");
+    expect(markup).not.toContain("Ads Manager PAUSED 초안 만들기");
+    expect(markup).not.toContain("실제 광고 활성화");
+  });
+
+  it("marks the embedded landing as a non-counting preview", () => {
+    const markup = renderToStaticMarkup(createElement(CampaignReport, {
+      ...props,
+      metaAdsEnabled: false,
+    }));
+
+    expect(markup).toContain("/p/owner-campaign?preview=1");
+    expect(markup).toContain('href="/p/owner-campaign"');
+  });
+
   it("keeps Meta credentials and Graph host out of the client module graph", async () => {
     const root = fileURLToPath(new URL("../../", import.meta.url));
     const clientSources = await Promise.all([
