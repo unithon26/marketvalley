@@ -99,6 +99,12 @@ export function routeErrorResponse(error: unknown): Response {
   if (hasErrorName(error, "CampaignGeneratorConfigError")) {
     return errorResponse(503, "campaign_generator_not_configured", "문구 생성 설정을 확인해주세요.");
   }
+  if (hasErrorName(error, "AuthenticationRequiredError")) {
+    return errorResponse(401, "authentication_required", "AI 문구 생성을 위해 로그인이 필요합니다.");
+  }
+  if (hasErrorName(error, "SupabaseConfigurationError")) {
+    return errorResponse(503, "auth_not_configured", "로그인 설정을 확인해주세요.");
+  }
   if (hasErrorName(error, "CampaignGenerationError")) {
     return errorResponse(503, "campaign_generation_unavailable", "문구를 생성하지 못했습니다. 잠시 후 다시 시도해주세요.");
   }

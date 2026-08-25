@@ -1,12 +1,22 @@
 # 작업 기록
 
+## 2026-08-25 — 랜딩 AI 문구 생성 기본 경로 전환
+
+- 목적: 구현돼 있던 OpenAI 문구 생성 adapter가 fixture 기본 설정 때문에 실제 랜딩 제작에 사용되지 않던 불일치를 해소한다.
+- 변경: 제품 기본 생성 모드를 `openai`로 전환하고 랜딩 Hero·문제·혜택·단계·FAQ를 포함한 단일 Structured Outputs 결과가 기존 `CampaignSpec`·renderer로 이어지는 계약을 고정했다. `/new`는 요청 시점의 모드와 키 준비 상태를 표시하며 fixture fallback을 AI 결과로 표현하지 않는다.
+- 안전: OpenAI 모드의 `/api/generate`는 JSON Content-Type, same-origin, Google `getClaims()` 로그인, 사용자별 단일 프로세스 분당 3회 제한을 모델 호출 전에 적용한다. 노출 이력 있는 로컬 키는 `.env.local`의 빈 값으로 덮어써 실제 호출과 과금을 막았다.
+- 결정: 제품은 OpenAI를 기본으로 사용하고 자동 테스트와 비상 발표만 fixture를 명시한다. 선택과 기각 대안은 ADR-0015에 기록했다.
+- 검증: `pnpm check`의 lint·typecheck·단위 테스트 79개, build/start 생성 모드를 다르게 둔 production E2E 15개, configured production build와 server-secret client bundle smoke, coverage, high audit, peer·diff 검사가 통과했다. 독립 리뷰의 공개 유료 endpoint와 정적 환경 상태 지적을 수정하고 재검토했다.
+- 전달: 로컬 구현과 검증 완료. 실제 OpenAI 요청·과금, 배포와 행사 제출은 수행하지 않았다.
+- 남은 일: 회전된 키와 비용 승인 아래 대표 입력 품질 eval을 수행한다. Vercel OpenAI 활성화 전 Supabase 기반 분산 rate limit과 일·월 총예산 차단 또는 OpenAI 프로젝트 예산 상한을 적용한다.
+
 ## 2026-08-25 — 로컬 OAuth origin 불일치 복구
 
 - 목적: `127.0.0.1`에서 시작한 Google 로그인이 `localhost` callback에서 실패하는 문제를 재현하고 복구한다.
 - 변경: OAuth 시작 요청의 origin이 `NEXT_PUBLIC_SITE_URL`과 다르면 Supabase 호출과 PKCE 쿠키 생성 전에 query를 보존한 canonical `/auth/google`로 이동한다. 인증 운영 문서와 troubleshooting 기록, host 불일치 단위 회귀 테스트를 추가했다.
 - 원인: `127.0.0.1`과 `localhost`는 같은 로컬 서버에 닿지만 host-only PKCE cookie를 공유하지 않는다. 시작 host와 callback host가 달라 verifier가 callback에 전달되지 않았다.
 - 검증: 인증 focused 테스트 3파일 20개, `pnpm check`의 lint·typecheck·단위 테스트 73개, configured auth/server-secret bundle smoke, production Chromium E2E 14개, coverage, high audit, peer·diff 검사가 통과했다. 커버리지는 statements 79.53%, branches 73.5%, functions 84.21%, lines 82.63%다. 실제 Chrome에서 `127.0.0.1`로 시작해 `localhost` canonical 이동, Google 계정 선택, Supabase callback, 로그인 사용자 표시까지 확인했다.
-- 전달: 사용자 신원·원격 최신성·비밀정보를 확인해 commit·push하고 GitHub Actions 결과를 기록한다. 제품 배포와 행사 제출은 수행하지 않는다.
+- 전달: 사용자 Git/GitHub 신원·원격 최신성·staged 비밀정보를 확인한 뒤 수정 커밋 `eb0cd38`을 비공개 `unithon26/marketvalley`의 `main`에 push했다. GitHub Actions run `32813998399`에서 install·lint·typecheck·단위 테스트 73개·configured auth bundle smoke·production build·Chromium E2E 14개가 모두 통과했다. 제품 배포와 행사 제출은 수행하지 않았다.
 
 ## 2026-08-24 — 우승용 제품 및 구현 스펙 수립
 

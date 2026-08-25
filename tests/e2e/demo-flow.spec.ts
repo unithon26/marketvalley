@@ -145,6 +145,16 @@ test("fixture 생성부터 산출물, 예약, 판단, 초기화까지 실제 API
   );
   await expect(page.locator(".carousel-card-1")).toHaveAttribute("data-product-name", "마감한입");
   await expect(page.locator(".carousel-card-3")).toContainText("공개 페이지와 게시 카드 동시 생성");
+  const carouselDownloadButton = page.getByRole("button", { name: "캐러셀 ZIP 다운로드" });
+  const carouselDesignPlaceholder = page.getByText("카드뉴스 디자인 이미지가 들어갈 자리입니다.");
+  await expect(carouselDesignPlaceholder).toBeVisible();
+  const [downloadButtonBox, placeholderBox] = await Promise.all([
+    carouselDownloadButton.boundingBox(),
+    carouselDesignPlaceholder.boundingBox(),
+  ]);
+  expect(downloadButtonBox).not.toBeNull();
+  expect(placeholderBox).not.toBeNull();
+  expect(placeholderBox!.y).toBeGreaterThan(downloadButtonBox!.y + downloadButtonBox!.height);
   const copyCases = [
     { cardLabel: "게시 문구", noticeLabel: "게시 문구", value: campaign.spec.messaging.caption },
     { cardLabel: "후킹 문구 3개", noticeLabel: "후킹 문구", value: campaign.spec.messaging.hooks.join("\n") },
@@ -160,7 +170,7 @@ test("fixture 생성부터 산출물, 예약, 판단, 초기화까지 실제 API
 
   const [download] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: "캐러셀 ZIP 다운로드" }).click(),
+    carouselDownloadButton.click(),
   ]);
   expect(download.suggestedFilename()).toBe(`${campaignId}-carousel.zip`);
   const carouselZip = await JSZip.loadAsync(await downloadBytes(download));

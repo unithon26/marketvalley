@@ -1,5 +1,6 @@
 "use client";
 
+import NextImage from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toPng } from "html-to-image";
@@ -291,7 +292,21 @@ export function CampaignReport({
         <div className="section-heading"><div><span className="eyebrow">READY TO USE</span><h2>광고 결과물</h2></div><span className="safe-label">외부 계정·광고비 사용 없음</span></div>
         <div className="deliverable-grid">
           <article><div className="deliverable-icon landing-icon">↗</div><div><h3>공개 랜딩페이지</h3><p>같은 광고 초안으로 렌더링되는 발표용 공개 경로</p><code>{publicPath}</code></div><Link className="icon-button" href={publicPath} target="_blank" aria-label="공개 랜딩 열기"><ExternalIcon /></Link></article>
-          <article><div className="deliverable-icon carousel-icon">05</div><div><h3>Instagram 캐러셀</h3><p>1080×1350 PNG 5장 · 결정적 React/CSS 렌더러</p><code>01-hook.png — 05-cta.png</code></div><button className="icon-button" type="button" onClick={downloadZip} disabled={exporting} aria-label="캐러셀 ZIP 다운로드"><DownloadIcon /></button></article>
+          <article className="carousel-deliverable">
+            <div className="deliverable-icon carousel-icon">05</div>
+            <div><h3>Instagram 캐러셀</h3><p>1080×1350 PNG 5장 · 결정적 React/CSS 렌더러</p><code>01-hook.png — 05-cta.png</code></div>
+            <button className="icon-button" type="button" onClick={downloadZip} disabled={exporting} aria-label="캐러셀 ZIP 다운로드"><DownloadIcon /></button>
+            <figure className="carousel-design-placeholder">
+              <NextImage
+                src="/report/carousel-preview-placeholder.svg"
+                alt=""
+                width={1600}
+                height={900}
+                sizes="(max-width: 640px) calc(100vw - 74px), 1060px"
+              />
+              <figcaption>카드뉴스 디자인 이미지가 들어갈 자리입니다.</figcaption>
+            </figure>
+          </article>
           <article><div className="deliverable-icon meta-icon">M</div><div><h3>Meta 게시 준비</h3><p>PNG 5장·문구·CTA·대상 고객 가설·절대 URL을 ZIP 하나로</p><code>실제 게시 또는 집행 아님</code></div><button className="icon-button" type="button" onClick={downloadMetaPackage} disabled={exporting} aria-busy={exporting} aria-label="Meta 게시 준비 다운로드"><DownloadIcon /></button></article>
         </div>
         <div className="copy-grid">

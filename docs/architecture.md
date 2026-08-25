@@ -1,9 +1,9 @@
 # 아키텍처
 
-상태: fixture 기반 mock 종단과 local Google OAuth 실제 계정 검증 완료, OpenAI adapter 구현·비활성, live 데이터 adapter·production Auth 설정 미연동
+상태: OpenAI 문구 생성 제품 기본 경로와 fixture fallback, local Google OAuth 실제 계정 검증 완료, live 데이터 adapter·production Auth 설정 미연동
 기준일: 2026-08-25
 
-현재 저장소는 검증된 reference fixture와 서버 프로세스 메모리 저장소로 전체 발표 경로를 실행한다. OpenAI·Supabase·Meta 키가 필요 없고, 화면은 이후 live adapter에서도 같은 계약과 렌더러를 사용한다. OpenAI adapter는 구현돼 있지만 `CAMPAIGN_GENERATOR_MODE` 기본값이 `fixture`라 외부 요청과 과금이 발생하지 않는다.
+현재 저장소는 OpenAI 문구 생성기와 검증된 reference fixture가 같은 `CampaignGenerator` 계약을 사용하고, 서버 프로세스 메모리 저장소로 전체 발표 경로를 실행한다. 제품 기본 생성은 `openai`, 자동 테스트와 비상 발표 fallback은 명시적인 `fixture`다. 화면은 현재 모드와 키 준비 상태를 표시해 fixture 결과를 AI 결과로 오인하지 않게 한다.
 
 Google 로그인은 Supabase Auth PKCE를 사용하는 서버 계약과 local 실제 계정 종단 검증까지 완료했다. `/auth/google → /auth/callback → /api/auth/session → /auth/logout`은 UI와 분리되어 있으며 토큰은 HttpOnly 쿠키에만 둔다. 동시 로그인은 `sb_flow_id`별 verifier와 이동 경로 쿠키로 격리한다. 임시 GNB는 `useAuthSession` 상태 hook과 `AuthControls` 표현을 나눠 디자인 교체 범위를 제한했다. 기존 fixture route는 발표 안정성을 위해 아직 로그인으로 보호하지 않는다. G3에서 Supabase repository와 RLS를 추가할 때 `requireVerifiedIdentity()`의 검증된 user id를 광고 소유권에 연결한다.
 
@@ -56,10 +56,10 @@ AI가 채우는 문구는 상품 요약, 검증 가설, 동의 기반 사전예�
 
 | 모드 | 생성 | 공개·응답·판단 | 외부 키 |
 | --- | --- | --- | --- |
-| `fixture` (기본) | `FixtureCampaignGenerator` | `FixtureCampaignRepository` | 불필요, 외부 요청·과금 없음 |
-| `openai` (비활성) | `OpenAICampaignGenerator` | 현재 fixture, 이후 Supabase adapter | OpenAI 키 필요, 호출 시 과금 |
+| `openai` (제품 기본) | `OpenAICampaignGenerator` | 현재 fixture, 이후 Supabase adapter | 회전된 OpenAI 키 필요, 호출 시 과금 |
+| `fixture` (테스트·fallback) | `FixtureCampaignGenerator` | `FixtureCampaignRepository` | 불필요, 외부 요청·과금 없음 |
 
-생성 모드는 서버 전용 `CAMPAIGN_GENERATOR_MODE`로만 바꾼다. API 키가 존재해도 자동으로 `openai`를 선택하지 않으며, 설정 오류나 upstream 실패는 성공으로 대체하지 않고 503으로 반환한다. live 기본 후보 `gpt-4o-mini`는 무료 모델이 아니라 비용을 낮춘 선택이며 실제 활성화 전에 대표 입력 품질과 과금 한도를 별도로 검증한다.
+생성 모드는 서버 전용 `CAMPAIGN_GENERATOR_MODE`로 바꾼다. 값이 없으면 제품 경로인 `openai`를 선택하고, 키가 없거나 upstream이 실패하면 성공으로 대체하지 않고 503으로 반환한다. `/new`는 요청 시점의 서버 환경을 읽어 키 준비 상태를 표시한다. OpenAI 생성 요청은 JSON Content-Type과 same-origin을 확인하고 Google `getClaims()`로 검증한 사용자별 분당 3회로 제한한다. 현재 제한기는 단일 서버 프로세스 기준이므로 Supabase repository와 함께 분산 제한으로 교체하기 전에는 다중 인스턴스 배포의 완전한 비용 경계로 간주하지 않는다. 자동 테스트와 비상 발표는 `fixture`를 명시한다. 기본 모델 `gpt-4o-mini`는 무료 모델이 아니므로 회전된 키, 비용 승인과 대표 입력 품질 검증 뒤 실제 호출한다.
 
 mock 저장소의 `Map`은 한 Node.js 프로세스 안에서 브라우저 간 상태를 공유하지만 서버 재시작과 serverless 인스턴스 전환에는 유지되지 않는다. 따라서 로컬 발표와 단일 프로세스 QA에는 사용할 수 있고, Vercel에서 여러 기기의 실제 응답을 받을 때는 먼저 Supabase adapter로 교체해야 한다.
 

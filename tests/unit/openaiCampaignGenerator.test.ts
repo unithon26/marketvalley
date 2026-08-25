@@ -7,6 +7,8 @@ import {
   DEFAULT_OPENAI_TEXT_MODEL,
   CampaignGeneratorConfigError,
   resolveCampaignGeneratorConfig,
+  resolveCampaignGeneratorMode,
+  resolveCampaignGeneratorStatus,
 } from "@/lib/ai/generatorConfig";
 import {
   CampaignGenerationError,
@@ -34,11 +36,24 @@ function fakeClient(
 }
 
 describe("campaign generator configuration", () => {
-  it("키와 모델이 있어도 명시적으로 켜지 않으면 과금 없는 fixture를 유지한다", () => {
+  it("제품 기본 경로는 OpenAI이며 키가 없으면 준비되지 않은 상태로 표시한다", () => {
+    expect(resolveCampaignGeneratorMode({})).toBe("openai");
+    expect(resolveCampaignGeneratorStatus({})).toEqual({ mode: "openai", ready: false });
+    expect(resolveCampaignGeneratorStatus({
+      OPENAI_API_KEY: "test-key-that-must-not-be-used",
+    })).toEqual({ mode: "openai", ready: true });
+    expect(() => resolveCampaignGeneratorConfig({})).toThrow(CampaignGeneratorConfigError);
+  });
+
+  it("자동 테스트와 비상 발표는 fixture를 명시적으로 선택한다", () => {
     expect(resolveCampaignGeneratorConfig({
+      CAMPAIGN_GENERATOR_MODE: "fixture",
       OPENAI_API_KEY: "test-key-that-must-not-be-used",
       OPENAI_TEXT_MODEL: "paid-model-that-must-not-be-used",
     })).toEqual({ mode: "fixture" });
+    expect(resolveCampaignGeneratorStatus({
+      CAMPAIGN_GENERATOR_MODE: "fixture",
+    })).toEqual({ mode: "fixture", ready: true });
   });
 
   it("openai 모드는 키가 있어야 하며 저비용 Structured Outputs 모델을 기본값으로 쓴다", () => {
@@ -67,7 +82,7 @@ describe("campaign generator configuration", () => {
     const createOpenAI = vi.fn(() => openai);
     const dependencies = { fixture, createOpenAI };
 
-    expect(createCampaignGenerator({}, dependencies)).toBe(fixture);
+    expect(createCampaignGenerator({ CAMPAIGN_GENERATOR_MODE: "fixture" }, dependencies)).toBe(fixture);
     expect(createOpenAI).not.toHaveBeenCalled();
     expect(createCampaignGenerator({
       CAMPAIGN_GENERATOR_MODE: "openai",
@@ -132,7 +147,13 @@ describe("OpenAICampaignGenerator", () => {
       },
     });
     expect(request.input[0].content).toContain("시장검증 광고 카피 생성기");
+    expect(request.input[0].content).toContain("landing.hero.supportingText");
+    expect(request.input[0].content).toContain("landing.painPoints[0..2].title");
+    expect(request.input[0].content).toContain("landing.benefits[0..2].title");
+    expect(request.input[0].content).toContain("landing.steps[0..2].title");
+    expect(request.input[0].content).toContain("landing.faq[0..2].question");
     expect(request.input[1].content).toContain(JSON.stringify(idea.background));
+    expect(result.landing).toEqual(candidate.landing);
     expect(result.generation).toEqual({
       promptVersion: "campaign-spec-v2-reservations",
       model: "gpt-4o-mini",

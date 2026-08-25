@@ -2,7 +2,7 @@
 
 marketvalley는 아이디어를 처음 검증하려는 예비창업가와 초기 1인 사업자가 반복하던 광고 기획, 채널별 재작성, 조판, 파일 정리와 반응 취합을 하나의 흐름으로 없애는 UNITHON 2026 프로젝트다.
 
-현재 저장소에는 Figma 디자인을 반영한 발표용 목데이터 종단 데모가 있다. 카드뉴스 표지 3종과 랜딩 도입부 고정안 7종을 같은 `CampaignSpec`에서 선택하고, 입력에 명시한 상품명·핵심 특징과 문제·솔루션을 랜딩·카드뉴스·게시 준비 파일에 일관되게 반영한다. 외부 API나 실제 광고 계정 없이 `아이디어 배경·솔루션 입력 → 생성·게시 → 결과물 → 공개 랜딩 사전예약 → 사람의 다음 판단`을 실제 내부 API 경계로 재현한다. OpenAI 문구 생성 adapter는 구현돼 있지만 기본 생성 모드는 과금 없는 fixture이며 명시적으로 활성화하지 않았다.
+현재 저장소에는 Figma 디자인을 반영한 종단 데모가 있다. 카드뉴스 표지 3종과 랜딩 도입부 고정안 7종을 같은 `CampaignSpec`에서 선택하고, 입력에 명시한 상품명·핵심 특징과 문제·솔루션을 랜딩·카드뉴스·게시 준비 파일에 일관되게 반영한다. 제품 생성 기본 경로는 OpenAI Responses API의 Structured Outputs 한 번으로 랜딩 Hero·문제·혜택·단계·FAQ를 포함한 전체 광고 문구를 만든다. 자동 테스트와 외부 장애에 대비한 발표 fallback만 `CAMPAIGN_GENERATOR_MODE=fixture`를 명시해 결정적 결과를 사용한다.
 
 ## 실행
 
@@ -22,6 +22,8 @@ pnpm dev
 ```
 
 개발 서버를 시작하면 `http://localhost:3000`에서 데모를 볼 수 있다. `pnpm check`는 lint, TypeScript와 단위 테스트를 검증한다. `pnpm test:e2e`는 코드를 새로 빌드한 뒤 전용 3100 포트의 `next start`로 실행해 Chromium에서 핵심 발표 흐름, API 오류 경계, 모바일·키보드, SEO·브랜드 대비와 두 ZIP의 실제 내용을 검증한다. 이미 실행 중인 개발 서버는 재사용하지 않는다.
+
+실제 AI 문구 생성에는 노출 이력 없는 회전된 `OPENAI_API_KEY`와 Google 로그인이 필요하다. `.env.example`처럼 `CAMPAIGN_GENERATOR_MODE=openai`를 사용하며, 테스트와 비상 발표에서만 `fixture`로 전환한다. 입력 화면은 요청 시점의 생성 모드와 키 준비 상태를 표시하고, 키가 없으면 AI 생성 버튼을 비활성화한다. OpenAI 모드는 JSON·same-origin·로그인 검증 뒤 사용자별 분당 3회까지만 호출한다.
 
 ## 발표용 경로
 
@@ -57,7 +59,7 @@ GNB의 임시 Google 로그인·사용자·로그아웃 UI는 인증 상태 hook
 
 ## 범위 경계
 
-- 모든 광고 화면과 수치는 발표용 mock이다. OpenAI, Supabase 데이터 adapter, Meta와 배포 환경은 연결하지 않았다.
+- 예약자 수를 제외한 광고 성과 수치는 발표용 예시다. OpenAI 문구 adapter는 제품 기본 경로에 연결했고, Supabase 데이터 adapter, Meta와 배포 환경은 아직 연결하지 않았다.
 - Google OAuth는 local Google·Supabase provider와 실제 계정 로그인·로그아웃까지 검증했다. production URL과 Vercel 환경변수는 아직 설정하지 않았고 기존 fixture 데모에는 로그인을 강제하지 않는다.
 - P0는 명시적 동의 뒤 예약자명단 목적의 이름·이메일만 수집한다. 목록 화면의 이메일은 마스킹한다.
 - Meta 계정 연결, 광고 활성화와 실제 지출은 해커톤 P0 범위에 넣지 않는다.

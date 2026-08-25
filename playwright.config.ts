@@ -15,7 +15,7 @@ export default defineConfig({
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
   ],
   webServer: {
-    command: "pnpm build && pnpm exec next start --port 3100",
+    command: "CAMPAIGN_GENERATOR_MODE=openai OPENAI_API_KEY= pnpm build && CAMPAIGN_GENERATOR_MODE=fixture OPENAI_API_KEY= pnpm exec next start --port 3100",
     env: {
       CAMPAIGN_GENERATOR_MODE: "fixture",
       OPENAI_API_KEY: "",
