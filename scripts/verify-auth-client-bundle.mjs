@@ -21,11 +21,11 @@ const result = spawnSync("pnpm", ["exec", "next", "build"], {
 
 if (result.status !== 0) process.exit(result.status ?? 1);
 
-const dashboardHtml = readFileSync(".next/server/app/dashboard.html", "utf8");
+const homeHtml = readFileSync(".next/server/app/index.html", "utf8");
 
 if (
-  !dashboardHtml.includes("로그인 상태 확인 중")
-  || dashboardHtml.includes("로그인 준비 중")
+  !homeHtml.includes("로그인 상태 확인 중")
+  || homeHtml.includes("로그인 준비 중")
 ) {
   throw new Error("Next.js client bundle이 설정된 인증 GNB 초기 상태를 렌더링하지 않았습니다.");
 }

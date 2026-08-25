@@ -1,5 +1,14 @@
 # 작업 기록
 
+## 2026-08-25 — Figma 제품 메인과 생성 랜딩 레퍼런스 경계 복구
+
+- 목적: 생성되는 랜딩의 참고 사이트 `proo-landing.vercel.app`을 Market Valley 제품 홈으로 잘못 이식한 변경을 되돌리고, 공유 Figma의 화면별 제품 플로우를 다시 기준으로 고정한다.
+- 원인: 공개 산출물 `/p/[slug]`에만 적용해야 할 랜딩 레퍼런스를 제품 인터페이스 `/`의 디자인으로 해석해, Figma 메인 프로젝트 화면을 임의의 `/dashboard`로 밀어냈다.
+- 변경: `/`에 Figma 기반 `전체 프로젝트` 메인을 복구하고 GNB의 프로젝트 링크, 인증 번들 검증과 E2E 진입 경로를 다시 `/`로 연결했다. `/dashboard`는 기존 주소 호환을 위해 `/`로 redirect하며, 잘못 이식한 마케팅 전용 CSS는 제거했다. `proo-landing`은 공개 랜딩 산출물 레퍼런스일 뿐 제품 UI에는 적용하지 않는다고 사용자 흐름 문서에 명시했다.
+- 검증: lint, typecheck, 단위 테스트 26파일 115개, 복구 경계 focused Chromium E2E 4개와 전체 Chromium E2E 21개가 통과했다. 설정된 Supabase 환경의 production build에서 `/`의 `전체 프로젝트`·인증 초기 상태와 server-secret client bundle 비노출을 확인했다.
+- 전달: 로컬 복구와 검증을 완료했다. 커밋·push와 GitHub Actions 재검증을 이어서 수행한다.
+- 남은 일: GitHub Actions 전체 gate 통과를 확인한다.
+
 ## 2026-08-25 — 서비스 랜딩 교체 후 CI 회귀 복구
 
 - 목적: 서비스 랜딩 교체 커밋 `9d6c4d5`의 CI에서 인증 번들 검사가 실패한 원인을 복구하고, 뒤이어 드러난 전체 E2E 경로 회귀를 정리한다.

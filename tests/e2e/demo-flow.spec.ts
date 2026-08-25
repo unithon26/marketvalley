@@ -98,21 +98,23 @@ test("Supabase 미설정 GNB는 인증 요청 없이 준비 상태를 표시한�
   page.on("request", (request) => {
     if (request.url().includes("/api/auth/session")) authRequests.push(request.url());
   });
-  await page.goto("/dashboard");
+  await page.goto("/");
   await expect(page.getByRole("button", { name: "로그인 준비 중" })).toBeDisabled();
   expect(authRequests).toEqual([]);
 });
 
-test("서비스 루트는 시장 검증 랜딩과 제품 진입 CTA를 보여준다", async ({ page }) => {
+test("서비스 루트는 Figma 메인 프로젝트 화면과 제품 플로우를 보여준다", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /반복 제작을 지웁니다/ })).toBeVisible();
-  await expect(page.getByRole("link", { name: /내 아이디어 검증하기/ }).first()).toHaveAttribute("href", "/new");
-  await expect(page.getByRole("heading", { name: /실제 반응은 이렇게만 보여줍니다/ })).toBeVisible();
-  await expect(page.getByText("Meta 자동 집행 없음")).toBeVisible();
-  await expect(page.getByText("계측 연결 전")).toBeVisible();
-  await expect(page.getByText("이메일 마스킹")).toBeVisible();
-  await expect(page.locator("body")).not.toContainText(/시장성 우수|4,312|업계 평균|광고 집행|29만원|하루만에/u);
+  await expect(page.getByRole("heading", { name: "전체 프로젝트" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "프로젝트" })).toHaveAttribute("href", "/");
+  await expect(page.getByRole("link", { name: "새 광고" })).toHaveAttribute("href", "/new");
+  await expect(page.getByRole("link", { name: /마감한입/ })).toHaveAttribute("href", "/campaigns/demo");
+  await expect(page.locator("main")).not.toContainText(/THE PROBLEM|THE METHOD|START VALIDATION/u);
   await expectNoHorizontalOverflow(page);
+
+  await page.goto("/dashboard");
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("heading", { name: "전체 프로젝트" })).toBeVisible();
 });
 
 test("로그인 화면은 확정 로고와 Google 인증 진입점을 보여준다", async ({ page }) => {
@@ -207,7 +209,7 @@ test("시장 조사 준비 중 화면을 이탈하면 유료 생성을 시작하
   await expect(page.getByRole("heading", { name: "시장 조사 연결 전 단계를 확인하고 있어요" })).toBeVisible();
 
   await page.getByRole("link", { name: "프로젝트" }).click();
-  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page).toHaveURL(/\/$/);
   await page.waitForTimeout(2_200);
   expect(generateRequests).toBe(0);
 });
@@ -266,7 +268,7 @@ test("fixture 생성부터 산출물, 예약, 판단, 초기화까지 실제 API
   await page.evaluate(() => window.localStorage.clear());
 
   await expect(page.locator("body")).not.toContainText(/캠페인|CampaignSpec/u);
-  await page.getByRole("link", { name: /내 아이디어 검증하기/ }).first().click();
+  await page.getByRole("link", { name: "새 광고" }).click();
   await page.getByRole("button", { name: "예시 불러오기" }).click();
   await page.getByRole("button", { name: "다음" }).click();
   await page.getByRole("button", { name: /광고 만들기/ }).click();
@@ -540,7 +542,7 @@ test("375px과 키보드에서 필터, 생성, 공개 응답과 사람 판단을
   captureRuntimeErrors(page, runtimeErrors);
   await page.setViewportSize({ width: 375, height: 812 });
 
-  await page.goto("/dashboard");
+  await page.goto("/");
   await expectNoHorizontalOverflow(page);
   const completedFilter = page.getByRole("button", { name: /검증 완료/ });
   await completedFilter.click();
