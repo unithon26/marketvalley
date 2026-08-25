@@ -4,30 +4,28 @@ export type GenerationProgressStage = 0 | 1 | 2 | 3;
 
 const stages = [
   {
-    label: "시장 조사 준비",
-    eta: "약 2초",
-    title: "시장 조사 연결 전 단계를 확인하고 있어요",
-    description: "외부 시장 조사는 아직 연결되지 않아, 이 데모 단계는 2초 뒤 넘어갑니다.",
+    label: "접수",
+    title: "광고 검증 요청이 접수되었습니다",
+    description: "입력한 내용을 확인한 뒤 광고 제작을 시작합니다.",
   },
   {
-    label: "AI 문구 생성",
-    eta: "최대 1분",
-    title: "AI가 광고 문구를 만들고 있어요",
-    description: "실제 AI 응답이 완료될 때까지 이 단계에서 기다립니다.",
+    label: "준비 중",
+    title: "카드뉴스와 랜딩페이지를 제작하고 있습니다",
+    description: "검토한 내용을 바탕으로 두 광고 결과물을 함께 만들고 있습니다.",
   },
   {
-    label: "광고 구성",
-    eta: "처리 중",
-    title: "랜딩·카드뉴스 결과를 저장하고 있어요",
-    description: "실제 광고 게시가 완료되면 자동으로 다음 화면으로 이동합니다.",
+    label: "수집 중",
+    title: "카드뉴스와 랜딩페이지 제작을 완료했어요",
+    description: "제작된 광고를 통해 시장 데이터를 수집하고 있습니다.",
   },
   {
     label: "결과 도착",
-    eta: "완료",
-    title: "랜딩·캐러셀·게시 준비가 끝났어요",
-    description: "완성된 시장검증 광고 리포트로 이동합니다.",
+    title: "시장 데이터 수집이 완료되었습니다",
+    description: "수집된 결과를 확인할 수 있는 리포트로 이동합니다.",
   },
 ] as const;
+
+const actionLabels = ["접수 확인 중", "광고 제작 중", "시장 데이터 수집 중", "리포트로 이동 중"] as const;
 
 export function GenerationProgressView({ current }: { current: GenerationProgressStage }) {
   const activeStage = stages[current];
@@ -36,16 +34,16 @@ export function GenerationProgressView({ current }: { current: GenerationProgres
     <main className="progress-page page-container">
       <div className="progress-heading-row">
         <div>
-          <span className="eyebrow">GENERATION IN PROGRESS</span>
-          <h1>시장검증 광고를 준비하고 있어요</h1>
+          <span className="eyebrow">VALIDATION IN PROGRESS</span>
+          <h1>광고 검증을 준비하고 있습니다</h1>
         </div>
         <div className="eta-card">
-          <span>현재 단계</span>
-          <strong>{activeStage.eta}</strong>
+          <span>결과 제공까지</span>
+          <strong>{current === 3 ? "완료" : "약 2일"}</strong>
         </div>
       </div>
 
-      <ol className="stage-line" aria-label="광고 생성 진행 상황">
+      <ol className="stage-line" aria-label="광고 검증 진행 상황">
         {stages.map((stage, index) => {
           const completed = index < current;
           const active = index === current;
@@ -71,7 +69,7 @@ export function GenerationProgressView({ current }: { current: GenerationProgres
 
       <div className="progress-actions">
         <button className="button button-disabled" type="button" disabled>
-          {current === 3 ? "리포트로 이동 중" : "광고 구성 중"}
+          {actionLabels[current]}
         </button>
       </div>
     </main>

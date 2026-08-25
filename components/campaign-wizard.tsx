@@ -48,7 +48,8 @@ type CampaignWizardProps = {
   generatorStatus: CampaignGeneratorStatus;
 };
 
-const unimplementedMarketResearchDelayMs = 2_000;
+const submissionAcknowledgementDelayMs = 700;
+const marketDataCollectionDelayMs = 2_000;
 const completedStageDelayMs = 700;
 
 function delay(milliseconds: number, signal: AbortSignal): Promise<void> {
@@ -177,7 +178,7 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
       }
       const attempt = publishAttemptRef.current;
 
-      await delay(unimplementedMarketResearchDelayMs, requestController.signal);
+      await delay(submissionAcknowledgementDelayMs, requestController.signal);
       setProgressStage(1);
 
       if (!attempt.spec) {
@@ -209,6 +210,7 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
       const campaignId = publishedCampaignId(published);
       saveCampaignDraftId(campaignId, attempt.draftId);
 
+      await delay(marketDataCollectionDelayMs, requestController.signal);
       setProgressStage(3);
       await delay(completedStageDelayMs, requestController.signal);
       requestControllerRef.current = null;

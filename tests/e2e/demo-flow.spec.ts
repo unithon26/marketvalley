@@ -149,7 +149,7 @@ test("광고 입력 2단계는 브라우저 뒤로가기로 입력값을 보존�
   await expect(page.getByRole("textbox", { name: "제품 배경" })).toHaveValue(background);
 });
 
-test("미구현 단계만 2초 통과하고 실제 생성·게시는 API 완료까지 기다린다", async ({ page }) => {
+test("접수 뒤 실제 광고 제작을 기다리고 게시 후 시장 데이터 수집을 보여준다", async ({ page }) => {
   let generateStarted = false;
   let publishStarted = false;
   let releaseGenerate = () => {};
@@ -177,24 +177,26 @@ test("미구현 단계만 2초 통과하고 실제 생성·게시는 API 완료�
   await page.getByRole("button", { name: "다음" }).click();
   await page.getByRole("button", { name: /광고 만들기/ }).click();
 
-  await expect(page.getByRole("heading", { name: "시장 조사 연결 전 단계를 확인하고 있어요" })).toBeVisible();
-  await page.waitForTimeout(1_200);
+  await expect(page.getByRole("heading", { name: "광고 검증 요청이 접수되었습니다" })).toBeVisible();
+  await page.waitForTimeout(350);
   expect(generateStarted).toBe(false);
 
-  await expect(page.getByRole("heading", { name: "AI가 광고 문구를 만들고 있어요" })).toBeVisible({ timeout: 4_000 });
+  await expect(page.getByRole("heading", { name: "카드뉴스와 랜딩페이지를 제작하고 있습니다" })).toBeVisible({ timeout: 2_000 });
   expect(generateStarted).toBe(true);
   expect(publishStarted).toBe(false);
 
   releaseGenerate();
-  await expect(page.getByRole("heading", { name: "랜딩·카드뉴스 결과를 저장하고 있어요" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "카드뉴스와 랜딩페이지 제작을 완료했어요" })).toBeVisible();
   expect(publishStarted).toBe(true);
 
   releasePublish();
-  await expect(page.getByRole("heading", { name: "랜딩·캐러셀·게시 준비가 끝났어요" })).toBeVisible();
+  await page.waitForTimeout(1_000);
+  await expect(page.getByRole("heading", { name: "카드뉴스와 랜딩페이지 제작을 완료했어요" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "시장 데이터 수집이 완료되었습니다" })).toBeVisible({ timeout: 3_000 });
   await expect(page).toHaveURL(/\/campaigns\/[^/]+$/, { timeout: 5_000 });
 });
 
-test("시장 조사 준비 중 화면을 이탈하면 유료 생성을 시작하지 않는다", async ({ page }) => {
+test("접수 확인 중 화면을 이탈하면 유료 생성을 시작하지 않는다", async ({ page }) => {
   let generateRequests = 0;
   page.on("request", (request) => {
     if (request.method() === "POST" && new URL(request.url()).pathname === "/api/generate") {
@@ -206,11 +208,11 @@ test("시장 조사 준비 중 화면을 이탈하면 유료 생성을 시작하
   await page.getByRole("button", { name: "예시 불러오기" }).click();
   await page.getByRole("button", { name: "다음" }).click();
   await page.getByRole("button", { name: /광고 만들기/ }).click();
-  await expect(page.getByRole("heading", { name: "시장 조사 연결 전 단계를 확인하고 있어요" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "광고 검증 요청이 접수되었습니다" })).toBeVisible();
 
   await page.getByRole("link", { name: "프로젝트" }).click();
   await expect(page).toHaveURL(/\/$/);
-  await page.waitForTimeout(2_200);
+  await page.waitForTimeout(900);
   expect(generateRequests).toBe(0);
 });
 
@@ -273,7 +275,7 @@ test("fixture 생성부터 산출물, 예약, 판단, 초기화까지 실제 API
   await page.getByRole("button", { name: "다음" }).click();
   await page.getByRole("button", { name: /광고 만들기/ }).click();
 
-  await expect(page.getByRole("heading", { name: "시장검증 광고를 준비하고 있어요" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "광고 검증을 준비하고 있습니다" })).toBeVisible();
   await expect(page).toHaveURL(/\/campaigns\/[^/]+$/, { timeout: 10_000 });
   const campaignId = decodeURIComponent(page.url().match(/\/campaigns\/([^/]+)$/)?.[1] ?? "");
   expect(campaignId).not.toBe("");
@@ -422,7 +424,7 @@ test("입력한 상품명과 특징이 랜딩과 카드뉴스에 자동으로 �
   await page.getByRole("button", { name: "다음" }).click();
   await page.getByRole("textbox", { name: "솔루션 설명" }).fill(solution);
   await page.getByRole("button", { name: /광고 만들기/ }).click();
-  await expect(page.getByRole("heading", { name: "시장검증 광고를 준비하고 있어요" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "광고 검증을 준비하고 있습니다" })).toBeVisible();
   await expect(page).toHaveURL(/\/campaigns\/[^/]+$/, { timeout: 10_000 });
 
   const campaignId = decodeURIComponent(page.url().match(/\/campaigns\/([^/]+)$/)?.[1] ?? "");

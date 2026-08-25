@@ -5,6 +5,18 @@ import { useEffect, useState } from "react";
 import { CheckIcon, ChartIcon } from "@/components/icons";
 
 const stages = ["접수", "준비 중", "수집 중", "결과 도착"];
+const stageTitles = [
+  "광고 검증 요청이 접수되었습니다",
+  "카드뉴스와 랜딩페이지를 제작하고 있습니다",
+  "카드뉴스와 랜딩페이지 제작을 완료했어요",
+  "시장 데이터 수집이 완료되었습니다",
+];
+const stageDescriptions = [
+  "입력한 내용을 확인한 뒤 광고 제작을 시작합니다.",
+  "검토한 내용을 바탕으로 두 광고 결과물을 함께 만들고 있습니다.",
+  "제작된 광고를 통해 시장 데이터를 수집하고 있습니다.",
+  "수집된 결과를 확인할 수 있는 리포트가 도착했습니다.",
+];
 
 export function ProgressView({ campaignId }: { campaignId: string }) {
   const [current, setCurrent] = useState(0);
@@ -17,11 +29,11 @@ export function ProgressView({ campaignId }: { campaignId: string }) {
   return (
     <main className="progress-page page-container">
       <div className="progress-heading-row">
-        <div><span className="eyebrow">DETERMINISTIC DEMO</span><h1>시장검증 광고를 준비하고 있어요</h1></div>
-        <div className="eta-card"><span>결과 제공까지</span><strong>{current === 3 ? "완료" : "약 2초"}</strong></div>
+        <div><span className="eyebrow">VALIDATION IN PROGRESS</span><h1>광고 검증을 준비하고 있습니다</h1></div>
+        <div className="eta-card"><span>결과 제공까지</span><strong>{current === 3 ? "완료" : "약 2일"}</strong></div>
       </div>
 
-      <ol className="stage-line" aria-label="광고 생성 진행 상황">
+      <ol className="stage-line" aria-label="광고 검증 진행 상황">
         {stages.map((stage, index) => (
           <li key={stage} className={index <= current ? "done" : ""}>
             <span>{index <= current ? <CheckIcon size={16} /> : index + 1}</span>
@@ -33,8 +45,8 @@ export function ProgressView({ campaignId }: { campaignId: string }) {
       <section className="processing-visual" aria-live="polite">
         <div className={`processing-orb stage-${current}`}><i /><i /><i /></div>
         <span className="processing-status">{stages[current]}</span>
-        <h2>{current === 3 ? "랜딩·캐러셀·게시 준비가 끝났어요" : "같은 가설로 모든 결과물을 맞추고 있어요"}</h2>
-        <p>{current === 3 ? "입력한 상품명과 특징을 같은 광고 초안의 랜딩·카드뉴스에 반영했습니다." : "잠시만 기다려주세요. 이 화면은 발표용 결정적 시뮬레이션입니다."}</p>
+        <h2>{stageTitles[current]}</h2>
+        <p>{stageDescriptions[current]}</p>
       </section>
 
       <div className="progress-actions">
