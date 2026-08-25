@@ -1,5 +1,30 @@
 # Troubleshooting
 
+## 2026-08-26 — 첫 Oracle release가 BuildKit daemon 재시작 루프에서 중단됨
+
+### 맥락과 영향
+
+source `90830c4`와 CI run `32873987611`이 모두 성공한 뒤 owner-only 배포 run `32874329220`으로 Oracle Compose 첫 release를 시작했다. 검증·재검증·immutable artifact 생성은 통과했지만 서버 image build가 진행되지 않았고, 아직 `current` symlink와 앱·proxy 컨테이너가 생기기 전이라 사용자 트래픽이나 기존 K3s에는 영향이 없었다. 원인을 확인한 뒤 workflow를 취소했다.
+
+### 재현과 증거
+
+- rootless Docker의 `buildx_buildkit_marketvalley-production-v20`은 `Restarting (1)`을 반복했다.
+- container log의 첫 오류는 `Incorrect Usage: flag provided but not defined: -max-parallelism`이었고 실제 daemon은 pin된 image digest의 BuildKit `v0.32.2`였다.
+- 같은 image에서 기존 `--max-parallelism=1 --gc --gc-keepstorage=1073741824`는 거절됐지만 `--oci-max-parallelism=1 --oci-worker-gc=true --oci-worker-gc-keepstorage=1024`는 정상 parse됐다.
+- 실패 중 K3s는 계속 `active`였고 전용 release directory만 생성됐으며 production 컨테이너는 없었다.
+
+### 원인과 대안
+
+BuildKit image digest는 고정돼 있었지만 daemon flag는 이전 전역 이름을 사용했다. 현재 OCI worker 전용 flag로 namespace가 바뀌어 builder가 시작 전에 종료했고 `docker buildx inspect --bootstrap`이 재시작을 기다렸다. BuildKit resource 제한을 제거하면 배포는 빨라지지만 2 OCPU·12GB 공유 host에서 K3s를 압박하므로 기각했다. floating tag로 되돌리는 방식도 동일 회귀를 재현할 수 있어 기각했다.
+
+### 해결과 회귀 방지
+
+source와 개인 배포 control-plane의 root-owned release script를 같은 OCI worker flag로 바꾸고, legacy `--max-parallelism`이 다시 들어오면 실패하는 회귀 테스트를 추가했다. pin된 image 자체에서 새 flag parse를 확인했고 양쪽 shell syntax, source trust-boundary 테스트 4개와 control-plane 테스트 4개를 통과했다. 서버에는 control-plane CI가 성공한 정확한 script만 checksum을 대조해 설치하고 실패한 builder를 제거한 뒤 배포를 재시도한다.
+
+### 남은 위험과 예상 질문
+
+새 control-plane CI, 서버 script 교체, 실제 ARM64 build와 외부 health가 모두 성공하기 전까지 해결 완료로 기록하지 않는다. 면접에서는 image digest pin만으로 CLI 계약까지 고정되지 않는 이유, daemon 재시작과 앱 장애를 어떻게 분리했는지, 왜 병렬 제한을 제거하지 않았는지 설명할 수 있다.
+
 ## 2026-08-26 — Vercel Ready 배포가 모든 경로에서 404를 반환함
 
 ### 맥락과 영향

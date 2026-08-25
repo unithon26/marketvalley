@@ -38,6 +38,9 @@ describe("production deployment trust boundary", () => {
     expect(releaseScript).toContain('release runtime contract is incompatible with this server');
     expect(releaseScript).toContain('--driver-opt memory=2g');
     expect(releaseScript).not.toContain('--driver-opt memory=3g');
+    expect(releaseScript).toContain('--oci-max-parallelism=1');
+    expect(releaseScript).toContain('--oci-worker-gc-keepstorage=1024');
+    expect(releaseScript).not.toContain("--max-parallelism=1");
     expect(releaseScript).toContain('deploy user aggregate CPU quota must be 125%');
     expect(releaseScript).toContain('deploy user aggregate memory limit must be 3 GiB');
     expect(releaseScript).toContain('deploy user aggregate I/O weight must be 100');

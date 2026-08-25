@@ -335,7 +335,7 @@ ensure_buildx_builder() {
       --driver-opt "image=${buildkit_image}" \
       --driver-opt memory=2g \
       --driver-opt cpu-quota=100000 \
-      --buildkitd-flags '--max-parallelism=1 --gc --gc-keepstorage=1073741824' \
+      --buildkitd-flags '--oci-max-parallelism=1 --oci-worker-gc=true --oci-worker-gc-keepstorage=1024' \
       --driver-opt default-load=true >/dev/null
   fi
 
