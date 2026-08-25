@@ -1,4 +1,4 @@
-import type { CampaignSpec, NextAction, SignalOptionId } from "@/lib/contracts/campaign";
+import type { CampaignSpec, NextAction } from "@/lib/contracts/campaign";
 
 export type PublishedCampaign = {
   id: string;
@@ -8,10 +8,32 @@ export type PublishedCampaign = {
   nextAction: NextAction | null;
 };
 
-export type SignalInput = {
+export type ReservationUtm = {
+  source?: string;
+  medium?: string;
+  campaign?: string;
+  content?: string;
+};
+
+export type ReservationInput = {
   campaignId: string;
-  visitorId: string;
-  optionId: SignalOptionId;
+  name: string;
+  email: string;
+  consent: true;
+  utm?: ReservationUtm;
+};
+
+export type ReservationRecord = {
+  id: string;
+  name: string;
+  email: string;
+  utm?: ReservationUtm;
+  reservedAt: string;
+};
+
+export type ReservationSummary = {
+  total: number;
+  recent: ReservationRecord[];
 };
 
 export type NextActionInput = {
@@ -27,27 +49,10 @@ export type DeleteCampaignInput = {
 
 export type ResetCampaignInput = DeleteCampaignInput;
 
-export type SignalCounts = Record<SignalOptionId, number>;
-
-export type SignalDecisionStatus =
-  | "no_responses"
-  | "insufficient_sample"
-  | "threshold_met"
-  | "threshold_not_met";
-
-export type SignalSummary = SignalCounts & {
-  total: number;
-  positiveRate: number | null;
-  decisionStatus: SignalDecisionStatus;
-  isRuleMet: boolean;
-  remainingResponses: number;
-  remainingPositiveResponses: number;
-};
-
-/** 같은 visitorId가 같은 캠페인에 두 번째로 응답하려 할 때 던진다. */
+/** 같은 이메일이 같은 캠페인에 두 번째로 예약하려 할 때 던진다. */
 export class DuplicateSignalError extends Error {
   constructor() {
-    super("visitor already responded to this campaign");
+    super("email already reserved this campaign");
     this.name = "DuplicateSignalError";
   }
 }
@@ -73,19 +78,12 @@ export class DraftOwnershipError extends Error {
   }
 }
 
-export class InvalidSignalOptionError extends Error {
-  constructor() {
-    super("signal option does not belong to this campaign");
-    this.name = "InvalidSignalOptionError";
-  }
-}
-
 export interface CampaignRepository {
   publish(draftId: string, spec: CampaignSpec): Promise<PublishedCampaign>;
   getById(id: string): Promise<PublishedCampaign | null>;
   getBySlug(slug: string): Promise<PublishedCampaign | null>;
-  recordSignal(input: SignalInput): Promise<SignalSummary>;
-  getSignalSummary(campaignId: string): Promise<SignalSummary>;
+  recordReservation(input: ReservationInput): Promise<ReservationSummary>;
+  getReservationSummary(campaignId: string): Promise<ReservationSummary>;
   saveNextAction(input: NextActionInput): Promise<NextAction>;
   reset(input: ResetCampaignInput): Promise<PublishedCampaign>;
   delete(input: DeleteCampaignInput): Promise<void>;

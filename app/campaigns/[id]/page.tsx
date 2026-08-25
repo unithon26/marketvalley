@@ -7,7 +7,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
   const { id } = await params;
   const published = await campaignRepository.getById(id);
   if (!published) notFound();
-  const initialSummary = await campaignRepository.getSignalSummary(published.id);
+  const initialSummary = await campaignRepository.getReservationSummary(published.id);
 
   return (
     <div className="app-shell">

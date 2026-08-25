@@ -9,15 +9,11 @@ import { demoCampaign, demoCampaignId, workshopVacancyCampaign } from "@/lib/dem
 import { FixtureCampaignRepository } from "@/lib/demo/fixtureRepository";
 
 describe("FixtureCampaignRepository", () => {
-  it("발표 seed 응답을 결정적으로 집계한다", async () => {
+  it("발표 seed 예약을 결정적으로 집계한다", async () => {
     const repository = new FixtureCampaignRepository();
 
-    await expect(repository.getSignalSummary(demoCampaignId)).resolves.toMatchObject({
-      positive: 2,
-      neutral: 1,
-      negative: 1,
+    await expect(repository.getReservationSummary(demoCampaignId)).resolves.toMatchObject({
       total: 4,
-      decisionStatus: "insufficient_sample",
     });
   });
 
@@ -30,18 +26,22 @@ describe("FixtureCampaignRepository", () => {
     await expect(repository.publish("draft-1", workshopVacancyCampaign)).rejects.toBeInstanceOf(DraftConflictError);
   });
 
-  it("visitor별 한 번만 응답을 기록하고 실제 선택지 외 값은 거절한다", async () => {
-    const repository = new FixtureCampaignRepository({ seedResponses: [] });
+  it("이메일별 한 번만 예약을 기록하고 대소문자·공백을 정규화한다", async () => {
+    const repository = new FixtureCampaignRepository({ seedReservations: [] });
 
-    await expect(repository.recordSignal({ campaignId: demoCampaignId, visitorId: "visitor-one", optionId: "positive" }))
-      .resolves.toMatchObject({ total: 1, positive: 1 });
-    await expect(repository.recordSignal({ campaignId: demoCampaignId, visitorId: "visitor-one", optionId: "neutral" }))
-      .rejects.toBeInstanceOf(DuplicateSignalError);
-    await expect(repository.recordSignal({
+    await expect(repository.recordReservation({
       campaignId: demoCampaignId,
-      visitorId: "visitor-two",
-      optionId: "unsupported" as "positive",
-    })).rejects.toThrow();
+      name: "홍길동",
+      email: "visitor-one@example.com",
+      consent: true,
+    })).resolves.toMatchObject({ total: 1 });
+
+    await expect(repository.recordReservation({
+      campaignId: demoCampaignId,
+      name: "홍길동",
+      email: "  Visitor-One@example.com  ",
+      consent: true,
+    })).rejects.toBeInstanceOf(DuplicateSignalError);
   });
 
   it("캠페인 소유 draft만 다음 행동을 저장하고 삭제할 수 있다", async () => {
@@ -62,7 +62,12 @@ describe("FixtureCampaignRepository", () => {
   it("새 게시를 고유 id와 slug로 격리하고 소유 draft로 상태를 초기화한다", async () => {
     const repository = new FixtureCampaignRepository();
     const published = await repository.publish("new-draft", workshopVacancyCampaign);
-    await repository.recordSignal({ campaignId: published.id, visitorId: "visitor-one", optionId: "positive" });
+    await repository.recordReservation({
+      campaignId: published.id,
+      name: "방문자",
+      email: "visitor-one@example.com",
+      consent: true,
+    });
     await repository.saveNextAction({ campaignId: published.id, draftId: "new-draft", nextAction: "revise" });
 
     expect(published).toMatchObject({ id: "fixture-1", slug: "workshop-vacancy-1" });
@@ -72,6 +77,6 @@ describe("FixtureCampaignRepository", () => {
       .rejects.toBeInstanceOf(DraftOwnershipError);
     const reset = await repository.reset({ campaignId: published.id, draftId: "new-draft" });
     expect(reset.nextAction).toBeNull();
-    await expect(repository.getSignalSummary(published.id)).resolves.toMatchObject({ total: 4, positive: 2 });
+    await expect(repository.getReservationSummary(published.id)).resolves.toMatchObject({ total: 4 });
   });
 });

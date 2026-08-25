@@ -3,30 +3,28 @@ import { createHash } from "node:crypto";
 import {
   campaignSpecSchema,
   nextActionSchema,
-  signalOptionIdSchema,
   type CampaignSpec,
-  type SignalOptionId,
 } from "@/lib/contracts/campaign";
 import {
   CampaignNotFoundError,
   DraftConflictError,
   DraftOwnershipError,
   DuplicateSignalError,
-  InvalidSignalOptionError,
   type CampaignRepository,
   type DeleteCampaignInput,
   type NextActionInput,
   type PublishedCampaign,
+  type ReservationInput,
+  type ReservationRecord,
+  type ReservationSummary,
   type ResetCampaignInput,
-  type SignalInput,
-  type SignalSummary,
 } from "@/lib/contracts/repository";
-import { aggregateSignals } from "@/lib/demo/campaignSignals";
+import { summarizeReservations } from "@/lib/demo/campaignReservations";
 import {
   demoCampaign,
   demoCampaignId,
   demoCampaignSlug,
-  seedSignals,
+  seedReservations as defaultSeedReservations,
 } from "@/lib/demo/demo-campaign";
 
 type StoredCampaign = PublishedCampaign & {
@@ -37,7 +35,7 @@ type StoredCampaign = PublishedCampaign & {
 export type FixtureCampaignRepositoryOptions = {
   now?: () => Date;
   seedDemoCampaign?: boolean;
-  seedResponses?: readonly SignalOptionId[];
+  seedReservations?: readonly Omit<ReservationRecord, "id">[];
 };
 
 const knownSlugBases: Record<string, string> = {
@@ -60,22 +58,22 @@ function copyCampaign(campaign: StoredCampaign): PublishedCampaign {
   };
 }
 
-function fixtureVisitorHash(visitorId: string): string {
-  return createHash("sha256").update(visitorId).digest("hex");
+function fixtureEmailHash(email: string): string {
+  return createHash("sha256").update(email.trim().toLowerCase()).digest("hex");
 }
 
 export class FixtureCampaignRepository implements CampaignRepository {
   private readonly campaigns = new Map<string, StoredCampaign>();
   private readonly campaignIdsBySlug = new Map<string, string>();
   private readonly campaignIdsByDraft = new Map<string, string>();
-  private readonly signals = new Map<string, Map<string, SignalOptionId>>();
+  private readonly reservations = new Map<string, Map<string, ReservationRecord>>();
   private readonly now: () => Date;
-  private readonly seedResponses: readonly SignalOptionId[];
+  private readonly seedReservations: readonly Omit<ReservationRecord, "id">[];
   private sequence = 1;
 
   constructor(options: FixtureCampaignRepositoryOptions = {}) {
     this.now = options.now ?? (() => new Date());
-    this.seedResponses = options.seedResponses ?? seedSignals;
+    this.seedReservations = options.seedReservations ?? defaultSeedReservations;
 
     if (options.seedDemoCampaign ?? true) {
       this.insertCampaign({
@@ -128,29 +126,31 @@ export class FixtureCampaignRepository implements CampaignRepository {
     return copyCampaign(this.requireCampaign(id));
   }
 
-  async recordSignal(input: SignalInput): Promise<SignalSummary> {
+  async recordReservation(input: ReservationInput): Promise<ReservationSummary> {
     const campaign = this.requireCampaign(input.campaignId);
-    const visitorId = input.visitorId.trim();
-    const optionId = signalOptionIdSchema.parse(input.optionId);
-    const allowedOptions = new Set(campaign.spec.validation.signal.options.map((option) => option.id));
+    const name = input.name.trim();
+    const email = input.email.trim().toLowerCase();
+    const records = this.requireReservations(campaign.id);
+    const emailHash = fixtureEmailHash(email);
 
-    if (!allowedOptions.has(optionId)) {
-      throw new InvalidSignalOptionError();
-    }
-
-    const responses = this.requireSignals(campaign.id);
-    const visitorHash = fixtureVisitorHash(visitorId);
-    if (responses.has(visitorHash)) {
+    if (records.has(emailHash)) {
       throw new DuplicateSignalError();
     }
 
-    responses.set(visitorHash, optionId);
-    return this.summarize(campaign, responses);
+    const record: ReservationRecord = {
+      id: `${campaign.id}-reservation-${records.size + 1}`,
+      name,
+      email,
+      utm: input.utm,
+      reservedAt: this.now().toISOString(),
+    };
+    records.set(emailHash, record);
+    return summarizeReservations([...records.values()]);
   }
 
-  async getSignalSummary(campaignId: string): Promise<SignalSummary> {
+  async getReservationSummary(campaignId: string): Promise<ReservationSummary> {
     const campaign = this.requireCampaign(campaignId);
-    return this.summarize(campaign, this.requireSignals(campaignId));
+    return summarizeReservations([...this.requireReservations(campaign.id).values()]);
   }
 
   async saveNextAction(input: NextActionInput): Promise<NextActionInput["nextAction"]> {
@@ -171,7 +171,7 @@ export class FixtureCampaignRepository implements CampaignRepository {
     const campaign = this.requireCampaign(input.campaignId);
     this.assertDraftOwnership(campaign, input.draftId);
     campaign.nextAction = null;
-    this.signals.set(campaign.id, this.createSeedSignalMap());
+    this.reservations.set(campaign.id, this.createSeedReservationMap());
     return copyCampaign(campaign);
   }
 
@@ -186,19 +186,22 @@ export class FixtureCampaignRepository implements CampaignRepository {
     this.campaigns.set(campaign.id, campaign);
     this.campaignIdsBySlug.set(campaign.slug, campaign.id);
     this.campaignIdsByDraft.set(campaign.draftId, campaign.id);
-    this.signals.set(campaign.id, this.createSeedSignalMap());
+    this.reservations.set(campaign.id, this.createSeedReservationMap());
     return campaign;
   }
 
-  private createSeedSignalMap(): Map<string, SignalOptionId> {
-    return new Map(this.seedResponses.map((optionId, index) => [`fixture-seed-${index + 1}`, optionId]));
+  private createSeedReservationMap(): Map<string, ReservationRecord> {
+    return new Map(this.seedReservations.map((seed, index) => {
+      const record: ReservationRecord = { id: `seed-${index + 1}`, ...seed };
+      return [fixtureEmailHash(record.email), record] as const;
+    }));
   }
 
   private removeCampaign(campaign: StoredCampaign): void {
     this.campaigns.delete(campaign.id);
     this.campaignIdsBySlug.delete(campaign.slug);
     this.campaignIdsByDraft.delete(campaign.draftId);
-    this.signals.delete(campaign.id);
+    this.reservations.delete(campaign.id);
   }
 
   private requireCampaign(id: string): StoredCampaign {
@@ -207,17 +210,10 @@ export class FixtureCampaignRepository implements CampaignRepository {
     return campaign;
   }
 
-  private requireSignals(campaignId: string): Map<string, SignalOptionId> {
-    const responses = this.signals.get(campaignId);
-    if (!responses) throw new CampaignNotFoundError();
-    return responses;
-  }
-
-  private summarize(
-    campaign: StoredCampaign,
-    responses: ReadonlyMap<string, SignalOptionId>,
-  ): SignalSummary {
-    return aggregateSignals([...responses.values()], campaign.spec);
+  private requireReservations(campaignId: string): Map<string, ReservationRecord> {
+    const reservations = this.reservations.get(campaignId);
+    if (!reservations) throw new CampaignNotFoundError();
+    return reservations;
   }
 
   private assertDraftOwnership(campaign: StoredCampaign, draftId: string): void {

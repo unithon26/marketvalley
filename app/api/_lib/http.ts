@@ -5,7 +5,6 @@ import {
   CampaignNotFoundError,
   DraftConflictError,
   DraftOwnershipError,
-  InvalidSignalOptionError,
 } from "@/lib/contracts/repository";
 
 export class ApiRequestError extends Error {
@@ -96,9 +95,6 @@ export function routeErrorResponse(error: unknown): Response {
   }
   if (error instanceof DraftOwnershipError || hasErrorName(error, "DraftOwnershipError")) {
     return errorResponse(403, "draft_mismatch", "이 광고를 변경할 수 없는 초안입니다.");
-  }
-  if (error instanceof InvalidSignalOptionError || hasErrorName(error, "InvalidSignalOptionError")) {
-    return errorResponse(400, "invalid_signal_option", "이 광고에서 선택할 수 없는 응답입니다.");
   }
   return errorResponse(500, "internal_error", "요청을 처리하지 못했습니다.");
 }

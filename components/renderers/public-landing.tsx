@@ -1,24 +1,38 @@
 "use client";
 
 import { useState } from "react";
-import type { CampaignSpec, SignalOptionId } from "@/lib/contracts/campaign";
+import type { CampaignSpec } from "@/lib/contracts/campaign";
+import type { ReservationUtm } from "@/lib/contracts/repository";
 import { CheckIcon } from "@/components/icons";
-import { getVisitorId } from "@/lib/client/demo-store";
 import { campaignThemeStyle } from "@/lib/brand-theme";
 
-function isSignalResponse(value: unknown): value is { alreadyResponded: boolean } {
+const reservationCtaLabel = "사전예약하기";
+
+function isReservationResponse(value: unknown): value is { alreadyReserved: boolean } {
   return typeof value === "object"
     && value !== null
-    && "alreadyResponded" in value
-    && typeof value.alreadyResponded === "boolean";
+    && "alreadyReserved" in value
+    && typeof value.alreadyReserved === "boolean";
+}
+
+function currentUtm(): ReservationUtm | undefined {
+  if (typeof window === "undefined") return undefined;
+  const params = new URLSearchParams(window.location.search);
+  const utm: ReservationUtm = {
+    source: params.get("utm_source") ?? undefined,
+    medium: params.get("utm_medium") ?? undefined,
+    campaign: params.get("utm_campaign") ?? undefined,
+    content: params.get("utm_content") ?? undefined,
+  };
+  return Object.values(utm).some((value) => value !== undefined) ? utm : undefined;
 }
 
 function IntroAction({ spec }: { spec: CampaignSpec }) {
   return (
     <div className="landing-hero-copy landing-intro-action">
       <p>{spec.landing.hero.supportingText}</p>
-      <a href="#signal" className="landing-primary-button">{spec.validation.signal.ctaLabel}</a>
-      <small>연락처 없이 10초 만에 답할 수 있어요.</small>
+      <a href="#reserve" className="landing-primary-button">{reservationCtaLabel}</a>
+      <small>10초면 예약할 수 있어요.</small>
     </div>
   );
 }
@@ -89,7 +103,7 @@ function LandingIntro({ spec }: { spec: CampaignSpec }) {
         <div className="landing-intro-frame">
           <span className="intro-rule-label">한 줄 핵심 특징</span>
           <h1 className={spec.project.oneLiner.length > 80 ? "intro-long-copy" : ""}><span>{spec.project.name}</span>{spec.project.oneLiner}</h1>
-          <div className="intro-signal-seal"><b>10초</b><span>익명 신호</span></div>
+          <div className="intro-signal-seal"><b>10초</b><span>예약 신호</span></div>
         </div>
         <IntroAction spec={spec} />
       </section>
@@ -124,36 +138,45 @@ function LandingIntro({ spec }: { spec: CampaignSpec }) {
 }
 
 export function PublicLanding({ spec, campaignId }: { spec: CampaignSpec; campaignId: string }) {
-  const [selected, setSelected] = useState<SignalOptionId | null>(null);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [consent, setConsent] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [duplicate, setDuplicate] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const reportPath = `/campaigns/${encodeURIComponent(campaignId)}`;
+  const canSubmit = name.trim() !== "" && email.trim() !== "" && consent;
 
   async function submit() {
-    if (!selected || submitting) return;
+    if (!canSubmit || submitting) return;
     setSubmitting(true);
     setError("");
     try {
-      const response = await fetch("/api/signals", {
+      const response = await fetch("/api/reservations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ campaignId, visitorId: getVisitorId(), optionId: selected }),
+        body: JSON.stringify({
+          campaignId,
+          name: name.trim(),
+          email: email.trim(),
+          consent: true,
+          utm: currentUtm(),
+        }),
       });
       const body: unknown = await response.json().catch(() => null);
 
-      if (response.status === 409 && isSignalResponse(body) && body.alreadyResponded) {
+      if (response.status === 409 && isReservationResponse(body) && body.alreadyReserved) {
         setDuplicate(true);
         return;
       }
-      if (!response.ok || !isSignalResponse(body) || body.alreadyResponded) {
-        throw new Error("signal_request_failed");
+      if (!response.ok || !isReservationResponse(body) || body.alreadyReserved) {
+        throw new Error("reservation_request_failed");
       }
 
       setSubmitted(true);
     } catch {
-      setError("응답을 저장하지 못했어요. 잠시 후 다시 시도해주세요.");
+      setError("예약을 저장하지 못했어요. 잠시 후 다시 시도해주세요.");
     } finally {
       setSubmitting(false);
     }
@@ -169,7 +192,7 @@ export function PublicLanding({ spec, campaignId }: { spec: CampaignSpec; campai
     >
       <header className="landing-header">
         <a className="landing-brand" href="#top"><span>{spec.project.name}</span></a>
-        <a className="landing-nav-cta" href="#signal">{spec.validation.signal.ctaLabel}</a>
+        <a className="landing-nav-cta" href="#reserve">{reservationCtaLabel}</a>
       </header>
 
       <main id="top">
@@ -203,20 +226,51 @@ export function PublicLanding({ spec, campaignId }: { spec: CampaignSpec; campai
           </div>
         </section>
 
-        <section id="signal" className="signal-panel">
-          <div className="signal-copy"><span className="landing-kicker">10-SECOND SIGNAL</span><h2>{spec.validation.signal.question}</h2><p>이름, 이메일, 전화번호는 받지 않습니다. 발표용 데모에서는 이 브라우저당 한 번만 응답할 수 있어요.</p></div>
+        <section id="reserve" className="signal-panel">
+          <div className="signal-copy">
+            <span className="landing-kicker">RESERVE NOW</span>
+            <h2>{spec.project.name}, 지금 예약자명단에 이름을 남겨주세요</h2>
+            <p>입력하신 이름과 이메일은 예약자명단 확인 목적에만 사용되며, 동의하신 경우에만 저장됩니다.</p>
+          </div>
           <div className="signal-form">
             {submitted ? (
-              <div className="signal-success"><span><CheckIcon size={28} /></span><h3>응답이 기록됐어요</h3><p>{spec.validation.signal.successMessage}</p><a href={reportPath}>데모 리포트에서 확인하기</a></div>
+              <div className="signal-success"><span><CheckIcon size={28} /></span><h3>예약이 접수됐어요</h3><p>다음 안내는 운영자가 직접 전달합니다.</p><a href={reportPath}>데모 리포트에서 확인하기</a></div>
             ) : duplicate ? (
-              <div className="signal-success duplicate"><span><CheckIcon size={28} /></span><h3>이미 참여했어요</h3><p>최초 응답을 유지하고 중복으로 집계하지 않았습니다.</p><a href={reportPath}>데모 리포트 보기</a></div>
+              <div className="signal-success duplicate"><span><CheckIcon size={28} /></span><h3>이미 예약했어요</h3><p>같은 이메일로는 한 번만 예약할 수 있어요.</p><a href={reportPath}>데모 리포트 보기</a></div>
             ) : (
               <>
-                <div className="signal-options" role="group" aria-label="관심 신호 선택">
-                  {spec.validation.signal.options.map((option) => <button className={selected === option.id ? "selected" : ""} type="button" key={option.id} aria-pressed={selected === option.id} onClick={() => { setSelected(option.id); setError(""); }}><span>{option.label}</span>{selected === option.id && <CheckIcon size={18} />}</button>)}
+                <div className="reservation-fields">
+                  <div className="reservation-field">
+                    <label htmlFor="reservation-name">이름</label>
+                    <input
+                      id="reservation-name"
+                      type="text"
+                      value={name}
+                      maxLength={80}
+                      onChange={(event) => { setName(event.target.value); setError(""); }}
+                    />
+                  </div>
+                  <div className="reservation-field">
+                    <label htmlFor="reservation-email">이메일</label>
+                    <input
+                      id="reservation-email"
+                      type="email"
+                      value={email}
+                      maxLength={200}
+                      onChange={(event) => { setEmail(event.target.value); setError(""); }}
+                    />
+                  </div>
+                  <label className="reservation-consent">
+                    <input
+                      type="checkbox"
+                      checked={consent}
+                      onChange={(event) => setConsent(event.target.checked)}
+                    />
+                    이름과 이메일 수집에 동의합니다
+                  </label>
                 </div>
                 {error && <p className="signal-error" role="alert">{error}</p>}
-                <button className="landing-primary-button full" type="button" disabled={!selected || submitting} onClick={submit}>{submitting ? "저장 중..." : "익명으로 응답하기"}</button>
+                <button className="landing-primary-button full" type="button" disabled={!canSubmit || submitting} onClick={submit}>{submitting ? "예약 접수 중..." : reservationCtaLabel}</button>
               </>
             )}
           </div>
