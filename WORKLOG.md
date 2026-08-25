@@ -1,5 +1,13 @@
 # 작업 기록
 
+## 2026-08-25 — 광고 입력 단계의 브라우저 뒤로가기 복구
+
+- 목적: `/new`의 2단계 솔루션 입력에서 브라우저 뒤로가기를 누르면 1단계가 아니라 메인 화면으로 이탈하는 문제를 해결한다.
+- 변경: 1단계에서 2단계로 이동할 때 Next.js history state를 보존한 동일 URL entry를 추가하고 `popstate`로 입력 단계를 복원한다. 브라우저 뒤로·앞으로와 화면의 `이전` 버튼이 같은 history를 사용하며, 배경과 솔루션 입력값은 컴포넌트 상태에 그대로 남는다.
+- 검증: history state 단위 테스트 2개와 focused production E2E가 통과했고, 실제 로컬 Chrome에서 2단계 → 뒤로가기 → 입력값이 남은 1단계 → 앞으로가기 → 입력값이 남은 2단계를 확인했다. 최종 `pnpm check`의 lint·typecheck·단위 테스트 26파일 114개, configured server-secret bundle smoke, production Chromium E2E 17개, coverage, high audit, peer·diff 검사가 통과했다. 커버리지는 statements 83.58%, branches 76.19%, functions 90.13%, lines 87.93%다.
+- 전달: 기능 커밋 `43bc009`을 비공개 `main`에 push했다. GitHub Actions run `32823250753`에서 install·lint·typecheck·단위 테스트 114개·server-secret bundle·production build·Chromium E2E 17개가 모두 통과했다. 제품 배포와 행사 제출은 수행하지 않았다.
+- 남은 일: 없음.
+
 ## 2026-08-25 — 광고 진입 로그인 모달과 fixture 인증 분리
 
 - 목적: 광고 생성을 시작할 때 별도 페이지로 맥락을 잃지 않고 Figma 로그인 카드를 보여주되 직접 `/new` 접근의 서버 인증 경계를 유지한다.
