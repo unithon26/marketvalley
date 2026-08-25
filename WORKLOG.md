@@ -7,7 +7,7 @@
 - 안전: 홈과 공개 랜딩은 익명 접근을 유지하고, Supabase 미설정 fixture 발표 경로는 외부 인증 없이 동작한다. Supabase/JWKS 일시 장애는 로그아웃으로 오인하지 않으며, 로그아웃 실패 시 현재 화면 복귀 경로를 보존한다.
 - 결정: 홈 CTA에만 모달을 붙이지 않고 직접 URL 접근까지 보호하는 서버 진입 gate와 전용 로그인 route를 선택했다. 선택과 기각 대안은 ADR-0018에 기록했다.
 - 검증: 최신 Figma와 데스크톱·375px 화면을 직접 대조했고 모바일 가로 overflow가 없음을 확인했다. 독립 재검토의 복귀 경로와 세션 장애 구분 지적을 보완했다. 최종 `pnpm check`의 lint·typecheck·단위 테스트 24파일 107개, production build, configured server-secret bundle smoke, production Chromium E2E 16개, coverage, high audit, peer·diff 검사가 통과했다. 커버리지는 statements 82.72%, branches 74.57%, functions 86.75%, lines 87.36%다.
-- 전달: 변경은 비공개 저장소 `main`에 통합됐으며 추가 인증 보완을 전달한다. 배포와 행사 제출은 수행하지 않았다.
+- 전달: 통합 기능 커밋 `6cd0b07`과 인증 복귀·장애 경계 보완 커밋 `475aa59`를 비공개 `main`에 push했다. GitHub Actions run `32818832890`에서 install·lint·typecheck·단위 테스트 107개·server-secret bundle·production build·Chromium E2E 16개가 모두 통과했다. 배포와 행사 제출은 수행하지 않았다.
 - 남은 일: 디자이너의 최종 GNB·진행 상태 그래픽을 받으면 현재 fallback을 교체한다. 표지 `32`·`34` 사진의 사용권과 인물 동의도 공개 제출 전에 확인한다.
 
 ## 2026-08-25 — Supabase 영속 저장·소유권 RLS와 분산 생성 quota 구현
