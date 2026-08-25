@@ -38,6 +38,7 @@ export function AuthControls({ enabled }: { enabled: boolean }) {
   }
 
   const label = state.user.displayName ?? state.user.email ?? "로그인 사용자";
+  const logoutNext = pathname.startsWith("/auth/") || pathname.startsWith("/api/") ? "/" : pathname;
   return (
     <div className="auth-user">
       <span className="auth-avatar" aria-hidden="true">
@@ -47,7 +48,7 @@ export function AuthControls({ enabled }: { enabled: boolean }) {
         <strong>{label}</strong>
         <small>Google 계정</small>
       </span>
-      <form action="/auth/logout?next=%2F" method="post">
+      <form action={`/auth/logout?next=${encodeURIComponent(logoutNext)}`} method="post">
         <button className="auth-button auth-logout-button" type="submit">로그아웃</button>
       </form>
     </div>

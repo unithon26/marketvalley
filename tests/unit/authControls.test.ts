@@ -39,7 +39,7 @@ describe("AuthControls", () => {
 
     expect(html).toContain("홍성주");
     expect(html).toContain("로그아웃");
-    expect(html).toContain('action="/auth/logout?next=%2F"');
+    expect(html).toContain('action="/auth/logout?next=%2Fcampaigns%2Fdemo"');
     expect(html).toContain('method="post"');
   });
 

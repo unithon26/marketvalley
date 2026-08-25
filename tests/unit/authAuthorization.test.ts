@@ -1,4 +1,7 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  AuthRetryableFetchError,
+  type SupabaseClient,
+} from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -33,5 +36,13 @@ describe("requireVerifiedIdentity", () => {
     await expect(
       requireVerifiedIdentity(clientWithClaims({ data: { claims: {} }, error: null })),
     ).rejects.toBeInstanceOf(AuthenticationRequiredError);
+  });
+
+  it("Supabase/JWKS 일시 장애는 로그인 필요 상태로 숨기지 않는다", async () => {
+    const unavailable = new AuthRetryableFetchError("service unavailable", 503);
+
+    await expect(
+      requireVerifiedIdentity(clientWithClaims({ data: null, error: unavailable })),
+    ).rejects.toBe(unavailable);
   });
 });

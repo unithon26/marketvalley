@@ -1,5 +1,15 @@
 # 작업 기록
 
+## 2026-08-25 — 최신 Figma 로고·로그인 진입·리포트 상태 반영
+
+- 목적: 디자이너의 최신 Figma를 제품 전체와 다시 대조하고, 기능 시작 전에 로그인시키는 흐름과 확정 로고를 실제 화면에 반영한다.
+- 변경: Figma의 `market V alley` 벡터 로고를 공통 브랜드 자산으로 적용했다. Supabase가 설정된 제품 환경에서 비로그인 `/new` 접근을 전용 `/login?next=/new`로 보내고 Google OAuth 뒤 원래 화면으로 복귀시킨다. 인증 취소·설정 오류·세션 장애·로그아웃 실패도 같은 화면에서 복구하며 외부 `next`와 요청 Host는 신뢰하지 않는다. 리포트의 임의 노출·CTR·업계 평균·체류 지표를 없애고 실제 예약자 수, 판단 기준, 예약 시각 기반 누적 추이와 `계측 연결 전` 상태만 표시한다.
+- 안전: 홈과 공개 랜딩은 익명 접근을 유지하고, Supabase 미설정 fixture 발표 경로는 외부 인증 없이 동작한다. Supabase/JWKS 일시 장애는 로그아웃으로 오인하지 않으며, 로그아웃 실패 시 현재 화면 복귀 경로를 보존한다.
+- 결정: 홈 CTA에만 모달을 붙이지 않고 직접 URL 접근까지 보호하는 서버 진입 gate와 전용 로그인 route를 선택했다. 선택과 기각 대안은 ADR-0018에 기록했다.
+- 검증: 최신 Figma와 데스크톱·375px 화면을 직접 대조했고 모바일 가로 overflow가 없음을 확인했다. 독립 재검토의 복귀 경로와 세션 장애 구분 지적을 보완했다. 최종 `pnpm check`의 lint·typecheck·단위 테스트 24파일 107개, production build, configured server-secret bundle smoke, production Chromium E2E 16개, coverage, high audit, peer·diff 검사가 통과했다. 커버리지는 statements 82.72%, branches 74.57%, functions 86.75%, lines 87.36%다.
+- 전달: 변경은 비공개 저장소 `main`에 통합됐으며 추가 인증 보완을 전달한다. 배포와 행사 제출은 수행하지 않았다.
+- 남은 일: 디자이너의 최종 GNB·진행 상태 그래픽을 받으면 현재 fallback을 교체한다. 표지 `32`·`34` 사진의 사용권과 인물 동의도 공개 제출 전에 확인한다.
+
 ## 2026-08-25 — Supabase 영속 저장·소유권 RLS와 분산 생성 quota 구현
 
 - 목적: 서버 메모리 repository를 실제 다중 기기 저장소로 교체하고, 광고·예약자 원문 소유권과 유료 AI 비용 한도를 DB에서 강제한다.
@@ -8,7 +18,7 @@
 - 결정: service-role 단일 repository 계획을 기각하고 사용자 JWT가 적용된 client와 DB RLS를 함께 사용한다. 선택과 기각 대안은 ADR-0016에 기록했다.
 - 실패와 해결: E2E에서 내부 `request.url`의 `localhost`와 실제 `Host/Origin`의 `127.0.0.1` 차이를 교차 출처로 오판해 예약 4개 시나리오가 실패했다. 실제 Host·forwarded authority 기준으로 수정하고 `TROUBLESHOOTING.md`에 재현·원인·회귀 방지를 기록했다. 다른 로컬 서버가 기본 E2E 포트를 점유한 경우를 위해 포트를 환경변수로 분리했고, clipboard 권한도 고정 포트가 아닌 실제 페이지 origin을 사용하게 했다.
 - 검증: Supabase focused 단위 테스트와 route 보안 테스트, 최종 `pnpm check`의 lint·typecheck·단위 테스트 24파일 106개, production build, configured server-secret bundle smoke, production Chromium E2E 16개, coverage, high audit, peer·diff 검사가 통과했다. 커버리지는 statements 82.65%, branches 74.48%, functions 86.75%, lines 87.31%다. 로컬 Docker/Postgres가 없어 `supabase db lint --local`은 연결되지 않았고 운영 DB migration은 실행하지 않았다.
-- 전달: 로컬 구현과 검증까지 완료했다. 운영 migration·실제 데이터 쓰기는 명시적 승인 전이라 수행하지 않았다. Anthropic·인증 UI 변경과 원격 preview 커밋을 충돌 없이 통합했고 Git·CI 전달을 진행한다.
+- 전달: 운영 migration·실제 데이터 쓰기는 명시적 승인 전이라 수행하지 않았다. Anthropic·인증 UI 변경과 원격 preview 커밋을 충돌 없이 통합해 기능 커밋 `6cd0b07`을 비공개 `main`에 push했다. GitHub Actions run `32818491564`에서 install·lint·typecheck·단위 테스트 106개·server-secret bundle·production build·Chromium E2E 16개가 모두 통과했다.
 - 남은 일: 운영 Supabase에 migration을 적용하고 server key·고정 HMAC secret을 등록한 뒤 실제 계정 A/B RLS, 공개 예약, 중복, reset, quota RPC를 종단 검증한다. production OAuth·Vercel 설정과 Anthropic Console spend limit은 별도 외부 승인 경계다.
 
 ## 2026-08-25 — 문구 생성 공급자를 Anthropic으로 교체

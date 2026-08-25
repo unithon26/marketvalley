@@ -18,6 +18,8 @@ pnpm test:e2e
 
 이후 local Google·Supabase provider와 환경변수를 실제로 연결해 Google 동의, Supabase PKCE callback, GNB 로그인 사용자 표시, Auth 사용자 생성, same-origin POST 로그아웃과 익명 복귀를 브라우저에서 확인했다. 이 과정에서 client component가 `process.env` 객체 전체를 넘겨 GNB만 미설정으로 판단하던 회귀를 발견해 public 환경변수의 정적 참조로 수정했다. 단위 테스트는 13개 파일 67개, production Chromium E2E는 14개가 통과했고 커버리지는 statements 82.24%, branches 75.43%, functions 90.71%, lines 85.38%다. E2E server는 개인 `.env.local`과 무관하게 미설정 fallback을 결정적으로 검증하고, 별도 configured production bundle smoke는 공개 설정이 있을 때 GNB가 미설정 대신 세션 확인 초기 상태로 정적 치환되는지 확인한다.
 
+최신 Figma의 확정 로고·로그인 화면과 실제 예약 기반 리포트를 반영한 뒤 `pnpm check`, `pnpm build`, configured server-secret bundle smoke, `pnpm test:e2e`, `pnpm test:coverage`, high audit, peer·diff 검사를 다시 실행했다. 단위 테스트 24파일 107개와 production Chromium E2E 16개가 통과했고 커버리지는 statements 82.72%, branches 74.57%, functions 86.75%, lines 87.36%다. 데스크톱과 375px에서 로그인 카드·가로 overflow·fixture 복구 경로를 확인했으며, 인증 설정 환경의 익명 진입, 내부 복귀 경로 보존, 외부 redirect 차단, 잘못된 설정과 Supabase/JWKS 일시 장애의 fail-closed 처리를 단위 테스트로 고정했다.
+
 E2E는 2단계 입력과 생성·게시, 입력한 상품명·특징의 리포트·공개 랜딩·캐러셀·Meta 파일 반영, 약 2초의 진행 완료, 문구 4종 clipboard 복사, 캐러셀·Meta ZIP 내부 항목과 PNG 5장의 1080×1350 크기, 사진형 표지 자산 포함, 절대 destination URL, 공개 응답·중복 방지, 무응답 비율, 사전 기준 gap, 사람 판단 저장·초기화, API 입력·크기·소유권·404 경계, 요청 실패와 게시 응답 유실 재시도, 광고 격리, 3개 fixture의 slug·SEO·브랜드, Figma 표지 3종·랜딩 도입부 7종, 계약상 최대 길이의 표지 잘림·랜딩 겹침 방지, 375px overflow·키보드·ARIA, polling 순서 경쟁과 3초 이상 지연되는 조회의 중복 방지를 재현한다. 홈·진행·결과 화면에는 내부 용어 `캠페인`과 `CampaignSpec`이 노출되지 않는지도 확인한다.
 
 ## 자동 검증
