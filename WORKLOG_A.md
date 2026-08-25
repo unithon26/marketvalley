@@ -16,5 +16,5 @@
 - 변경: 3지선다 관련 helper·assertion을 예약 입력·동의·중복·명단 리포트 기준으로 교체하고, 무응답·긍정 기준 테스트를 예약자명단의 빈 상태와 실제 데이터 표시 테스트로 바꿨다. API, 375px 키보드, 저장 실패, 광고 격리와 polling도 `/api/reservations` 기준으로 갱신했다.
 - 영향 범위: `tests/e2e/demo-flow.spec.ts`
 - 검증: `pnpm check`의 lint·typecheck·단위 테스트 72개와 production Chromium E2E 14개가 통과했다.
-- 전달: 로컬 검증 완료. 실제 커밋·push 결과는 전달 후 root `WORKLOG.md`에 기록한다.
+- 전달: 최종 동기화 커밋 `70b1c93`을 `main`에 push했고 GitHub Actions run `32811937835`가 통과했다. 상세 통합 이력은 root `WORKLOG.md`에 기록했다.
 - 남은 일: 없음

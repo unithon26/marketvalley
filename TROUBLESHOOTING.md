@@ -94,6 +94,7 @@ Git 병합은 `app/api/_lib/http.ts` 한 곳에서 충돌했고, 첫 typecheck�
 - configured production auth/server-secret bundle smoke 통과
 - production Chromium E2E 14개 통과
 - statements 79.29%, branches 73.02%, functions 84.02%, lines 82.32% coverage와 high audit·peer·diff 검사 통과
+- GitHub Actions run `32811937835`의 clean checkout 전체 gate 통과
 
 route를 rename할 때는 route 구현, API 계약, E2E endpoint, 접근성 locator와 `.next/dev/types`를 한 작업 단위로 확인한다. CI의 깨끗한 checkout은 stale cache를 재현하지 않으므로 로컬 typecheck도 계속 유지한다.
 
