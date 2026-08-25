@@ -4,7 +4,7 @@
 
 ## 1. Supabase
 
-Google OAuth 서버 계약은 먼저 구현했다. 실제 G3 시작 전 [Google 로그인 운영 가이드](authentication.md)에 따라 Google provider, redirect URL, Site URL과 공개 환경변수를 설정하고 실제 계정 종단 흐름을 검증한다. 로그인 세션이 준비됐다는 사실만으로 광고 소유권이 보호되지는 않으며 아래 migration과 RLS가 함께 완료돼야 한다.
+Google OAuth 서버 계약과 local Google provider·redirect·Site URL·공개 환경변수 설정, 실제 계정 로그인·로그아웃 검증은 완료했다. production URL과 Vercel 환경변수는 배포 단계에서 [Google 로그인 운영 가이드](authentication.md)에 따라 추가한다. 로그인 세션이 준비됐다는 사실만으로 광고 소유권이 보호되지는 않으며 아래 migration과 RLS가 함께 완료돼야 한다.
 
 완료 조건:
 
@@ -16,10 +16,10 @@ Google OAuth 서버 계약은 먼저 구현했다. 실제 G3 시작 전 [Google 
 
 권장 순서:
 
-1. Google provider와 PKCE 실제 계정 종단 검증
-2. migration과 `auth.uid()` 기반 RLS 정책 작성
-3. server repository 단위 테스트
-4. publish/read route에 검증된 사용자 소유권 연결
+1. migration과 `auth.uid()` 기반 RLS 정책 작성
+2. server repository 단위 테스트
+3. publish/read route에 검증된 사용자 소유권 연결
+4. production URL·Vercel 환경변수와 배포 도메인의 실제 OAuth 검증
 5. signal/aggregate/next-action route 연결
 6. 시크릿 창, 다른 계정과 새로고침 수동 검증
 

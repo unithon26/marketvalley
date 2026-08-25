@@ -1,11 +1,11 @@
 # 아키텍처
 
-상태: fixture 기반 mock 종단과 Google OAuth 서버 계약 구현 완료, live adapter·외부 Auth 설정 미연동
+상태: fixture 기반 mock 종단과 local Google OAuth 실제 계정 검증 완료, live 데이터 adapter·production Auth 설정 미연동
 기준일: 2026-08-25
 
 현재 저장소는 검증된 reference fixture와 서버 프로세스 메모리 저장소로 전체 발표 경로를 실행한다. OpenAI·Supabase·Meta 키가 필요 없고, 화면은 이후 live adapter에서도 같은 계약과 렌더러를 사용한다.
 
-Google 로그인은 Supabase Auth PKCE를 사용하는 서버 계약까지 별도로 구현했다. `/auth/google → /auth/callback → /api/auth/session → /auth/logout`은 UI와 분리되어 있으며 토큰은 HttpOnly 쿠키에만 둔다. 동시 로그인은 `sb_flow_id`별 verifier와 이동 경로 쿠키로 격리한다. 임시 GNB는 `useAuthSession` 상태 hook과 `AuthControls` 표현을 나눠 디자인 교체 범위를 제한했다. 기존 fixture route는 발표 안정성을 위해 아직 로그인으로 보호하지 않는다. G3에서 Supabase repository와 RLS를 추가할 때 `requireVerifiedIdentity()`의 검증된 user id를 광고 소유권에 연결한다.
+Google 로그인은 Supabase Auth PKCE를 사용하는 서버 계약과 local 실제 계정 종단 검증까지 완료했다. `/auth/google → /auth/callback → /api/auth/session → /auth/logout`은 UI와 분리되어 있으며 토큰은 HttpOnly 쿠키에만 둔다. 동시 로그인은 `sb_flow_id`별 verifier와 이동 경로 쿠키로 격리한다. 임시 GNB는 `useAuthSession` 상태 hook과 `AuthControls` 표현을 나눠 디자인 교체 범위를 제한했다. 기존 fixture route는 발표 안정성을 위해 아직 로그인으로 보호하지 않는다. G3에서 Supabase repository와 RLS를 추가할 때 `requireVerifiedIdentity()`의 검증된 user id를 광고 소유권에 연결한다.
 
 ## 목표
 

@@ -1,10 +1,10 @@
 import Link from "next/link";
 
 import { AuthControls } from "@/components/auth-controls";
-import { hasCompleteSupabaseConfig } from "@/lib/supabase/config";
+import { hasCompleteBundledSupabaseConfig } from "@/lib/supabase/config";
 
 export function SiteHeader({ compact = false }: { compact?: boolean }) {
-  const authEnabled = hasCompleteSupabaseConfig();
+  const authEnabled = hasCompleteBundledSupabaseConfig();
 
   return (
     <header className={compact ? "site-header site-header-compact" : "site-header"}>

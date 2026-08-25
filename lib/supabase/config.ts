@@ -79,6 +79,18 @@ export function hasCompleteSupabaseConfig(environment: Environment = process.env
   }
 }
 
+// Next.js only bundles public environment variables when each property is
+// referenced statically. Client-rendered headers must not pass `process.env`
+// as an object because that object is empty in the browser runtime.
+export function hasCompleteBundledSupabaseConfig(): boolean {
+  return hasCompleteSupabaseConfig({
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  });
+}
+
 export function getAuthCookieOptions(
   environment: Environment = process.env,
 ): AuthCookieOptions {

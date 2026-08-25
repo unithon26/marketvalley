@@ -16,6 +16,11 @@ export default defineConfig({
   ],
   webServer: {
     command: "pnpm build && pnpm exec next start --port 3100",
+    env: {
+      NEXT_PUBLIC_SUPABASE_URL: "",
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "",
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "",
+    },
     url: "http://127.0.0.1:3100",
     reuseExistingServer: false,
     timeout: 30_000,
