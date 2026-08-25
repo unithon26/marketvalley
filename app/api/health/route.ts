@@ -15,6 +15,13 @@ function safeVersion(value: string | undefined): string {
     : "unknown";
 }
 
+function resolveVersion(environment: Environment): string {
+  const appVersion = safeVersion(environment.APP_VERSION);
+  return appVersion !== "unknown"
+    ? appVersion
+    : safeVersion(environment.VERCEL_GIT_COMMIT_SHA);
+}
+
 function safeOrigin(value: string | undefined): string {
   try {
     const url = new URL(value ?? "");
@@ -45,7 +52,7 @@ export function createHealthResponse(environment: Environment = process.env): Re
       {
         status: ready ? "ok" : "not_ready",
         service: "marketvalley",
-        version: safeVersion(environment.APP_VERSION),
+        version: resolveVersion(environment),
         origin: safeOrigin(environment.NEXT_PUBLIC_SITE_URL),
         checks: {
           generator: { mode: generator.mode, ready: generator.ready },
@@ -64,7 +71,7 @@ export function createHealthResponse(environment: Environment = process.env): Re
       {
         status: "not_ready",
         service: "marketvalley",
-        version: safeVersion(environment.APP_VERSION),
+        version: resolveVersion(environment),
         origin: safeOrigin(environment.NEXT_PUBLIC_SITE_URL),
         checks: {
           generator: { ready: false },

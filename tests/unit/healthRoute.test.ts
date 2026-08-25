@@ -83,6 +83,20 @@ describe("health route", () => {
     });
   });
 
+  it("Vercel Git 배포 SHA를 APP_VERSION fallback으로 노출한다", async () => {
+    const vercelSha = "975a8066333cbc14c26af2491a2e9493791558ae";
+    const response = createHealthResponse({
+      ...supabaseEnvironment,
+      APP_VERSION: undefined,
+      VERCEL_GIT_COMMIT_SHA: vercelSha,
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      version: vercelSha,
+    });
+  });
+
   it("잘못된 운영 생성 quota를 준비되지 않은 상태로 표시한다", async () => {
     const response = createHealthResponse({
       ...supabaseEnvironment,
