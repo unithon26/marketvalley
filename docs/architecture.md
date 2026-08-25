@@ -1,7 +1,11 @@
 # 아키텍처
 
-상태: Supabase migration·RLS·repository와 분산 생성 quota 코드 완료, 운영 DB 적용·live 종단·production Auth 설정 대기
-기준일: 2026-08-25
+![marketvalley 시스템 아키텍처](assets/system-architecture.png)
+
+핵심 설계 의도: 사용자는 아이디어만 입력하고, AI와 하나의 광고 설계서가 랜딩·카드뉴스·게시 문구를 동시에 만들며, 실제 예약 반응을 바탕으로 한 최종 판단만 사람이 맡는다.
+
+상태: Vercel 공식 서비스와 Oracle 독립 검증 서비스에 같은 검증 소스를 배포했으며, Anthropic·Supabase·Turnstile 운영 의존성까지 health 확인 완료
+기준일: 2026-08-26
 
 현재 저장소는 Anthropic 문구 생성기와 검증된 reference fixture가 같은 `CampaignGenerator` 계약을 사용한다. `CAMPAIGN_REPOSITORY_MODE=fixture`에서는 서버 프로세스 메모리로 발표 경로를 실행하고, `supabase`에서는 요청별 사용자 세션 client와 server-only client의 역할을 분리해 실제 DB를 사용한다. 제품 기본 생성은 `anthropic`, 자동 테스트와 비상 발표 fallback은 명시적인 `fixture`다.
 

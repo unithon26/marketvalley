@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">marketvalley 핵심 시스템 아키텍처</title>
+  <desc id="desc">서비스 사용자의 아이디어가 Next.js와 Claude를 거쳐 CampaignSpec으로 검증되고, 결정적 렌더러가 랜딩과 카드뉴스를 생성하며, 랜딩 방문자의 예약이 Turnstile과 Supabase를 거쳐 예약자명단과 사람의 판단으로 연결되는 구조</desc>
+  <defs>
+    <linearGradient id="page" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="0.7" stop-color="#FCFBFF"/><stop offset="1" stop-color="#F4F0FF"/></linearGradient>
+    <linearGradient id="purple" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7650E8"/><stop offset="1" stop-color="#9673F2"/></linearGradient>
+    <linearGradient id="purpleSoft" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F8F5FF"/><stop offset="1" stop-color="#EEE8FF"/></linearGradient>
+    <linearGradient id="blueSoft" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F4F8FF"/><stop offset="1" stop-color="#E8F2FF"/></linearGradient>
+    <linearGradient id="mintSoft" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F2FBF8"/><stop offset="1" stop-color="#E5F8F1"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="10" stdDeviation="15" flood-color="#36265D" flood-opacity="0.10"/></filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#8F82AA"/></marker>
+    <marker id="arrowPurple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#7650E8"/></marker>
+    <marker id="arrowMint" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#13966D"/></marker>
+    <style>
+      text { font-family: "Apple SD Gothic Neo", "Nanum Gothic", sans-serif; fill: #191F28; }
+      .brand { font-size: 18px; font-weight: 800; letter-spacing: 3.5px; fill: #7650E8; }
+      .title { font-size: 46px; font-weight: 800; letter-spacing: -2px; }
+      .subtitle { font-size: 20px; font-weight: 500; fill: #6B7684; }
+      .flowLabel { font-size: 16px; font-weight: 800; letter-spacing: 2.2px; fill: #8B95A1; }
+      .cardTitle { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+      .cardBody { font-size: 16px; font-weight: 500; fill: #53606F; }
+      .cardSmall { font-size: 14px; font-weight: 600; fill: #6B7684; }
+      .whiteTitle { font-size: 22px; font-weight: 800; fill: #FFFFFF; }
+      .whiteBody { font-size: 15px; font-weight: 600; fill: #F1ECFF; }
+      .arrowLabel { font-size: 14px; font-weight: 700; fill: #6B7684; }
+      .pill { font-size: 13px; font-weight: 800; }
+    </style>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#page)"/>
+  <circle cx="1790" cy="90" r="180" fill="#EDE7FF" opacity="0.55"/>
+  <circle cx="45" cy="1060" r="210" fill="#EAF4FF" opacity="0.45"/>
+
+  <text x="80" y="67" class="brand">MARKETVALLEY</text>
+  <text x="80" y="122" class="title">시스템 아키텍처</text>
+  <text x="80" y="158" class="subtitle">아이디어를 하나의 검증 광고로 만들고, 실제 예약 반응을 사람의 판단까지 연결합니다.</text>
+  <g transform="translate(1648 62)"><rect width="192" height="58" rx="29" fill="#FFFFFF" stroke="#DED5F8" filter="url(#shadow)"/><path d="M27 18L41 42L57 14" fill="none" stroke="#8969EA" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><text x="71" y="37" font-size="20" font-weight="800">market valley</text></g>
+
+  <text x="80" y="236" class="flowLabel">아이디어에서 광고까지</text>
+  <line x1="80" y1="252" x2="1840" y2="252" stroke="#E5E8EB"/>
+
+  <g filter="url(#shadow)"><rect x="80" y="302" width="250" height="214" rx="26" fill="#FFFFFF" stroke="#DFE3E8"/></g>
+  <circle cx="125" cy="348" r="22" fill="#F3EFFF"/><circle cx="125" cy="341" r="7" fill="none" stroke="#7650E8" stroke-width="2.5"/><path d="M110 364c4-11 27-11 31 0" fill="none" stroke="#7650E8" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="160" y="346" class="cardTitle">서비스 사용자</text><text x="104" y="397" class="cardBody">사업 아이디어와</text><text x="104" y="424" class="cardBody">핵심 특징 입력</text>
+  <rect x="104" y="461" width="102" height="30" rx="15" fill="#F3EFFF"/><text x="123" y="481" class="pill" fill="#6D3FEA">Google 로그인</text>
+
+  <path d="M330 409H388" fill="none" stroke="#7650E8" stroke-width="3" marker-end="url(#arrowPurple)"/>
+
+  <g filter="url(#shadow)"><rect x="398" y="302" width="254" height="214" rx="26" fill="#FFFFFF" stroke="#D9D0F2" stroke-width="2"/></g>
+  <circle cx="432" cy="339" r="17" fill="#191F28"/><text x="465" y="346" class="cardTitle">marketvalley 웹앱</text>
+  <text x="422" y="393" class="cardBody">입력과 생성 흐름 관리</text><text x="422" y="421" class="cardBody">로그인과 요청 확인</text>
+  <rect x="422" y="461" width="98" height="30" rx="15" fill="#F7F8FA"/><text x="438" y="481" class="pill" fill="#53606F">Next.js 16</text><rect x="530" y="461" width="74" height="30" rx="15" fill="#F7F8FA"/><text x="549" y="481" class="pill" fill="#53606F">Vercel</text>
+
+  <path d="M652 409H710" fill="none" stroke="#7650E8" stroke-width="3" marker-end="url(#arrowPurple)"/><text x="667" y="390" class="arrowLabel">생성 요청</text>
+
+  <g filter="url(#shadow)"><rect x="720" y="302" width="254" height="214" rx="26" fill="url(#purpleSoft)" stroke="#D6CBF7"/></g>
+  <circle cx="754" cy="339" r="17" fill="#E8E0FF"/><path d="M746 339l6 6 12-14" fill="none" stroke="#7650E8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><text x="787" y="346" class="cardTitle">AI 광고 기획</text>
+  <text x="744" y="393" class="cardBody">아이디어를 광고 문구로 변환</text><text x="744" y="421" class="cardBody">어울리는 디자인 선택</text>
+  <rect x="744" y="461" width="159" height="30" rx="15" fill="#FFFFFF"/><text x="763" y="481" class="pill" fill="#6D3FEA">Claude Sonnet 4.6</text>
+
+  <path d="M974 409H1032" fill="none" stroke="#7650E8" stroke-width="3" marker-end="url(#arrowPurple)"/><text x="989" y="390" class="arrowLabel">검증</text>
+
+  <g filter="url(#shadow)"><rect x="1042" y="302" width="254" height="214" rx="26" fill="url(#purple)"/></g>
+  <circle cx="1076" cy="339" r="17" fill="#FFFFFF" opacity="0.22"/><path d="M1068 331h16v16h-16zM1072 335h8M1072 340h8" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"/>
+  <text x="1109" y="346" class="whiteTitle">하나의 광고 설계서</text><text x="1066" y="393" class="whiteBody">문구와 디자인을 한곳에 통합</text><text x="1066" y="421" class="whiteBody">채널마다 같은 메시지 유지</text>
+  <rect x="1066" y="461" width="129" height="30" rx="15" fill="#FFFFFF" opacity="0.18"/><text x="1084" y="481" class="pill" fill="#FFFFFF">CampaignSpec</text>
+
+  <path d="M1296 409H1354" fill="none" stroke="#7650E8" stroke-width="3" marker-end="url(#arrowPurple)"/>
+
+  <g filter="url(#shadow)"><rect x="1364" y="302" width="254" height="214" rx="26" fill="url(#mintSoft)" stroke="#CDEBDD"/></g>
+  <circle cx="1398" cy="339" r="17" fill="#DDF5EC"/><path d="M1388 339h20M1398 329v20" stroke="#13966D" stroke-width="2.2" stroke-linecap="round"/><text x="1431" y="346" class="cardTitle">콘텐츠 자동 제작</text>
+  <text x="1388" y="393" class="cardBody">랜딩과 카드뉴스 조판</text><text x="1388" y="421" class="cardBody">화면과 파일을 동일 생성</text>
+  <rect x="1388" y="461" width="100" height="30" rx="15" fill="#FFFFFF"/><text x="1408" y="481" class="pill" fill="#12845F">React/CSS</text>
+
+  <path d="M1618 409H1668" fill="none" stroke="#13966D" stroke-width="3" marker-end="url(#arrowMint)"/>
+
+  <g filter="url(#shadow)"><rect x="1678" y="302" width="162" height="214" rx="26" fill="#FFFFFF" stroke="#DFE3E8"/></g>
+  <text x="1702" y="345" class="cardTitle">광고 산출물</text><rect x="1702" y="374" width="114" height="32" rx="16" fill="#F3EFFF"/><text x="1725" y="395" class="pill" fill="#6D3FEA">공개 랜딩</text><rect x="1702" y="417" width="114" height="32" rx="16" fill="#EAF3FF"/><text x="1719" y="438" class="pill" fill="#2269C8">카드뉴스 5장</text><rect x="1702" y="460" width="114" height="32" rx="16" fill="#E8F8F2"/><text x="1721" y="481" class="pill" fill="#12845F">PNG · ZIP</text>
+
+  <path d="M1169 516V594H930V666" fill="none" stroke="#3182F6" stroke-width="2.5" marker-end="url(#arrow)"/><text x="1183" y="559" class="arrowLabel">저장</text>
+
+  <text x="80" y="626" class="flowLabel">방문자 반응에서 다음 판단까지</text>
+  <line x1="80" y1="642" x2="1840" y2="642" stroke="#E5E8EB"/>
+
+  <g filter="url(#shadow)"><rect x="80" y="692" width="250" height="208" rx="26" fill="#FFFFFF" stroke="#DFE3E8"/></g>
+  <circle cx="125" cy="738" r="22" fill="#E8F8F2"/><path d="M114 738h22M125 727v22M116 730c5 4 13 12 18 17M134 730c-5 4-13 12-18 17" fill="none" stroke="#13966D" stroke-width="2" stroke-linecap="round"/><text x="160" y="736" class="cardTitle">랜딩 방문자</text>
+  <text x="104" y="787" class="cardBody">이름 · 이메일 · 동의</text><text x="104" y="814" class="cardBody">사전예약 제출</text><text x="104" y="863" class="cardSmall">/p/[slug]</text>
+
+  <path d="M330 796H412" fill="none" stroke="#13966D" stroke-width="3" marker-end="url(#arrowMint)"/>
+
+  <g filter="url(#shadow)"><rect x="422" y="692" width="236" height="208" rx="26" fill="url(#mintSoft)" stroke="#CDEBDD"/></g>
+  <circle cx="456" cy="729" r="17" fill="#DDF5EC"/><path d="M456 718v22M445 729h22" stroke="#13966D" stroke-width="2.2" stroke-linecap="round"/><text x="489" y="736" class="cardTitle">예약 보호</text>
+  <text x="446" y="783" class="cardBody">실제 방문자의 요청 확인</text><text x="446" y="811" class="cardBody">자동화된 제출 차단</text><rect x="446" y="850" width="153" height="30" rx="15" fill="#FFFFFF"/><text x="464" y="870" class="pill" fill="#12845F">Cloudflare Turnstile</text>
+
+  <path d="M658 796H740" fill="none" stroke="#3182F6" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <g filter="url(#shadow)"><rect x="750" y="676" width="360" height="240" rx="28" fill="url(#blueSoft)" stroke="#CFE1F7"/></g>
+  <circle cx="789" cy="718" r="18" fill="#DDEBFF"/><path d="M779 714h20v15h-20zM783 710h12" fill="none" stroke="#2269C8" stroke-width="2" stroke-linejoin="round"/><text x="824" y="725" class="cardTitle">로그인·데이터 저장</text>
+  <text x="778" y="770" class="cardBody">Google 로그인 정보</text><text x="778" y="798" class="cardBody">광고와 예약자명단 저장</text><text x="778" y="826" class="cardBody">사용자별 데이터 분리</text><rect x="778" y="862" width="131" height="30" rx="15" fill="#FFFFFF"/><text x="795" y="882" class="pill" fill="#2269C8">Supabase</text>
+
+  <path d="M1110 796H1192" fill="none" stroke="#7650E8" stroke-width="3" marker-end="url(#arrowPurple)"/>
+
+  <g filter="url(#shadow)"><rect x="1202" y="676" width="638" height="240" rx="28" fill="#FFFFFF" stroke="#D9D0F2" stroke-width="2"/></g>
+  <rect x="1230" y="704" width="104" height="30" rx="15" fill="#F3EFFF"/><text x="1250" y="724" class="pill" fill="#6D3FEA">결과 리포트</text><text x="1230" y="774" class="cardTitle">실제 예약 반응을 한곳에서 확인</text><text x="1230" y="808" class="cardBody">예약자 수 · 마스킹 이메일 · 접수 추이</text>
+  <line x1="1570" y1="714" x2="1570" y2="878" stroke="#E2DDF2"/><text x="1602" y="757" class="cardSmall">사람의 최종 판단</text><rect x="1602" y="782" width="66" height="36" rx="18" fill="#F3EFFF"/><text x="1621" y="806" class="pill" fill="#6D3FEA">계속</text><rect x="1678" y="782" width="66" height="36" rx="18" fill="#EAF3FF"/><text x="1697" y="806" class="pill" fill="#2269C8">수정</text><rect x="1754" y="782" width="62" height="36" rx="18" fill="#F7F8FA"/><text x="1772" y="806" class="pill" fill="#53606F">보류</text><text x="1602" y="855" class="cardBody">판단은 자동화하지 않음</text>
+
+  <path d="M1520 916V966H205V900" fill="none" stroke="#C5BADD" stroke-width="2" stroke-dasharray="8 8" marker-end="url(#arrow)"/><text x="770" y="988" class="arrowLabel">예약 결과를 보고 사람이 다음 행동을 결정</text>
+  <text x="1840" y="1038" text-anchor="end" class="cardSmall">핵심 런타임 구성만 표시 · 2026.08.26</text>
+</svg>
