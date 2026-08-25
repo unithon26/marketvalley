@@ -16,6 +16,9 @@ test-results/
 .env.*.local
 !.env.example
 
+# Supabase CLI local link and runtime metadata
+supabase/.temp/
+
 # editors and operating systems
 .DS_Store
 *.swp

@@ -1,5 +1,46 @@
 # Troubleshooting
 
+## 2026-08-25 — Supabase CLI dump dry-run이 임시 DB 자격증명을 출력함
+
+### 맥락과 기대 동작
+
+운영 migration 적용 전 기존 `public` schema와 충돌 가능성을 읽기 전용으로 확인하려 했다.
+`supabase db dump --linked --schema public --dry-run`은 실행될 명령만 보여주고 연결 자격증명은
+노출하지 않을 것으로 예상했다.
+
+### 실제 동작과 영향
+
+CLI는 `pg_dump` shell script와 함께 `cli_login_postgres` 임시 역할의 접속 환경변수를 터미널에
+출력했다. 값은 파일, Git, 외부 검색, 문서에 저장하지 않았고 실제 service key나 프로젝트의
+영구 `postgres` 비밀번호는 아니었다. 운영 데이터 변경 전 발견했다.
+
+### 재현·증거와 근본 원인
+
+linked 프로젝트에서 해당 명령을 실행하면 CLI가 실제 dump 대신 `PGHOST`, `PGUSER`,
+`PGPASSWORD`를 포함한 실행 script를 출력한다. `--dry-run`이 DB schema의 읽기 전용 미리보기가
+아니라 내부 `pg_dump` command 전체를 보여주는 동작임을 명령 출력으로 확인했다.
+
+### 대응과 선택
+
+- 프로젝트를 즉시 unlink 후 relink해 임시 login role 자격증명을 재발급했다.
+- 값이 다른 명령, 파일, 로그 또는 외부 도구로 전달되지 않았는지 확인했다.
+- 영구 DB 비밀번호 회전은 실제로 노출된 자격증명이 아니므로 불필요한 운영 변경으로 판단해
+  수행하지 않았다.
+- schema 사전 확인은 `migration list`, `inspect db table-stats`, `db lint --linked`와
+  `db push --dry-run`으로 대체했다. 이후 명령은 자격증명 값을 출력하지 않았다.
+
+### 검증과 회귀 방지
+
+재연결 뒤 migration 적용, 원격 lint, 직접 RLS, 실제 repository adapter와 production HTTP 종단
+검증이 모두 통과했다. Supabase CLI link metadata는 `supabase/.temp/`로 Git에서 제외했다.
+운영 세션을 캡처하거나 공유하는 환경에서는 `db dump --dry-run`을 사용하지 않는다.
+
+### 남은 위험과 면접 질문
+
+기존 터미널 출력은 소급 삭제할 수 없지만 임시 credential은 재발급했고 저장·커밋되지 않았다.
+왜 전체 DB 비밀번호를 회전하지 않았는가? 노출된 값은 CLI가 생성한 임시 login role 값이었고,
+영구 credential을 바꾸면 불필요한 서비스 영향만 추가되기 때문이다.
+
 ## 2026-08-25 — 예약 API의 same-origin 검사가 정상 `127.0.0.1` 요청을 거절함
 
 ### 맥락과 기대 동작
