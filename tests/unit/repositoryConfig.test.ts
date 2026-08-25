@@ -11,6 +11,9 @@ const liveEnvironment = {
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
   SUPABASE_SECRET_KEY: "sb_secret_test",
   SIGNAL_HASH_SECRET: "0123456789abcdef0123456789abcdef",
+  NEXT_PUBLIC_SITE_URL: "https://marketvalley.example.com",
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: "turnstile-site-test-key",
+  TURNSTILE_SECRET_KEY: "turnstile-secret-test-key",
 };
 
 describe("campaign repository config", () => {
@@ -33,6 +36,15 @@ describe("campaign repository config", () => {
     expect(() => resolveCampaignRepositoryMode({
       ...liveEnvironment,
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: undefined,
+    })).toThrow(CampaignRepositoryConfigError);
+    expect(() => resolveCampaignRepositoryMode({
+      ...liveEnvironment,
+      NEXT_PUBLIC_SITE_URL: "http://marketvalley.example.com",
+    })).toThrow(CampaignRepositoryConfigError);
+    expect(() => resolveCampaignRepositoryMode({
+      ...liveEnvironment,
+      RESERVATION_CAMPAIGN_MINUTE_LIMIT: "121",
+      RESERVATION_GLOBAL_MINUTE_LIMIT: "120",
     })).toThrow(CampaignRepositoryConfigError);
   });
 });

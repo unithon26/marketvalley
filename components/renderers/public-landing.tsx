@@ -1,12 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import Script from "next/script";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CampaignSpec } from "@/lib/contracts/campaign";
 import type { ReservationUtm } from "@/lib/contracts/repository";
 import { CheckIcon } from "@/components/icons";
 import { campaignThemeStyle } from "@/lib/brand-theme";
 
 const reservationCtaLabel = "사전예약하기";
+
+type TurnstileApi = {
+  render: (container: HTMLElement, options: {
+    sitekey: string;
+    action: string;
+    language: string;
+    theme: "light";
+    callback: (token: string) => void;
+    "error-callback": () => void;
+    "expired-callback": () => void;
+    "timeout-callback": () => void;
+    "unsupported-callback": () => void;
+  }) => string;
+  reset: (widgetId: string) => void;
+  remove: (widgetId: string) => void;
+};
+
+declare global {
+  interface Window {
+    turnstile?: TurnstileApi;
+  }
+}
 
 function isReservationResponse(value: unknown): value is { alreadyReserved: boolean } {
   return typeof value === "object"
@@ -137,7 +160,15 @@ function LandingIntro({ spec }: { spec: CampaignSpec }) {
   );
 }
 
-export function PublicLanding({ spec, campaignId }: { spec: CampaignSpec; campaignId: string }) {
+export function PublicLanding({
+  spec,
+  campaignId,
+  turnstileSiteKey,
+}: {
+  spec: CampaignSpec;
+  campaignId: string;
+  turnstileSiteKey?: string;
+}) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [consent, setConsent] = useState(false);
@@ -145,8 +176,66 @@ export function PublicLanding({ spec, campaignId }: { spec: CampaignSpec; campai
   const [duplicate, setDuplicate] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [captchaError, setCaptchaError] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const turnstileContainer = useRef<HTMLDivElement>(null);
+  const turnstileWidgetId = useRef<string | null>(null);
   const reportPath = `/campaigns/${encodeURIComponent(campaignId)}`;
-  const canSubmit = name.trim() !== "" && email.trim() !== "" && consent;
+  const captchaReady = !turnstileSiteKey || turnstileToken !== "";
+  const canSubmit = name.trim() !== "" && email.trim() !== "" && consent && captchaReady;
+
+  const renderTurnstile = useCallback(() => {
+    if (
+      !turnstileSiteKey
+      || !turnstileContainer.current
+      || !window.turnstile
+      || turnstileWidgetId.current
+    ) return;
+    const resetExpiredWidget = () => {
+      setTurnstileToken("");
+      setCaptchaError("확인 시간이 지나 다시 확인해주세요.");
+      const widgetId = turnstileWidgetId.current;
+      if (widgetId && window.turnstile) window.turnstile.reset(widgetId);
+    };
+    turnstileWidgetId.current = window.turnstile.render(turnstileContainer.current, {
+      sitekey: turnstileSiteKey,
+      action: "reservation",
+      language: "ko",
+      theme: "light",
+      callback: (token) => {
+        setTurnstileToken(token);
+        setCaptchaError("");
+        setError("");
+      },
+      "error-callback": () => {
+        setTurnstileToken("");
+        setCaptchaError("자동 제출 방지 확인을 불러오지 못했어요.");
+      },
+      "expired-callback": resetExpiredWidget,
+      "timeout-callback": resetExpiredWidget,
+      "unsupported-callback": () => {
+        setTurnstileToken("");
+        setCaptchaError("현재 브라우저에서는 자동 제출 방지 확인을 사용할 수 없어요. 최신 브라우저에서 다시 시도해주세요.");
+      },
+    });
+  }, [turnstileSiteKey]);
+
+  useEffect(() => {
+    renderTurnstile();
+    return () => {
+      if (turnstileWidgetId.current && window.turnstile) {
+        window.turnstile.remove(turnstileWidgetId.current);
+        turnstileWidgetId.current = null;
+      }
+    };
+  }, [renderTurnstile]);
+
+  function resetTurnstile() {
+    setTurnstileToken("");
+    if (turnstileWidgetId.current && window.turnstile) {
+      window.turnstile.reset(turnstileWidgetId.current);
+    }
+  }
 
   async function submit() {
     if (!canSubmit || submitting) return;
@@ -161,6 +250,7 @@ export function PublicLanding({ spec, campaignId }: { spec: CampaignSpec; campai
           name: name.trim(),
           email: email.trim(),
           consent: true,
+          turnstileToken: turnstileSiteKey ? turnstileToken : undefined,
           utm: currentUtm(),
         }),
       });
@@ -176,6 +266,7 @@ export function PublicLanding({ spec, campaignId }: { spec: CampaignSpec; campai
 
       setSubmitted(true);
     } catch {
+      resetTurnstile();
       setError("예약을 저장하지 못했어요. 잠시 후 다시 시도해주세요.");
     } finally {
       setSubmitting(false);
@@ -183,6 +274,16 @@ export function PublicLanding({ spec, campaignId }: { spec: CampaignSpec; campai
   }
 
   return (
+    <>
+      {turnstileSiteKey && (
+        <Script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+          strategy="afterInteractive"
+          onLoad={renderTurnstile}
+          onReady={renderTurnstile}
+          onError={() => setCaptchaError("자동 제출 방지 확인을 불러오지 못했어요.")}
+        />
+      )}
     <div
       className="public-landing"
       style={campaignThemeStyle(spec.brand)}
@@ -268,6 +369,19 @@ export function PublicLanding({ spec, campaignId }: { spec: CampaignSpec; campai
                     />
                     이름과 이메일 수집에 동의합니다
                   </label>
+                  {turnstileSiteKey && (
+                    <>
+                      <div ref={turnstileContainer} aria-label="자동 제출 방지 확인" />
+                      {captchaError && (
+                        <p className="signal-error" role="alert">
+                          {captchaError}{" "}
+                          <button type="button" onClick={() => window.location.reload()}>
+                            다시 불러오기
+                          </button>
+                        </p>
+                      )}
+                    </>
+                  )}
                 </div>
                 {error && <p className="signal-error" role="alert">{error}</p>}
                 <button className="landing-primary-button full" type="button" disabled={!canSubmit || submitting} onClick={submit}>{submitting ? "예약 접수 중..." : reservationCtaLabel}</button>
@@ -284,5 +398,6 @@ export function PublicLanding({ spec, campaignId }: { spec: CampaignSpec; campai
 
       <footer className="landing-footer"><strong>{spec.project.name}</strong><p>이 페이지는 marketvalley로 만든 발표용 광고 시안입니다.</p><a href="/">Made with marketvalley</a></footer>
     </div>
+    </>
   );
 }

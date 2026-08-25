@@ -16,6 +16,7 @@ describe("campaign prompts", () => {
     expect(FIXED_CONTENT_OWNERSHIP.map((group) => group.owner)).toContain("figma_renderer");
     expect(FIXED_CONTENT_OWNERSHIP.map((group) => group.owner)).toContain("server");
     expect(fixedTargets).toContain("validation.decisionRule");
+    expect(fixedTargets).toContain("validation.invalidationEvidence");
     expect(fixedTargets).toContain("brand.primaryColor");
     expect(fixedTargets).toContain("project.language");
     expect(fixedTargets).toContain("validation.signal.options[].id (legacy export compatibility)");
@@ -43,6 +44,13 @@ describe("campaign prompts", () => {
     expect(prompt).toContain("익명·개인정보 미수집");
     expect(prompt).toContain("충돌하는 표현은 복사하지 말고");
     expect(prompt).toContain("positive, neutral, negative 순서");
+    expect(prompt).toContain("임의의 기간·비율·응답 수를 만들지 않는다");
+    expect(prompt).toContain("예약자명단을 보고 다음 실험·개설·판매 여부를 판단");
+    expect(prompt).toContain("가격, 할인, 환불, 배송, 결제");
+    expect(prompt).toContain("고객 확보, 신뢰 상승, 판단·관리 수월");
+    expect(prompt).toContain("고객 혼동과 문의가 늘어난다");
+    expect(prompt).toContain("입력에 그런 주장이 없으면 빈 배열");
+    expect(prompt).toContain("현재 정보 불일치나 고객 혼동");
     expect(prompt).not.toContain("개인정보 미수집 방식으로 작성");
   });
 
@@ -67,6 +75,6 @@ describe("campaign prompts", () => {
   });
 
   it("배포 뒤 결과 추적에 사용할 안정된 prompt version을 제공한다", () => {
-    expect(CAMPAIGN_PROMPT_VERSION).toBe("campaign-spec-v2-reservations-flat-v2");
+    expect(CAMPAIGN_PROMPT_VERSION).toBe("campaign-spec-v2-reservations-flat-v9");
   });
 });

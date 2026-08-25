@@ -7,8 +7,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "node scripts/start-standalone.mjs",
     "preview:anthropic": "tsx scripts/preview-anthropic-generation.ts",
+    "eval:anthropic": "tsx scripts/evaluate-anthropic-quality.ts",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run --passWithNoTests",

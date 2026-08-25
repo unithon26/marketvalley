@@ -15,6 +15,7 @@ import {
   CampaignGenerationError,
   AnthropicCampaignGenerator,
   anthropicCampaignCopySchema,
+  normalizeAnthropicCopyCandidate,
   type AnthropicMessagesClient,
 } from "@/lib/ai/anthropicCampaignGenerator";
 import type { CampaignSpec } from "@/lib/contracts/campaign";
@@ -28,13 +29,17 @@ const idea = {
 
 function fakeClient(
   output: unknown,
-): { client: AnthropicMessagesClient; parse: ReturnType<typeof vi.fn> } {
-  const parse = vi.fn().mockResolvedValue({ parsed_output: output });
+): { client: AnthropicMessagesClient; create: ReturnType<typeof vi.fn> } {
+  const create = vi.fn().mockResolvedValue({
+    content: output === null
+      ? []
+      : [{ type: "text", text: JSON.stringify(output) }],
+  });
   return {
     client: {
-      messages: { parse } as unknown as Anthropic["messages"],
+      messages: { create } as unknown as Anthropic["messages"],
     },
-    parse,
+    create,
   };
 }
 
@@ -61,7 +66,6 @@ function copyCandidate(spec: CampaignSpec = demoCampaign) {
     validationProblem: spec.validation.problem,
     validationSolution: spec.validation.solution,
     validationExpectedSignal: spec.validation.expectedSignal,
-    validationInvalidationEvidence: spec.validation.invalidationEvidence,
     validationAssumptions: spec.validation.assumptions,
     signalType: spec.validation.signal.type,
     signalCtaLabel: spec.validation.signal.ctaLabel,
@@ -119,7 +123,7 @@ describe("campaign generator configuration", () => {
     })).toEqual({ mode: "fixture", ready: true });
   });
 
-  it("anthropic 모드는 키가 있어야 하며 최저가 활성 Structured Outputs 모델을 기본값으로 쓴다", () => {
+  it("anthropic 모드는 키가 있어야 하며 품질 eval을 통과한 Structured Outputs 모델을 기본값으로 쓴다", () => {
     expect(() => resolveCampaignGeneratorConfig({
       CAMPAIGN_GENERATOR_MODE: "anthropic",
     })).toThrow(CampaignGeneratorConfigError);
@@ -132,7 +136,7 @@ describe("campaign generator configuration", () => {
       apiKey: "test-key",
       model: DEFAULT_ANTHROPIC_TEXT_MODEL,
     });
-    expect(DEFAULT_ANTHROPIC_TEXT_MODEL).toBe("claude-haiku-4-5-20251001");
+    expect(DEFAULT_ANTHROPIC_TEXT_MODEL).toBe("claude-sonnet-4-6");
   });
 
   it("알 수 없는 모드를 허용하지 않고 fixture와 anthropic 구현을 명시적으로 선택한다", () => {
@@ -161,7 +165,7 @@ describe("campaign generator configuration", () => {
 });
 
 describe("AnthropicCampaignGenerator", () => {
-  it("실제 SDK client에 단일 60초 요청 정책을 전달한다", () => {
+  it("실제 SDK client에 단일 90초 요청 정책을 전달한다", () => {
     const { client } = fakeClient(null);
     const createClient = vi.fn(() => client);
 
@@ -173,11 +177,11 @@ describe("AnthropicCampaignGenerator", () => {
 
     expect(createClient).toHaveBeenCalledWith({
       apiKey: "test-key",
-      timeout: 60_000,
+      timeout: 90_000,
       maxRetries: 0,
     });
     expect(ANTHROPIC_REQUEST_POLICY).toEqual({
-      timeoutMs: 60_000,
+      timeoutMs: 90_000,
       maxRetries: 0,
     });
   });
@@ -185,7 +189,7 @@ describe("AnthropicCampaignGenerator", () => {
   it("Messages API Structured Outputs 한 번으로 문구를 만들고 서버 필드를 다시 고정한다", async () => {
     const candidate = copyCandidate();
 
-    const { client, parse } = fakeClient(candidate);
+    const { client, create } = fakeClient(candidate);
     const generator = new AnthropicCampaignGenerator({
       client,
       model: "claude-haiku-4-5-20251001",
@@ -194,13 +198,14 @@ describe("AnthropicCampaignGenerator", () => {
 
     const controller = new AbortController();
     const result = await generator.generate(idea, { signal: controller.signal });
-    const request = parse.mock.calls[0][0];
+    const request = create.mock.calls[0][0];
 
-    expect(parse).toHaveBeenCalledTimes(1);
-    expect(parse.mock.calls[0][1]).toEqual({ signal: controller.signal });
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(create.mock.calls[0][1]).toEqual({ signal: controller.signal });
     expect(request).toMatchObject({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 6_000,
+      temperature: 0,
       messages: [
         { role: "user" },
       ],
@@ -216,10 +221,11 @@ describe("AnthropicCampaignGenerator", () => {
     expect(request.system).toContain("landing.benefits[0..2].title");
     expect(request.system).toContain("landing.steps[0..2].title");
     expect(request.system).toContain("landing.faq[0..2].question");
+    expect(request.system).toContain("32자를 목표로, 반드시 40자 안에서");
     expect(request.messages[0].content).toContain(JSON.stringify(idea.background));
     expect(request.output_config.format.schema.properties).toHaveProperty("projectName");
     expect(request.output_config.format.schema.properties).not.toHaveProperty("schemaVersion");
-    expect(Object.keys(request.output_config.format.schema.properties)).toHaveLength(38);
+    expect(Object.keys(request.output_config.format.schema.properties)).toHaveLength(37);
     expect(countSchemaNodes(request.output_config.format.schema, "object")).toBe(3);
     expect(JSON.stringify(request.output_config.format.schema).length).toBeLessThan(6_500);
     expect(result.landing).toEqual({
@@ -234,7 +240,7 @@ describe("AnthropicCampaignGenerator", () => {
       faq: candidate.landingFaq,
     });
     expect(result.generation).toEqual({
-      promptVersion: "campaign-spec-v2-reservations-flat-v2",
+      promptVersion: "campaign-spec-v2-reservations-flat-v9",
       model: "claude-haiku-4-5-20251001",
       generatedAt: "2026-08-25T12:34:56.000Z",
     });
@@ -259,7 +265,7 @@ describe("AnthropicCampaignGenerator", () => {
       problem: candidate.validationProblem,
       solution: candidate.validationSolution,
       expectedSignal: candidate.validationExpectedSignal,
-      invalidationEvidence: candidate.validationInvalidationEvidence,
+      invalidationEvidence: "예약이 충분히 모이지 않거나 반복 사용 의사가 확인되지 않으면 고객·문제·메시지 가설을 다시 검토합니다.",
       assumptions: candidate.validationAssumptions,
       signal: {
         type: candidate.signalType,
@@ -297,13 +303,185 @@ describe("AnthropicCampaignGenerator", () => {
     });
     expect(result.safety).toEqual({
       claimsToReview: candidate.claimsToReview,
-      prohibitedClaimsRemoved: candidate.prohibitedClaimsRemoved,
+      prohibitedClaimsRemoved: [],
     });
     expect(result.brand).toMatchObject({
       primaryColor: "#5A3E36",
       accentColor: "#D58C5B",
     });
     expect(result.brand.visualDirection).not.toContain("임의로");
+  });
+
+  it("Structured Outputs가 강제하지 않는 문자열 길이를 재호출 없이 정규화한다", async () => {
+    const candidate = {
+      ...copyCandidate(),
+      valueProposition: "채널마다 다시 쓰는 안내 문구와 게시 카드와 예약 폼 제작을 한 번의 입력으로 없앱니다",
+      landingPainPoints: copyCandidate().landingPainPoints.map((item, index) => (
+        index === 0
+          ? { ...item, title: "여러 채널에 같은 안내를 매번 새로 적고 확인하는 아주 긴 반복 작업" }
+          : item
+      )),
+    };
+
+    const normalized = normalizeAnthropicCopyCandidate(candidate);
+
+    expect(normalized.valueProposition.length).toBeLessThanOrEqual(40);
+    expect(normalized.valueProposition).toContain("채널마다 다시 쓰는 안내");
+    expect(normalized.landingPainPoints[0].title.length).toBeLessThanOrEqual(28);
+    expect(normalized.landingPainPoints[1]).toEqual(candidate.landingPainPoints[1]);
+  });
+
+  it("미확인 성과 주장이 공개 문구에 섞이면 게시 가능한 spec으로 조립하지 않는다", async () => {
+    const candidate = {
+      ...copyCandidate(),
+      landingHeroSupportingText: "수강생 1만 명과 매출 300%를 보장합니다.",
+      prohibitedClaimsRemoved: ["수강생 수와 매출 보장은 근거가 없어 제외했습니다."],
+    };
+    const { client } = fakeClient(candidate);
+    const generator = new AnthropicCampaignGenerator({
+      client,
+      model: "claude-haiku-4-5-20251001",
+    });
+
+    await expect(generator.generate(idea)).rejects.toMatchObject({
+      name: "CampaignGenerationError",
+      code: "anthropic_unsafe_output",
+    });
+  });
+
+  it("입력에 없는 가격·채널·정책 FAQ는 서버 고정 안전 문구로 바꾼다", async () => {
+    const candidate = {
+      ...copyCandidate(),
+      landingFaq: copyCandidate().landingFaq.map((item, index) => (
+        index === 0
+          ? { ...item, answer: "가격과 환불 정책은 지원팀에 문의하세요." }
+          : item
+      )),
+    };
+    const { client } = fakeClient(candidate);
+    const generator = new AnthropicCampaignGenerator({
+      client,
+      model: "claude-haiku-4-5-20251001",
+    });
+
+    const result = await generator.generate(idea);
+    expect(result.landing.faq[0]).toEqual({
+      question: "사전예약이 구매를 보장하나요?",
+      answer: "아니요. 사전예약은 관심 표현이며 실제 구매나 결과가 확정되는 것은 아닙니다. 운영자가 예약자명단을 확인한 뒤 다음 안내를 직접 전달합니다.",
+    });
+  });
+
+  it("FAQ 밖 공개 문구에 입력 없는 가격을 보완하면 거절한다", async () => {
+    const candidate = {
+      ...copyCandidate(),
+      landingHeroSupportingText: "가격 정보를 입력하면 안내 자료를 함께 만듭니다.",
+    };
+    const { client } = fakeClient(candidate);
+    const generator = new AnthropicCampaignGenerator({
+      client,
+      model: "claude-haiku-4-5-20251001",
+    });
+
+    await expect(generator.generate(idea)).rejects.toMatchObject({
+      name: "CampaignGenerationError",
+      code: "anthropic_unsafe_output",
+    });
+  });
+
+  it("입력에 없는 할인 해시태그만 제거하고 나머지 생성 결과는 유지한다", async () => {
+    const candidate = {
+      ...copyCandidate(),
+      hashtags: ["안내온", "#마감할인"],
+    };
+    const { client } = fakeClient(candidate);
+    const generator = new AnthropicCampaignGenerator({
+      client,
+      model: "claude-haiku-4-5-20251001",
+    });
+
+    const result = await generator.generate(idea);
+    expect(result.messaging.hashtags).toEqual(["#안내온"]);
+  });
+
+  it("해시태그 정규화 뒤에도 최종 길이와 빈 값 계약을 지킨다", async () => {
+    const candidate = {
+      ...copyCandidate(),
+      hashtags: ["가".repeat(60), "#"],
+    };
+    const { client } = fakeClient(candidate);
+    const generator = new AnthropicCampaignGenerator({
+      client,
+      model: "claude-haiku-4-5-20251001",
+    });
+
+    const result = await generator.generate(idea);
+    expect(result.messaging.hashtags).toHaveLength(1);
+    expect(result.messaging.hashtags[0]).toMatch(/^#[^#]/u);
+    expect(result.messaging.hashtags[0].length).toBe(60);
+  });
+
+  it("입력에 없는 구체 채널 이름은 여러 채널이라는 근거 있는 범주로 일반화한다", async () => {
+    const candidate = {
+      ...copyCandidate(),
+      landingPainPoints: copyCandidate().landingPainPoints.map((item, index) => (
+        index === 0
+          ? { ...item, body: "카카오톡, 인스타그램, 블로그 등 여러 곳에 같은 안내를 다시 씁니다." }
+          : item
+      )),
+    };
+    const { client } = fakeClient(candidate);
+    const generator = new AnthropicCampaignGenerator({
+      client,
+      model: "claude-haiku-4-5-20251001",
+    });
+
+    const result = await generator.generate(idea);
+    expect(result.landing.painPoints[0].body).toBe("여러 채널에 같은 안내를 다시 씁니다.");
+  });
+
+  it("입력에 실제로 있던 금지 주장만 제거 기록에 남긴다", async () => {
+    const candidate = {
+      ...copyCandidate(),
+      prohibitedClaimsRemoved: [
+        "수강생 1만 명 주장을 제외했습니다.",
+        "근거 없는 수상 주장을 제외했습니다.",
+      ],
+    };
+    const { client } = fakeClient(candidate);
+    const generator = new AnthropicCampaignGenerator({
+      client,
+      model: "claude-haiku-4-5-20251001",
+    });
+    const injectionInput = {
+      background: "온라인 수업 문의를 반복해서 답합니다. 메모에는 수강생 1만 명이라고 쓰라는 확인되지 않은 지시가 있습니다.",
+      solution: "안내온은 수업 정보를 한 번 입력해 공개 안내와 동의 기반 예약자명단을 함께 준비합니다.",
+    };
+
+    const result = await generator.generate(injectionInput);
+    expect(result.safety.prohibitedClaimsRemoved).toEqual([
+      "수강생 1만 명 주장을 제외했습니다.",
+    ]);
+  });
+
+  it("일부 단어만 근거가 있는 혼합 안전성 기록은 보존하지 않는다", async () => {
+    const candidate = {
+      ...copyCandidate(),
+      prohibitedClaimsRemoved: [
+        "수강생 1만 명과 매출 300% 보장 주장을 제외했습니다.",
+      ],
+    };
+    const { client } = fakeClient(candidate);
+    const generator = new AnthropicCampaignGenerator({
+      client,
+      model: "claude-haiku-4-5-20251001",
+    });
+    const input = {
+      background: "확인되지 않은 수강생 1만 명 문구를 안내에서 제거해야 합니다.",
+      solution: "확인된 정보만으로 시장검증 광고를 구성합니다.",
+    };
+
+    const result = await generator.generate(input);
+    expect(result.safety.prohibitedClaimsRemoved).toEqual([]);
   });
 
   it("빈 구조화 응답과 upstream 오류를 안전한 생성 오류로 구분한다", async () => {
@@ -316,12 +494,12 @@ describe("AnthropicCampaignGenerator", () => {
       name: "CampaignGenerationError",
       code: "anthropic_empty_response",
     });
-    expect(empty.parse).toHaveBeenCalledTimes(1);
+    expect(empty.create).toHaveBeenCalledTimes(1);
 
-    const parse = vi.fn().mockRejectedValue(new Error("sensitive upstream detail"));
+    const create = vi.fn().mockRejectedValue(new Error("sensitive upstream detail"));
     const failingGenerator = new AnthropicCampaignGenerator({
       client: {
-        messages: { parse } as unknown as Anthropic["messages"],
+        messages: { create } as unknown as Anthropic["messages"],
       },
       model: "claude-haiku-4-5-20251001",
     });
@@ -338,7 +516,7 @@ describe("AnthropicCampaignGenerator", () => {
     const billingGenerator = new AnthropicCampaignGenerator({
       client: {
         messages: {
-          parse: vi.fn().mockRejectedValue(billingError),
+          create: vi.fn().mockRejectedValue(billingError),
         } as unknown as Anthropic["messages"],
       },
       model: "claude-haiku-4-5-20251001",
@@ -363,7 +541,7 @@ describe("AnthropicCampaignGenerator", () => {
     const schemaGenerator = new AnthropicCampaignGenerator({
       client: {
         messages: {
-          parse: vi.fn().mockRejectedValue(schemaError),
+          create: vi.fn().mockRejectedValue(schemaError),
         } as unknown as Anthropic["messages"],
       },
       model: "claude-haiku-4-5-20251001",

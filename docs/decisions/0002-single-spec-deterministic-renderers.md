@@ -1,6 +1,8 @@
 # ADR-0002: 단일 스펙과 결정적 렌더러를 사용한다
 
 상태: 채택
+
+배포 대상에 관한 결정은 [ADR-0019](0019-self-host-on-oracle-with-verified-ssh-releases.md), 생성 공급자는 [ADR-0017](0017-replace-openai-with-claude-haiku.md)로 대체했다. 단일 앱·단일 spec과 snapshot 공개 경계는 유지한다.
 날짜: 2026-08-24
 
 ## 배경
@@ -10,12 +12,12 @@
 ## 결정
 
 - 단일 Next.js App Router 애플리케이션으로 화면과 서버 API를 구성한다.
-- Vercel에는 이 애플리케이션 하나만 배포한다. 캠페인 공개는 새 서버를 배포하는 작업이 아니라 Supabase snapshot과 slug를 생성해 기존 `/p/[slug]` 경로에서 읽는 작업이다.
-- OpenAI Responses API와 Structured Outputs로 하나의 `CampaignSpec`을 만든다.
+- 운영 환경에는 이 애플리케이션 하나만 배포한다. 캠페인 공개는 새 서버를 배포하는 작업이 아니라 Supabase snapshot과 slug를 생성해 기존 `/p/[slug]` 경로에서 읽는 작업이다.
+- Anthropic Messages API와 Structured Outputs로 하나의 `CampaignSpec`을 만든다.
 - 랜딩과 캐러셀은 같은 spec을 읽는 React 렌더러로 구현한다.
 - 프로젝트명, 가치 제안, CTA처럼 채널 간 공유되는 문구는 결과물마다 복제하지 않고 각 렌더러가 같은 source field를 직접 참조한다.
 - 카드의 모든 글자는 HTML/CSS로 조판하고, 이미지 모델은 선택적 텍스트 없는 배경에만 사용한다.
-- 초안은 localStorage, 공개 캠페인과 익명 선택형 응답은 Supabase에 저장한다.
+- 초안은 localStorage, 공개 캠페인과 동의 기반 예약자명단은 Supabase에 저장한다.
 - 외부 API 없이도 같은 렌더러로 동작하는 fixture 기반 데모 모드를 유지한다.
 - 생성기와 저장소를 인터페이스 뒤에 두어 live adapter와 fixture adapter를 같은 흐름에서 교체한다.
 
@@ -44,4 +46,4 @@
 - 디자이너의 템플릿이 그대로 실제 산출물이 된다.
 - 모든 채널이 공유 source field를 직접 읽으므로 승인된 결과의 메시지가 일관된다.
 - 자유 배치와 다양한 디자인 테마는 MVP에서 포기한다.
-- Supabase와 OpenAI 모두 실패 가능한 외부 의존성이므로 데모 fixture가 필수다.
+- Supabase와 Anthropic 모두 실패 가능한 외부 의존성이므로 데모 fixture가 필수다.

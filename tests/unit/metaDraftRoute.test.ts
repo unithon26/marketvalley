@@ -114,6 +114,8 @@ function environment(): Record<string, string> {
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
     SUPABASE_SECRET_KEY: "sb_secret_test",
     SIGNAL_HASH_SECRET: "signal-hash-secret-at-least-32-bytes-long",
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: "turnstile-site-key-test",
+    TURNSTILE_SECRET_KEY: "turnstile-secret-key-test",
     META_AD_ACCOUNT_ID: "1234567890",
     META_PAGE_ID: "2345678901",
     META_INSTAGRAM_ACTOR_ID: "3456789012",

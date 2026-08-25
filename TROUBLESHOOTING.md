@@ -1,5 +1,118 @@
 # Troubleshooting
 
+## 2026-08-25 — 배포 계약 CI가 Compose 타입과 provider 플랫폼을 다르게 가정함
+
+### 맥락·기대·실제 영향
+
+메인 source CI는 운영 Compose 설정의 앱 2GiB·proxy 256MiB 상한과 OCI Terraform provider를 같은 입력으로 검사해야 했다. 통합 커밋 `e04d4b9`의 앱 lint·typecheck·164개 단위 테스트·production build·21개 Chromium E2E는 통과했지만 GitHub Actions run `32857239964`는 Compose 계약에서 중단됐다. 이를 고친 run `32857963223`은 Compose를 통과한 뒤 Terraform provider checksum에서 중단돼 image smoke가 실행되지 않았다. production 배포 전 CI에서 발견돼 사용자 트래픽이나 서버 영향은 없다.
+
+### 재현·증거·원인
+
+같은 Compose 5.5 렌더러로 `config --format json`을 실행하면 `cpus`는 숫자지만 `mem_limit`과 `memswap_limit`은 바이트 값의 문자열로 반환됐다. CI의 `jq`는 이 값을 JSON 숫자와 직접 비교하고 오류 출력도 버려 `false`와 exit 1만 만들었다. Compose 파일의 실제 상한은 올바르고 검증기의 JSON 타입 가정이 잘못됐다. owner-only 배포 workflow에도 같은 비교가 있어 첫 실제 배포 전에 함께 수정했다.
+
+다음 실패는 `.terraform.lock.hcl`을 macOS ARM에서 처음 생성하면서 해당 platform package hash만 기록한 것이 원인이었다. Linux AMD64 runner는 같은 OCI 8.27.0 package를 설치했지만 lockfile에 자기 package와 일치하는 서명 checksum이 없어 readonly validate를 거절했다. provider 버전이나 Terraform 구성 오류는 아니었다.
+
+### 해결·검증·회귀 방지
+
+메모리 네 필드를 `tonumber`로 명시적으로 정규화한 뒤 정확한 바이트 수를 비교하게 했다. CPU·port·host IP·protocol의 기존 exact 비교는 유지했다. source와 배포 control-plane 테스트에 이 정규화를 고정했다. Terraform은 `providers lock -platform=darwin_arm64 -platform=linux_amd64`로 OCI 8.27.0의 서명된 platform checksum을 함께 기록하고 readonly init·validate를 다시 통과시켰다. provider를 추가하거나 갱신할 때 CI runner platform을 lock 단계에 포함해 도구의 직렬화·패키징 차이를 제품 실패로 오인하지 않게 한다.
+
+## 2026-08-25 — 기존 Oracle VM의 80·443과 관리 접근이 Compose 배포를 차단함
+
+### 맥락·기대·실제 영향
+
+운영 제품은 기존 `ssumcp` VM에서 Kubernetes 밖의 Docker Compose로 실행하되 기존 서비스를 중단하지 않아야 했다. 최초 Compose 초안은 Caddy가 host 80·443을 직접 publish한다고 가정했다. 공개 endpoint를 확인하자 두 포트 모두 `TRAEFIK DEFAULT CERT`와 같은 404를 반환해 기존 Kubernetes Traefik이 점유 중이었다. 그대로 적용하면 새 proxy가 시작하지 못하고 같은 port를 쓰는 rollback도 실패한다. 실제 서버에는 적용하지 않아 서비스 영향은 없었다.
+
+서버 내부 listener와 Docker 상태를 확인하려 했지만 로컬과 OCI Cloud Shell에는 기존 VM private SSH key가 없었다. Oracle Agent Run Command는 command record만 `Accepted`가 된 뒤 instance에 전달되지 않았고 이전 command도 만료돼, rootless bootstrap과 내부 검증은 수행하지 못했다.
+
+### 증거·원인
+
+- Oracle Console: Ubuntu 22.04 ARM64 A1 Flex 4 OCPU·24GB, private IP `10.0.0.9`
+- 최근 1시간 CPU 평균 9.07%·최대 9.87%, 메모리 평균 34.5%·최대 35.47%로 VM 자체 자원 부족은 아님
+- public 80·443의 동일 404와 TLS 기본 인증서가 Traefik임을 확인함
+- 로컬 `.ssh`, ssh-agent와 Cloud Shell에는 private key가 없고 공개키 파일만 남아 있음
+- Oracle 공식 Run Command 지원 image 목록에 Ubuntu가 포함되지 않으며 실제 command가 전달되지 않음
+
+원인은 새 VM 필요 여부가 아니라 같은 host network namespace의 고정 port 충돌이다. 관리 접근 차단은 애플리케이션 오류가 아니라 기존 private key가 현재 작업 환경에 없는 운영 자격증명 문제다.
+
+### 검토한 대안과 해결
+
+- 새 VM: 자원 실측상 불필요하고 사용자의 요구와 달라 기각했다.
+- 기존 Kubernetes Ingress 공유: Compose를 cluster 밖에 분리한다는 경계를 어겨 기각했다.
+- public 고포트 직접 공개: URL·TLS·OAuth와 공격면이 나빠 기각했다.
+- Cloudflare Tunnel: 별도 token·agent·외부 장애면이 생겨 기각했다.
+- Oracle public NLB: 별도 public IP의 80·443을 사설 고포트로 전달해 기존 Traefik을 보존할 수 있어 채택했다.
+
+Compose는 전용 rootless Docker에서 `10.0.0.9:13080`·`:13443`만 bind하고, OCI NLB와 source NSG만 이 포트에 접근하게 바꿨다. 앱·Caddy·BuildKit 자원 상한, offline health, 외부 dependency preflight와 rollback 분리를 추가했다. 관리 접근은 기존 private key의 로컬 경로를 찾는 것이 1순위다. 찾을 수 없으면 production restart 승인을 받은 maintenance window에서 Oracle serial console recovery로 새 관리 public key를 설치한다.
+
+초기 자동화 초안은 팀 source 저장소의 `main` push가 production SSH secret을 직접 사용했다. 이 저장소는 두 collaborator가 push할 수 있고 private GitHub Free에서 환경 승인 규칙을 보안 경계로 강제할 수 없어, source workflow·Dockerfile 변경이 곧 운영 권한으로 이어지는 구조였다. 외부 적용 전에 독립 보안 검토에서 발견해 source deploy job을 제거했다. 사용자 개인 owner-only 배포 저장소가 검토한 40자리 SHA, source main ancestry와 같은 SHA의 `CI / quality` 성공을 확인한 뒤에만 운영 secret을 읽는다. Dockerfile·Compose·Caddy·preflight와 서버 control plane도 개인 저장소가 소유한다.
+
+SSH key의 `restrict` 옵션만으로는 port forwarding 등을 막을 뿐 임의 shell 명령은 계속 실행할 수 있었다. 전용 key를 root-owned forced-command gateway에 고정하고 archive를 최대 256MiB stdin으로 받아 checksum을 재검증하도록 바꿨다. gateway가 허용하는 명령은 `current`, `deploy <sha> <digest>`, `rollback <sha>`뿐이며 scp·SFTP를 사용하지 않는다. rollback은 source release script가 아니라 root-owned 고정 script를 실행하고, reservation abuse migration보다 오래된 코드는 runtime contract에서 거절한다.
+
+후속 보안 검토에서는 세 가지 failure window가 추가로 드러났다. 첫째, 검증과 SSH 사용이 한 job이면 source token·production key의 수명이 겹치고 source main·CI가 artifact build 뒤 바뀔 수 있었다. workflow를 credential 없는 `validate`, source provenance를 다시 확인하는 `revalidate`, source token이 없는 `deploy`로 분리하고 artifact의 source SHA·control-plane SHA·digest와 production URL을 SSH secret step 전에 다시 검사했다. 둘째, SSH ACK 유실 뒤 즉시 `current`를 읽으면 아직 활성화 중인 release의 symlink를 잘못 해석할 수 있었다. `current`가 release lock을 최대 35분 기다리고 Actions가 직전 public SHA와 health를 함께 확인해 필요한 경우에만 rollback하도록 했다. 셋째, 압축을 해제한 directory와 별도 manifest 기록 사이에서 process가 죽으면 같은 source SHA에 새 archive digest가 다시 결합될 수 있었다. 이제 bounded streaming extractor가 빈 임시 directory에 regular file·directory만 만들고, digest와 control-plane SHA를 묶은 integrity manifest를 임시 release 내부에 먼저 기록한 뒤 directory 자체를 원자적으로 이동한다. manifest가 없는 기존 release는 복구하지 않고 fail-closed한다.
+
+압축 해제기는 entry 10,000개, 파일당 64MiB, 전체 1GiB, path 4,096바이트 상한을 적용하고 symlink·hardlink·device·FIFO·중복·경로 이탈을 거절한다. Python 3.10 이상을 bootstrap에서 명시적으로 설치·확인하며 안전 archive와 traversal·symlink·duplicate·entry/file limit 회귀를 별도 단위 테스트로 고정했다.
+
+같은 VM의 boot filesystem을 공유한 채 `IOWeight`와 배포 전 여유 공간만 검사하면 rootless Docker image·build cache나 app cache가 디스크를 채워 Kubernetes까지 중단시킬 수 있었다. OCI home region의 Always Free boot·block volume 합계 200GB 안에서 50GiB Block Volume을 별도로 만들고 기존 VM의 consistent device path에 paravirtualized·전송 중 암호화 방식으로 연결하기로 했다. bootstrap은 non-boot whole disk, 50~150GiB 크기, 기존 filesystem 부재와 명시적 format 확인값을 모두 검사한 뒤에만 ext4로 만들며, UUID mount와 Docker `data-root=/opt/marketvalley/docker`를 매 시작·배포에서 다시 확인한다. volume이 mount되지 않으면 rootless Docker user service와 release 모두 fail-closed한다. Terraform volume에는 `prevent_destroy`를 적용해 NLB 철거나 잘못된 destroy plan이 운영 데이터까지 삭제하지 못하게 했다.
+
+### 검증·회귀 방지·남은 위험
+
+Caddy 2.10.2 설정, Compose render의 private high port와 자원 limit, OCI provider 8.27.0 Terraform schema, source secret 부재와 강제 명령 trust boundary를 로컬에서 검증했다. 배포 control plane은 YAML·shell·Python 구문, Node trust boundary 4개와 archive extractor 3개 테스트를 통과했다. CI는 Compose·Caddy·Terraform과 ARM-compatible image build를 다시 검사한다. 실제 NLB health, 기존 Kubernetes 무변경, rootless cgroup enforcement와 restart recovery는 서버 접근 뒤 검증해야 한다.
+
+배포 설계 전에는 `ss -lntup`, cloud security rule, 실제 CPU·memory metric을 먼저 확인한다. port 충돌을 rootless 여부와 혼동하지 않고 host namespace와 public ingress를 별도로 기록한다. Run Command 지원 여부도 image별 공식 목록으로 먼저 확인한다.
+
+면접에서 설명할 핵심은 “한 VM을 공유하되 왜 Kubernetes에 얹지 않았는가”, “rootless가 port 충돌을 해결하지 못하는 이유”, “NLB·NSG·cgroup으로 어떤 장애 경계를 만들었는가”, “팀 source CI와 운영 권한을 왜 분리했는가”, “잃어버린 관리 key를 왜 무중단으로 우회하지 않았는가”다.
+
+## 2026-08-25 — Haiku의 형식상 유효한 광고가 입력에 없는 운영 조건을 생성함
+
+### 맥락·기대·실제 영향
+
+Structured Outputs와 최종 `CampaignSpec` 검증을 통과한 문구도 사용자가 말하지 않은 가격, 할인, 환불, 특정 채널, 일정·준비 조건이나 효과를 공개 랜딩에 넣지 않아야 했다. Claude Haiku 4.5 대표 입력 eval에서 JSON 형식과 길이는 모두 유효하지만 이런 세부사항을 자연스럽게 보완한 결과가 반복됐다. production에는 배포하지 않았으므로 외부 사용자나 광고에는 영향이 없었다.
+
+### 재현·증거·검토한 가설
+
+주입 문구, 공방 빈자리, 마감 음식 세 범주의 입력을 같은 평면 출력 계약으로 실행하고 공개 필드에 입력 근거가 없는 가격·할인·환불·요일·사전 설치·구체 채널·효능 문구가 있는지 검사했다. schema 불일치나 temperature 변동이 원인인지 확인하기 위해 temperature 0과 같은 schema를 유지했지만 세부 확장은 남았다. prompt 지시 부족을 가설로 두고 금지 규칙을 강화했으나, 표현만 바뀐 운영 추론이 계속돼 형식 검증만의 문제는 아니라고 판단했다.
+
+### 근본 원인과 선택
+
+Structured Outputs는 구조를 보장하지만 입력 사실성까지 보장하지 않는다. 짧고 그럴듯한 광고 문구를 완성하려는 모델의 일반화가 비어 있는 운영 정보를 채웠고, 기존 Zod 계약은 이 문장이 문법적으로 유효한지만 확인했다. Haiku 뒤 Sonnet 자동 재시도와 두 번째 LLM 검수는 비용·지연·실패면을 늘려 기각했다. 운영 기본 모델을 Sonnet 4.6 하나로 바꾸고, 모델과 무관하게 서버가 입력 근거가 없는 숫자·가격·할인·환불·구체 채널·성과 주장과 hashtag를 정규화하거나 fail-closed로 거절하도록 했다.
+
+### 검증·회귀 방지·남은 위험
+
+최종 `campaign-spec-v2-reservations-flat-v9`, temperature 0, 재시도 0회와 90초 timeout에서 실제 Sonnet 대표 입력 3종이 약 52.0초·55.8초·56.8초에 완료됐다. 금지 세부사항, hashtag 형식, prompt injection 격리, 숫자 근거와 사람이 예약자명단을 보고 판단하는 hook 자동 조건을 모두 통과했고 문장 자연스러움을 수동 검토했다. 이 세 사례는 전체 정확도를 증명하지 않으므로 새 대표 입력을 운영 회귀 세트에 추가하고 live 실패를 fixture 성공으로 자동 대체하지 않는다. 월 $15 spend limit과 사용자·전체 DB quota도 유지한다.
+
+면접에서 설명할 핵심은 “schema-valid와 fact-grounded가 왜 다른가”, “모델 변경만이 아니라 결정적 서버 검증을 둔 이유”, “자동 재시도를 왜 비용·중복 위험으로 보았는가”다.
+
+## 2026-08-25 — 새 발표 저장소가 잘못된 전역 Git 이메일을 상속함
+
+### 맥락과 실제 영향
+
+발표 전용 저장소를 완전히 새 이력으로 만들 때 모든 commit과 GitHub 기여는 사용자의 GitHub 계정에
+연결된 신원을 사용해야 했다. 첫 로컬 root commit 직후 delivery 전 신원 검사를 수행하자 작성자
+이메일이 사용자의 이메일이 아니라 GitHub HTTP 404 응답 형태의 문자열로 기록돼 있었다. remote를
+만들거나 push하기 전에 발견했으므로 잘못된 신원의 GitHub 이력이나 외부 기여는 생기지 않았다.
+
+### 재현·증거·근본 원인
+
+새 저장소는 별도 local `user.email`이 없어 전역 Git 설정을 상속했다. `git config --global user.email`과
+root commit metadata가 같은 비정상 문자열을 반환했고, 기존 메인 저장소는 올바른 repository-local
+이메일을 사용해 영향이 없었다. 전역 값이 언제 어떤 명령으로 기록됐는지는 확인 가능한 이력이나
+로그가 없어 추측하지 않는다.
+
+### 대응과 검증
+
+발표 저장소에만 사용자의 확인된 `user.name`, `user.email`을 설정하고, 아직 push하지 않은 root
+commit을 amend했다. 작성자·커미터 이메일, 로그인된 GitHub 계정, remote owner를 다시 대조한 뒤
+처음 push했다. 새 remote clone에서 commit 수가 하나이고 같은 사용자 신원인지 재검증했으며 발표
+tag와 release도 수정된 commit을 가리킨다. 전역 설정은 다른 작업 공간에 미칠 수 있어 자동으로
+덮어쓰지 않았다.
+
+### 회귀 방지와 면접 질문
+
+모든 새 저장소는 첫 commit 전과 모든 push 전 repository-local identity, commit metadata, 인증된
+GitHub 계정을 함께 확인한다. 왜 전역 값을 바로 수정하지 않았는가? 다른 저장소가 의도적으로 쓰는
+설정일 가능성을 배제할 수 없고, 이번 전달에는 repository-local 수정이 가장 좁고 검증 가능한
+대응이었기 때문이다.
+
 ## 2026-08-25 — 루트 랜딩 교체 뒤 인증 bundle smoke가 이전 route를 검사함
 
 ### 맥락과 실제 영향

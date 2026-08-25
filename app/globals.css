@@ -454,6 +454,7 @@ body:has(.login-modal-layer) > :not(.login-modal-layer) { filter: blur(3px); }
 .reservation-field input:focus { outline: none; border-color: var(--orange); }
 .reservation-consent { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; opacity: .85; }
 .signal-error { margin: 0 0 12px; padding: 10px 12px; border-radius: 5px; color: #8f1020; background: #fff0f0; font-size: 14px; font-weight: 700; }
+.signal-error button { padding: 0; border: 0; color: inherit; background: transparent; font: inherit; text-decoration: underline; cursor: pointer; }
 .signal-success { padding: 34px; color: var(--campaign-white-ink, #211b17); background: #fff; }
 .signal-success > span { display: grid; place-items: center; width: 54px; height: 54px; border-radius: 50%; color: var(--orange-ink); background: var(--orange); }
 .signal-success h3 { margin: 18px 0 4px; font-size: 25px; }

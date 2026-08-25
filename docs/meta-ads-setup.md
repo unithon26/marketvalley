@@ -1,8 +1,21 @@
 # Meta PAUSED 광고 초안 설정
 
-상태: 구현 준비 완료, 운영 계정·migration·production 검증 전
+상태: 구현과 회사 자산 최소 권한 할당 완료, System User 앱 역할·token·migration·production 검증 전
 
 이 문서는 회사 소유 Meta 자산에 `PAUSED` 광고 초안만 생성하는 선택적 P1 연동을 다룬다. 일반 사용자는 랜딩과 PNG·ZIP을 만들 수 있지만, Meta 계정 쓰기는 서버 환경변수에 등록된 회사 내부 운영자만 실행한다. `ACTIVE` 전환, 결제수단 관리와 실제 지출은 이 연동의 책임이 아니다.
+
+## 0. 2026-08-25 확인 상태
+
+- Business Portfolio: `Marketvalley` (`1039774862101186`)
+- Facebook Page: `Marketvalley` (`1184819474725303`)
+- Instagram professional account: `marketvalley__` (`17841438643564582`)
+- 개발자 앱: `MarketValley Ads Publisher` (`1437415924870020`), Marketing API의 `ads_management`·`ads_read`가 테스트 준비 완료
+- Employee System User: `Marketvalley Publisher` (`61593548470446`)
+- System User 자산 권한: Page 광고·인사이트, Instagram 광고·인사이트, 광고 계정 캠페인 관리·성과 보기·Creative Hub 모의 광고 관리. Meta가 선택한 최소 광고 권한의 종속 권한을 함께 표시한 결과다.
+- 앱의 App Secret Proof 요구 설정은 켰다.
+- 광고 계정 숫자 ID와 통화·시간대는 Business Settings 상세 화면에서 다시 확인하기 전까지 운영 설정에 기록하지 않는다.
+- System User 앱 역할과 60일 token은 아직 만들지 않았다. token 생성 화면에 `사용 가능한 권한 없음`이 표시되어 앱 역할 연결을 먼저 해결해야 한다.
+- 결제수단, `ACTIVE`, 실제 광고 객체, 지출은 만들지 않았다.
 
 ## 1. 회사 자산 만들기
 

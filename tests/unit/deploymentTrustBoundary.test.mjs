@@ -1,0 +1,76 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+
+const repositoryRoot = new URL("../..", import.meta.url).pathname;
+const readRepositoryFile = (path) => readFileSync(join(repositoryRoot, path), "utf8");
+
+describe("production deployment trust boundary", () => {
+  it("keeps production credentials out of the shared source workflow", () => {
+    const workflow = readRepositoryFile(".github/workflows/ci.yml");
+
+    expect(workflow).not.toContain("PRODUCTION_SSH_PRIVATE_KEY");
+    expect(workflow).not.toContain("PRODUCTION_SSH_HOST");
+    expect(workflow).not.toMatch(/^\s{2}deploy:\s*$/mu);
+    expect(workflow).toContain("(.services.app.mem_limit | tonumber) == 2147483648");
+    expect(workflow).toContain("(.services.proxy.mem_limit | tonumber) == 268435456");
+  });
+
+  it("dispatches deploy and rollback through a root-owned fixed release script", () => {
+    const manager = readRepositoryFile("deploy/release-manager.sh");
+    const bootstrap = readRepositoryFile("deploy/bootstrap-ubuntu-rootless.sh");
+    const gateway = readRepositoryFile("deploy/deploy-gateway.sh");
+    const releaseScript = readRepositoryFile("deploy/remote-release.sh");
+    const runtimeContract = readRepositoryFile("deploy/runtime-contract").trim();
+
+    expect(manager).toContain('/usr/local/lib/marketvalley/remote-release.sh');
+    expect(manager).not.toContain('/opt/marketvalley/current/deploy/remote-release.sh');
+    expect(manager).toContain('current|deploy|rollback)');
+    expect(bootstrap).toContain('"${script_directory}/remote-release.sh"');
+    expect(bootstrap).toContain('/usr/local/lib/marketvalley/remote-release.sh');
+    expect(bootstrap).toContain('restrict,command=\\"/usr/local/lib/marketvalley/deploy-gateway.sh\\"');
+    expect(gateway).toContain('SSH_ORIGINAL_COMMAND');
+    expect(gateway).toContain('maximum_archive_bytes=268435456');
+    expect(gateway).not.toContain("eval ");
+    expect(runtimeContract).toBe("marketvalley-production-v1");
+    expect(releaseScript).toContain('required_release_contract="marketvalley-production-v1"');
+    expect(releaseScript).toContain('release runtime contract is incompatible with this server');
+    expect(releaseScript).toContain('--driver-opt memory=3g');
+    expect(releaseScript).not.toContain('--driver-opt memory=4g');
+    expect(releaseScript).toContain('deploy user aggregate CPU quota must be 225%');
+    expect(releaseScript).toContain('deploy user aggregate memory limit must be 6 GiB');
+    expect(releaseScript).toContain('deploy user aggregate I/O weight must be 100');
+    expect(releaseScript).toContain('NEXT_PUBLIC_TURNSTILE_SITE_KEY must be a non-placeholder');
+    expect(releaseScript).toContain('TURNSTILE_VERIFY_TIMEOUT_MS must be an integer between 500 and 10000');
+    expect(releaseScript).toContain('RESERVATION_CAMPAIGN_MINUTE_LIMIT must not exceed');
+    expect(releaseScript).toContain('validate-release-archive.py');
+    expect(releaseScript).toContain('--cpus 1.5');
+    expect(releaseScript).toContain('--memory 2g');
+    expect(releaseScript).toContain('--memory-swap 2g');
+    expect(releaseScript).toContain('flock --wait 2100');
+    expect(releaseScript).toContain('existing release has no trusted integrity manifest');
+    expect(releaseScript).toContain('.marketvalley-release-integrity');
+    expect(releaseScript).toContain('same source SHA was supplied with a different archive digest');
+    expect(releaseScript).toContain('A lost deploy ACK can leave the symlink updated');
+    expect(bootstrap).toContain('validate-release-archive.py');
+    expect(bootstrap).toContain('python3-minimal');
+    expect(bootstrap).toContain('MARKETVALLEY_CONFIRM_FORMAT_DEVICE');
+    expect(bootstrap).toContain('/dev/oracleoci/oraclevdb');
+    expect(bootstrap).toContain('/opt/marketvalley/docker');
+    expect(releaseScript).toContain('dedicated marketvalley volume is not mounted');
+  });
+
+  it("hard-isolates Docker storage on an attached OCI block volume", () => {
+    const terraform = readRepositoryFile("infra/terraform/oci-nlb/main.tf");
+    const variables = readRepositoryFile("infra/terraform/oci-nlb/variables.tf");
+
+    expect(terraform).toContain('resource "oci_core_volume" "marketvalley_data"');
+    expect(terraform).toContain('resource "oci_core_volume_attachment" "marketvalley_data"');
+    expect(terraform).toContain('attachment_type                     = "paravirtualized"');
+    expect(terraform).toContain('is_pv_encryption_in_transit_enabled = true');
+    expect(terraform).toContain('vpus_per_gb          = 10');
+    expect(terraform).toMatch(/lifecycle\s*\{\s*prevent_destroy\s*=\s*true\s*\}/s);
+    expect(variables).toContain('default     = "/dev/oracleoci/oraclevdb"');
+    expect(variables).toContain('var.data_volume_size_gbs >= 50');
+  });
+});
