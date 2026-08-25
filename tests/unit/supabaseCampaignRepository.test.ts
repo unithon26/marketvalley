@@ -273,7 +273,7 @@ describe("Supabase migration security contract", () => {
       "../../supabase/migrations/202608250001_campaigns_reservations_and_generation_limits.sql",
       import.meta.url,
     ));
-    const sql = readFileSync(migrationPath, "utf8");
+    const sql = readFileSync(migrationPath, "utf8").replaceAll("\r\n", "\n");
 
     expect(sql).toContain("alter table public.campaigns enable row level security");
     expect(sql).toContain("alter table public.campaign_reservations enable row level security");

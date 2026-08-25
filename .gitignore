@@ -34,6 +34,9 @@ pnpm-debug.log*
 /CLAUDE.md
 /CODEX.md
 /GEMINI.md
+/.omc/
+/.superpowers/
+/docs/business-plan-memo.md
 
 # TypeScript
 *.tsbuildinfo

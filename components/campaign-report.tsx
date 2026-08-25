@@ -37,6 +37,20 @@ type ReservationTrendGeometry = {
   points: Array<{ id: string; x: number; y: number }>;
 };
 
+const KOREA_TIME_OFFSET_MS = 9 * 60 * 60 * 1_000;
+
+export function formatReservationTime(reservedAt: string): string {
+  const timestamp = Date.parse(reservedAt);
+  if (Number.isNaN(timestamp)) return "시간 확인 필요";
+
+  const koreaTime = new Date(timestamp + KOREA_TIME_OFFSET_MS);
+  const month = koreaTime.getUTCMonth() + 1;
+  const day = koreaTime.getUTCDate();
+  const hour = String(koreaTime.getUTCHours()).padStart(2, "0");
+  const minute = String(koreaTime.getUTCMinutes()).padStart(2, "0");
+  return `${month}. ${day}. ${hour}:${minute}`;
+}
+
 export function buildReservationTrendGeometry(
   source: readonly ReservationRecord[],
   width = 720,
@@ -79,14 +93,6 @@ function ReservationTrend({ summary }: { summary: ReservationSummary }) {
   const height = 180;
   const baseline = 148;
   const geometry = buildReservationTrendGeometry(records, width, baseline);
-  const timeFormatter = new Intl.DateTimeFormat("ko-KR", {
-    month: "numeric",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Seoul",
-  });
-
   return (
     <article className="reservation-trend-card">
       <div className="trend-heading">
@@ -108,8 +114,8 @@ function ReservationTrend({ summary }: { summary: ReservationSummary }) {
         ))}
       </svg>
       <div className="trend-axis">
-        <span>{records[0] ? timeFormatter.format(new Date(records[0].reservedAt)) : "예약 대기 중"}</span>
-        <span>{records.at(-1) ? timeFormatter.format(new Date(records.at(-1)!.reservedAt)) : ""}</span>
+        <span>{records[0] ? formatReservationTime(records[0].reservedAt) : "예약 대기 중"}</span>
+        <span>{records.at(-1) ? formatReservationTime(records.at(-1)!.reservedAt) : ""}</span>
       </div>
     </article>
   );

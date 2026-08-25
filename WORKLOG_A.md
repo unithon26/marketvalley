@@ -18,3 +18,13 @@
 - 검증: `pnpm check`의 lint·typecheck·단위 테스트 72개와 production Chromium E2E 14개가 통과했다.
 - 전달: 최종 동기화 커밋 `70b1c93`을 `main`에 push했고 GitHub Actions run `32811937835`가 통과했다. 상세 통합 이력은 root `WORKLOG.md`에 기록했다.
 - 남은 일: 없음
+
+## 2026-08-25 — 예약 추이 시간 표시 안정화와 Windows 테스트 호환성 보완
+
+- 목적: 캠페인 리포트의 예약 추이 축에 표시되는 시간이 서버와 브라우저의 로캘·타임존 차이로 달라질 가능성을 제거하고, Windows 체크아웃에서도 전체 단위 테스트가 동일하게 통과하도록 한다.
+- 변경: `components/campaign-report.tsx`에 입력 시각을 고정된 한국 표준시(UTC+9)의 `M. D. HH:mm` 형식으로 변환하는 `formatReservationTime`을 추가하고, 기존 `Intl.DateTimeFormat` 기반 표시를 교체했다. 잘못된 시각 입력은 `시간 확인 필요`로 표시한다. `tests/unit/reservationTrend.test.ts`에 한국 시간 변환과 잘못된 입력 회귀 테스트를 추가했다. `tests/unit/supabaseCampaignRepository.test.ts`는 SQL 마이그레이션을 읽을 때 CRLF를 LF로 정규화해 운영체제별 줄바꿈 차이로 보안 계약 테스트가 실패하지 않도록 했다.
+- 영향 범위: `components/campaign-report.tsx`, `tests/unit/reservationTrend.test.ts`, `tests/unit/supabaseCampaignRepository.test.ts`
+- 로컬 제외 설정: `.omc/`, `.superpowers/`, `docs/business-plan-memo.md`를 `.gitignore`에 루트 기준으로 추가해 일반적인 Git 스테이징 및 커밋 대상에서 제외했다.
+- 검증: 예약 추이 단위 테스트 3개, 전체 단위 테스트 108개, `pnpm lint`, `pnpm typecheck`, `pnpm build`, `git diff --check`가 모두 통과했다.
+- 전달: 변경사항은 로컬 작업 트리에만 있으며 아직 커밋·push하지 않았다.
+- 남은 일: 없음
