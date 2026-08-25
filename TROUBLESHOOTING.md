@@ -1,5 +1,30 @@
 # Troubleshooting
 
+## 2026-08-26 — Google OAuth client secret 운영 점검 중 노출 가능성 차단
+
+### 맥락과 영향
+
+production OAuth origin을 추가하는 과정에서 Google Cloud Console의 client 상세 패널이 기존 OAuth client secret 원문을 브라우저 접근성 정보에 포함하는 것을 확인했다. Git이나 로그, 배포 환경에 게시되지는 않았지만 원문이 운영 설정 점검 경로에 나타난 시점부터 기존 secret을 계속 신뢰하지 않았다.
+
+### 원인과 대안
+
+Google Cloud Console은 인증된 관리자에게 client secret 복사 기능을 제공하며 해당 컨트롤의 접근 가능한 이름에 원문이 포함됐다. 기존 secret을 유지한 채 패널만 닫는 방법은 즉시 영향은 없지만 잠재 노출 자격증명을 그대로 두므로 기각했다. 먼저 기존 secret을 삭제하면 Supabase Google 로그인이 끊기므로 무중단 회전 순서를 사용했다.
+
+### 해결
+
+새 Google OAuth client secret을 생성해 화면이나 명령 로그에 출력하지 않고 Supabase Google provider에 직접 반영했다. Supabase가 설정 저장 성공을 반환한 뒤 기존 secret을 비활성화하고 삭제했으며 임시 clipboard와 메모리 버퍼를 비웠다. Authorized JavaScript origins에는 local과 공식 Vercel, Oracle 검증 origin을 등록하고 redirect URI는 기존 Supabase callback 하나를 유지했다.
+
+### 검증과 회귀 방지
+
+- Supabase provider 설정의 `Successfully updated settings` 응답을 확인했다.
+- Google client에는 새 secret 하나만 Enabled 상태로 남고 기존 secret의 delete control이 사라진 것을 확인했다.
+- 앞으로 credential 상세 화면의 전체 DOM·접근성 snapshot을 기록하지 않고 필요한 상태만 field 단위로 확인한다.
+- production OAuth 종단 배포 후 실제 로그인·새로고침·로그아웃과 역순 다중 탭 callback을 재검증한다.
+
+### 남은 위험과 예상 질문
+
+production 앱이 아직 배포되지 않아 새 secret을 사용한 실제 Google 로그인은 남아 있다. 면접에서는 왜 즉시 삭제하지 않고 생성 → provider 반영 → 비활성화 → 삭제 순서를 택했는지, secret 값이 로그와 저장소에 남지 않았음을 어떻게 확인했는지 설명할 수 있다.
+
 ## 2026-08-26 — A1 capacity와 실제 OCI 제약이 첫 Compose bootstrap을 연속 중단함
 
 ### 맥락·기대·실제 영향
