@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { ArrowRightIcon } from "@/components/icons";
 import {
   GenerationProgressView,
@@ -50,7 +49,6 @@ type CampaignWizardProps = {
 
 const submissionAcknowledgementDelayMs = 700;
 const marketDataCollectionDelayMs = 2_000;
-const completedStageDelayMs = 700;
 
 function delay(milliseconds: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -109,13 +107,13 @@ async function responseErrorCode(response: Response): Promise<string | null> {
 }
 
 export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
-  const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [background, setBackground] = useState("");
   const [solution, setSolution] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [progressStage, setProgressStage] = useState<GenerationProgressStage>(0);
+  const [completedCampaignId, setCompletedCampaignId] = useState<string | null>(null);
   const publishAttemptRef = useRef<PublishAttempt | null>(null);
   const requestControllerRef = useRef<AbortController | null>(null);
 
@@ -166,6 +164,7 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
     requestControllerRef.current = requestController;
     setSubmitting(true);
     setProgressStage(0);
+    setCompletedCampaignId(null);
     try {
       const input = { background: background.trim(), solution: solution.trim() };
       const fingerprint = JSON.stringify(input);
@@ -209,12 +208,11 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
       const published: unknown = await publishResponse.json();
       const campaignId = publishedCampaignId(published);
       saveCampaignDraftId(campaignId, attempt.draftId);
+      setCompletedCampaignId(campaignId);
 
       await delay(marketDataCollectionDelayMs, requestController.signal);
       setProgressStage(3);
-      await delay(completedStageDelayMs, requestController.signal);
       requestControllerRef.current = null;
-      router.replace(`/campaigns/${campaignId}`);
     } catch (caught) {
       if (requestController.signal.aborted) return;
       setError(generationErrorMessage(caught instanceof Error ? caught.message : null));
@@ -228,7 +226,12 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
   }
 
   if (submitting) {
-    return <GenerationProgressView current={progressStage} />;
+    return (
+      <GenerationProgressView
+        current={progressStage}
+        reportHref={completedCampaignId ? `/campaigns/${completedCampaignId}` : "/"}
+      />
+    );
   }
 
   return (
