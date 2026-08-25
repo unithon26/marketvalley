@@ -1,5 +1,54 @@
 # Troubleshooting
 
+## 2026-08-26 — Oracle의 비활성 Meta 모드가 실제 수집 캠페인을 실패 처리함
+
+### 맥락과 영향
+
+누락됐던 lifecycle worker를 Oracle에서 시작하자 실제 Meta 광고는 `ACTIVE`인데 캠페인 상태가 `COLLECTING`에서 `FAILED`로 바뀌었다. Vercel worker가 수집을 이어오고 있어 광고 집행 자체는 중단되지 않았지만, Oracle worker가 같은 캠페인을 처리할 수 없는 이중 배포 불일치였다.
+
+### 증거와 원인
+
+- 캠페인의 마지막 오류는 `meta_configuration_error`였고 Oracle 앱 로그도 `COLLECTING` 단계의 설정 오류를 기록했다.
+- Oracle production 환경은 repository와 operation ledger를 Supabase로 사용하고 Meta 자격증명을 보유했지만 `META_ADS_MODE=disabled`였다.
+- 자동 활성화 예산은 5,000원이었으나 초안 예산은 이전 값 10,000원으로 남아 있었다.
+- 기존 배포 검증은 `META_ADS_MODE=live`일 때만 Meta 설정을 검사했다. 따라서 자동 활성화가 켜진 상태에서도 disabled 모드와 예산 불일치를 허용했다.
+
+근본 원인은 실제 lifecycle이 필수인 production 계약과 과거 안전 기본값을 배포 전제조건에서 구분하지 않은 것이다.
+
+### 해결과 회귀 방지
+
+운영 환경을 `META_ADS_MODE=live`, 초안·자동 활성화 예산 5,000원으로 맞춘 뒤 app과 worker를 같은 환경으로 재생성했다. 정확한 실패 캠페인과 기존 `ACTIVE` Meta run을 함께 대조하는 선행조건 SQL로 상태를 `COLLECTING`에 복구하고 worker를 한 번 실행했다. 캠페인은 오류 없이 다음 수집 시각을 예약했고 Meta 광고는 계속 `ACTIVE`다.
+
+source와 owner-only control-plane 배포 스크립트는 이제 production에서 `META_ADS_MODE=live`가 아니면 중단한다. 기존 live-mode 검사는 Supabase 원장, 계정 연결, 자격증명, 활성화 여부와 두 예산의 일치까지 계속 fail-closed 검증한다.
+
+### 남은 위험과 예상 질문
+
+다음 exact-SHA 배포에서 새 preflight가 실제 운영 환경을 통과하고 worker가 자동 시작되는지 확인한다. 수집 종료 뒤 pause·최종 snapshot·`COMPLETED` 전이는 예약 시각이 지나야 운영에서 관찰할 수 있다. 면접에서는 여러 runtime이 같은 상태 머신을 처리할 때 환경 계약을 배포 시점에 강제해야 하는 이유와, 외부 광고 상태를 보존하면서 내부 상태만 선행조건부로 복구한 이유를 설명할 수 있다.
+
+## 2026-08-26 — 성공한 Oracle 배포가 lifecycle worker를 시작하지 않음
+
+### 맥락과 영향
+
+source와 control-plane CI, owner-only production deploy가 모두 성공하고 앱 health가 새 SHA를 반환했지만 서버 컨테이너 목록에는 app과 proxy만 있었다. 새 Compose 파일에는 `lifecycle-worker`가 정의돼 있었으나 실행되지 않았다. Vercel worker를 직접 호출해 실제 캠페인의 Insights 수집은 이어졌고 앱 트래픽과 Meta ACTIVE 광고에는 중단이 없었다.
+
+### 증거와 원인
+
+- Oracle의 `/opt/marketvalley/current`와 외부 health는 source SHA `21562e73`으로 일치했다.
+- 배포된 Compose의 service 목록에는 `app`, `lifecycle-worker`, `proxy`가 있었다.
+- `docker ps -a`에는 worker 컨테이너 자체가 없었다.
+- root-owned `remote-release.sh`의 활성화 명령이 `compose up --detach --no-build app proxy`로 서비스를 명시해 새 worker를 제외했다.
+- 배포 성공 조건도 app health와 proxy reload만 확인해 이 누락을 탐지하지 못했다.
+
+근본 원인은 Compose 파일 추가와 release activation service 목록·health 계약을 같은 변경 단위로 갱신하지 않은 것이다.
+
+### 해결과 회귀 방지
+
+현재 검증 release의 worker를 같은 image·환경파일로 시작해 running 상태를 확인했다. source와 owner-only control-plane의 활성화 명령을 `app lifecycle-worker proxy`로 바꾸고, worker container의 `.State.Running`을 제한 시간 안에 확인해야만 배포가 성공하도록 했다. 양쪽 shell syntax와 source trust-boundary 테스트 3파일 11개, control-plane 테스트 4개가 통과했다.
+
+### 남은 위험과 예상 질문
+
+수정된 control-plane CI와 다음 exact-SHA 배포 뒤 app·proxy·worker, 외부 health와 worker 1분 로그를 다시 확인해야 한다. 면접에서는 “배포 성공”을 주 HTTP health 하나가 아니라 필요한 모든 장기 실행 service의 계약으로 정의해야 하는 이유를 설명할 수 있다.
+
 ## 2026-08-26 — Compose가 lifecycle worker의 JavaScript 보간을 환경변수로 해석함
 
 ### 맥락과 영향

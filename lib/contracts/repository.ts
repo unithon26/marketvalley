@@ -82,8 +82,6 @@ export type DeleteCampaignInput = {
   draftId: string;
 };
 
-export type ResetCampaignInput = DeleteCampaignInput;
-
 /** 같은 이메일이 같은 캠페인에 두 번째로 예약하려 할 때 던진다. */
 export class DuplicateSignalError extends Error {
   constructor() {
@@ -137,6 +135,5 @@ export interface CampaignRepository {
   recordReservation(input: ReservationInput): Promise<void>;
   getReservationSummary(campaignId: string): Promise<ReservationSummary>;
   saveNextAction(input: NextActionInput): Promise<NextAction>;
-  reset(input: ResetCampaignInput): Promise<PublishedCampaign>;
   delete(input: DeleteCampaignInput): Promise<void>;
 }

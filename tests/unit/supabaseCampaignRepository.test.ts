@@ -197,20 +197,7 @@ function fakeClient(state: FakeState, role: Role) {
         } as ReservationRow);
         return { data: "inserted", error: null };
       }
-      if (name !== "reset_owned_campaign" || role.kind !== "owner") {
-        return { data: null, error: { code: "42501", message: "forbidden" } };
-      }
-      const campaign = state.campaigns.find((row) => (
-        row.id === input.p_campaign_id
-        && row.draft_id === input.p_draft_id
-        && row.owner_id === role.userId
-      ));
-      if (!campaign) return { data: [], error: null };
-      state.reservations = state.reservations.filter(
-        (row) => row.campaign_id !== campaign.id,
-      );
-      campaign.next_action = null;
-      return { data: [structuredClone(campaign)], error: null };
+      return { data: null, error: { code: "42501", message: "forbidden" } };
     },
   };
 }
@@ -264,9 +251,7 @@ describe("SupabaseCampaignRepository", () => {
       nextAction: "continue",
     })).rejects.toBeInstanceOf(DraftOwnershipError);
     await owner.saveNextAction({ campaignId: campaign.id, draftId: "draft-1", nextAction: "revise" });
-    const reset = await owner.reset({ campaignId: campaign.id, draftId: "draft-1" });
-    expect(reset.nextAction).toBeNull();
-    await expect(owner.getReservationSummary(campaign.id)).resolves.toMatchObject({ total: 0 });
+    await expect(owner.getReservationSummary(campaign.id)).resolves.toMatchObject({ total: 1 });
   });
 
   it("다른 사용자의 owner client에서는 캠페인과 예약자 원문을 숨긴다", async () => {
@@ -305,8 +290,16 @@ describe("Supabase migration security contract", () => {
     expect(sql).not.toMatch(/grant\s+select[^;]+campaign_reservations\s+to\s+anon/i);
     expect(sql).toContain("security definer\nset search_path = ''");
     expect(sql).toContain("security invoker\nset search_path = ''");
-    expect(sql).toContain("reset_owned_campaign");
     expect(sql).toContain("from public, anon, authenticated");
     expect(sql).toContain("to service_role");
+
+    const resetRemovalPath = fileURLToPath(new URL(
+      "../../supabase/migrations/202608260007_remove_presentation_reset.sql",
+      import.meta.url,
+    ));
+    const resetRemovalSql = readFileSync(resetRemovalPath, "utf8").replaceAll("\r\n", "\n");
+    expect(resetRemovalSql).toContain("revoke execute on function public.reset_owned_campaign");
+    expect(resetRemovalSql).toContain("from public, anon, authenticated");
+    expect(resetRemovalSql).toContain("drop function if exists public.reset_owned_campaign");
   });
 });

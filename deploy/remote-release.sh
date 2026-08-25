@@ -320,8 +320,8 @@ validate_production_environment() {
     || fail "RESERVATION_CAMPAIGN_TOTAL_LIMIT must be an integer between 1 and 1000000"
   (( 10#${reservation_campaign_minute_limit} <= 10#${reservation_global_minute_limit} )) \
     || fail "RESERVATION_CAMPAIGN_MINUTE_LIMIT must not exceed RESERVATION_GLOBAL_MINUTE_LIMIT"
-  [[ "${meta_ads_mode}" == "disabled" || "${meta_ads_mode}" == "live" ]] \
-    || fail "META_ADS_MODE must be disabled or live"
+  [[ "${meta_ads_mode}" == "live" ]] \
+    || fail "production campaign lifecycle requires META_ADS_MODE=live"
   if [[ "${meta_ads_mode}" == "live" ]]; then
     meta_operation_ledger_mode="$(read_environment_value META_OPERATION_LEDGER_MODE)"
     meta_draft_operator_user_ids="$(read_environment_value META_DRAFT_OPERATOR_USER_IDS)"
@@ -542,6 +542,22 @@ wait_for_healthy_app() {
   return 1
 }
 
+wait_for_running_lifecycle_worker() {
+  local container_id=""
+  local running=""
+
+  for _ in $(seq 1 30); do
+    container_id="$(compose ps --quiet lifecycle-worker 2>/dev/null || true)"
+    if [[ -n "${container_id}" ]]; then
+      running="$(docker inspect --format '{{.State.Running}}' "${container_id}" 2>/dev/null || true)"
+      [[ "${running}" == "true" ]] && return
+    fi
+    sleep 2
+  done
+
+  return 1
+}
+
 activate_release() {
   local target_sha="$1"
   local release_directory="${releases_directory}/${target_sha}"
@@ -563,8 +579,9 @@ activate_release() {
   compose_file="${release_directory}/deploy/compose.production.yml"
   compose_tag="${target_sha}"
 
-  compose up --detach --no-build app proxy || return 1
+  compose up --detach --no-build app lifecycle-worker proxy || return 1
   wait_for_healthy_app "${target_sha}" || return 1
+  wait_for_running_lifecycle_worker || return 1
   compose exec --no-TTY proxy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile || return 1
 }
 

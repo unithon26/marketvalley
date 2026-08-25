@@ -1,13 +1,30 @@
 # 작업 기록
 
+## 2026-08-26 — Oracle lifecycle worker와 Meta production 계약 복구
+
+- 목적: source 배포가 성공해도 lifecycle worker가 시작되지 않거나 Meta 비활성 환경이 실제 수집 캠페인을 실패 처리하는 운영 불일치를 제거한다.
+- 변경: release activation 대상에 `lifecycle-worker`를 포함하고 running 확인을 성공 조건으로 추가했다. production preflight는 이제 `META_ADS_MODE=live`를 필수로 하며 기존 account·credential·원장·자동 활성화·예산 일치 검사를 함께 적용한다. Oracle 환경의 Meta 모드와 두 예산을 실제 운영값으로 맞췄다.
+- 복구: worker 시작 직후 `meta_configuration_error`로 실패한 정확한 캠페인과 기존 `ACTIVE` Meta run을 대조했다. 외부 광고는 건드리지 않고 선행조건 SQL로 내부 상태만 `COLLECTING`에 복구한 뒤 worker를 실행해 오류 해제와 다음 수집 예약을 확인했다.
+- 검증: source shell syntax와 배포 trust-boundary 테스트 3파일 11개, owner-only control-plane shell syntax와 테스트 4개가 통과했다. app healthy, proxy와 worker running, 동일 release image, 캠페인 `COLLECTING`과 오류 없음도 운영에서 확인했다.
+- 전달: source와 control-plane 변경을 각각 CI·병합한 뒤 exact-SHA Oracle 재배포로 새 preflight와 worker 성공 조건을 다시 확인한다.
+- 남은 일: 2026-08-27 05:56 KST 수집 종료 뒤 자동 pause·final snapshot·`COMPLETED` 장기 관찰.
+
+## 2026-08-26 — 발표 초기화 경계 제거와 제출 저장소 정리
+
+- 목적: 운영 화면에서 제거한 더미·수동 기능의 숨은 API까지 없애고 심사위원이 저장소 첫 화면에서 제품 가치와 실제 구현·검증을 이해하게 한다.
+- 변경: 과거 발표용 `/api/campaigns/reset`, repository reset 계약과 예약자 삭제 RPC를 제거하는 migration `202608260007`을 추가했다. README를 라이브 서비스, 사라지는 일, 실제 lifecycle, Mermaid 아키텍처, 검증·진실성 경계 중심으로 재작성했다. brief, spec, user flow, pitch, lean canvas, business plan, architecture, integration, demo와 validation 문서를 실제 Meta·Supabase·Vercel·Oracle 구현 기준으로 갱신했다.
+- 검증: reset route·계약 잔여 검색, typecheck와 focused repository 테스트 8개를 통과했다. 최종 `pnpm check`에서 41파일 212개, production build, Chromium E2E 6개와 high audit가 통과했다. 실제 Chrome 세션에서 계정별 수집 중 화면, 완료 전 redirect, 실제 공개 랜딩과 명시적 발표용 완료 예시를 확인했다.
+- 전달: 기능·문서 PR, 운영 reset RPC 제거 migration, 수정된 Vercel·Oracle 재배포와 GitHub 저장소 메타데이터 정리는 이어서 완료한다. 첫 Oracle exact-SHA 배포 뒤 worker 누락을 발견해 같은 검증 release에서 즉시 시작했고 재발 방지 gate를 추가했다.
+- 남은 일: 실제 수집 종료 뒤 자동 pause·final snapshot·`COMPLETED` 장기 관찰.
+
 ## 2026-08-26 — 계정별 광고 생성·집행·집계 lifecycle 전환
 
 - 목적: 더미 프로젝트와 수동 Meta 조작을 제거하고, Google 계정별 접수부터 실제 광고·집계·최종 리포트까지 브라우저와 무관하게 이어지는 제품 경로를 완성한다.
 - 변경: `/api/campaigns`를 DB 선접수 방식으로 바꾸고 Supabase lease 상태 머신, 1분 Oracle worker와 Vercel fallback cron, Claude 생성, 공개 slug, 서버 `ImageResponse` 카드뉴스 5장, Meta PAUSED 생성·exact 계정/예산 승인·ACTIVE 확인, Insights 중간·최종 snapshot, 완료 리포트를 연결했다. 로그인 대시보드는 계정 데이터만 불러오며 진행 화면은 DB 상태를 복원한다. 예시 불러오기, 메인으로, 수동 PAUSED 초안·활성화·중지 UI/API와 기본 fixture seed를 제거했다. 사용자의 후속 지시에 따라 상태 이메일 구현은 전부 제외했다.
 - 안전: 이전 캠페인은 migration에서 먼저 `ARCHIVED` 처리하고 실제 Meta run만 복원한다. 동일 광고 계정 live run 하나를 DB index와 실행 전 조회로 제한한다. 운영 DB의 발표·시험 캠페인 5개를 정확한 ID로 삭제했고 실제 ACTIVE 캠페인 1개는 보존했다. 이전 외부 Meta 초안은 PAUSED 상태 그대로 변경하지 않았다.
-- 검증: `pnpm check`에서 lint·typecheck와 단위 테스트 41파일 215개가 통과했다. production build를 포함한 Chromium E2E에서 빈 계정, 입력 보존, 접수·결과, 1080×1350 PNG 5장과 ZIP, 공개 예약·마스킹 리포트, 로그인 뒤 상태 복원을 확인했다. 예약 E2E의 잘못된 navigation 대기와 마스킹 기대값을 고친 뒤 focused E2E가 통과했다. 실제 Meta campaign·ad set·ad가 모두 `ACTIVE`, lifetime 예산 5,000원, 2026-08-27 05:56 KST 종료로 확인됐다.
-- 전달: 코드, migration, 운영 환경과 Vercel·Oracle 배포는 이어서 적용한다.
-- 남은 일: production migration, 환경변수, main CI, Vercel·Oracle 배포와 실제 로그인 화면 검증.
+- 검증: `pnpm check`에서 lint·typecheck와 단위 테스트 41파일 215개가 통과했다. production build를 포함한 Chromium E2E에서 빈 계정, 입력 보존, 접수·결과, 1080×1350 PNG 5장과 ZIP, 공개 예약·마스킹 리포트, 로그인 뒤 상태 복원을 확인했다. 실제 Meta campaign·ad set·ad가 모두 `ACTIVE`, lifetime 예산 5,000원, 2026-08-27 05:56 KST 종료로 확인됐다. 운영 worker 직접 호출 뒤 lifecycle `COLLECTING`, 새 Insights snapshot과 오류 없음도 확인했다.
+- 전달: PR #17을 merge SHA `21562e73`으로 병합했고 source PR CI `32909332665`, main CI `32909555558`과 Vercel production health가 성공했다. 운영 migration `202608260006`과 자동 활성화 환경을 적용했으며 같은 SHA의 Oracle owner-only 배포 run `32909954027`을 실행했다.
+- 남은 일: Oracle 배포 완료와 실제 수집 종료 뒤 자동 pause·final snapshot·`COMPLETED` 장기 관찰.
 
 ## 2026-08-26 — 아이디어 입력 내부 실행 문구 제거
 

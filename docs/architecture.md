@@ -1,6 +1,6 @@
 # 아키텍처
 
-상태: 계정별 durable lifecycle·Meta 자동 집행·Insights 리포트 코드 완료, 운영 migration·배포 대기
+상태: 계정별 durable lifecycle·Meta 자동 집행·Insights 리포트 운영 적용 완료
 기준일: 2026-08-26
 
 현재 저장소는 Anthropic 문구 생성기와 테스트 fixture가 같은 `CampaignGenerator` 계약을 사용한다. 제품은 Supabase 접수를 먼저 저장한 뒤 service-role worker가 lease로 캠페인을 claim해 AI 생성, 랜딩·카드 렌더, Meta 활성화, Insights 집계를 수행한다. fixture는 자동 테스트에서만 명시하며 기본 seed는 없다.
@@ -69,4 +69,4 @@ mock 저장소의 `Map`은 한 Node.js 프로세스 안에서 브라우저 간 �
 
 ## 배포 모델
 
-기존 Oracle Compute VM의 Kubernetes와 분리된 rootless Docker에서 Next.js standalone 앱 한 인스턴스와 Caddy를 Compose로 실행한다. Caddy는 사설 고포트만 bind하고 OCI public NLB가 별도 IP의 80·443을 전달하므로 기존 Traefik은 바꾸지 않는다. live 단계에서 캠페인을 공개하는 행위는 새 앱을 배포하는 작업이 아니라 Supabase snapshot에 slug를 발급하고 기존 `/p/[slug]`가 읽게 하는 작업이다. 개인 owner-only GitHub Actions는 사용자가 검토한 source SHA와 성공한 품질 gate를 확인하고 강제 명령 SSH gateway로 health가 확인된 release만 전환하며 실패 시 직전 이미지를 복구한다. 실제 서버 적용과 외부 계정 production 검증, 행사 제출은 아직 수행하지 않았다. 상세 운영 경계는 [ADR-0019](decisions/0019-self-host-on-oracle-with-verified-ssh-releases.md)와 [배포 가이드](deployment.md)를 따른다.
+기존 Oracle Compute VM의 Kubernetes와 분리된 rootless Docker에서 Next.js standalone 앱, lifecycle worker와 Caddy를 Compose로 실행한다. Caddy는 사설 고포트만 bind하고 OCI public NLB가 별도 IP의 80·443을 전달하므로 기존 Traefik은 바꾸지 않는다. live 단계에서 캠페인을 공개하는 행위는 새 앱을 배포하는 작업이 아니라 Supabase snapshot에 slug를 발급하고 기존 `/p/[slug]`가 읽게 하는 작업이다. 개인 owner-only GitHub Actions는 사용자가 검토한 source SHA와 성공한 품질 gate를 확인하고 강제 명령 SSH gateway로 health가 확인된 release만 전환하며 실패 시 직전 이미지를 복구한다. 운영 Supabase migration, Google OAuth, Turnstile, Anthropic, Meta ACTIVE 실행과 Insights snapshot 경로를 적용했으며 Vercel과 Oracle은 같은 검증 source SHA를 배포한다. 상세 운영 경계는 [ADR-0019](decisions/0019-self-host-on-oracle-with-verified-ssh-releases.md), [ADR-0023](decisions/0023-run-account-owned-campaigns-as-a-durable-automatic-lifecycle.md)과 [배포 가이드](deployment.md)를 따른다.

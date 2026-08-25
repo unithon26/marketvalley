@@ -19,7 +19,6 @@ import {
   type ReservationInput,
   type ReservationRecord,
   type ReservationSummary,
-  type ResetCampaignInput,
 } from "@/lib/contracts/repository";
 import { summarizeReservations } from "@/lib/demo/campaignReservations";
 import {
@@ -253,14 +252,6 @@ export class FixtureCampaignRepository implements CampaignRepository {
     if (!campaign) return;
     this.assertDraftOwnership(campaign, input.draftId);
     this.removeCampaign(campaign);
-  }
-
-  async reset(input: ResetCampaignInput): Promise<PublishedCampaign> {
-    const campaign = this.requireCampaign(input.campaignId);
-    this.assertDraftOwnership(campaign, input.draftId);
-    campaign.nextAction = null;
-    this.reservations.set(campaign.id, this.createInitialReservationMap());
-    return copyPublished(campaign);
   }
 
   private materialize(campaign: StoredCampaign, spec: CampaignSpec): void {
