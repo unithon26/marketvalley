@@ -1,5 +1,30 @@
 # Troubleshooting
 
+## 2026-08-26 — Meta 이미지 업로드 후 원장 체크포인트 저장이 정규식 오류로 중단됨
+
+### 맥락과 영향
+
+운영 Vercel에서 승인된 첫 Meta `PAUSED` 초안을 생성했다. 첫 캐러셀 이미지 `01-hook.png`는 Meta 광고계정 이미지 라이브러리에 생성됐지만, durable operation은 `image:0`에서 `RECONCILIATION_REQUIRED`로 멈췄다. 캠페인·광고 세트·크리에이티브·광고는 아직 생성되지 않았고 광고 활성화나 지출은 없었다.
+
+### 재현과 증거
+
+- Meta Graph 읽기에서 첫 이미지의 hash와 생성 시각을 확인했다.
+- operation 원장은 checkpoint 없이 `image:0` 조정 상태를 기록했다.
+- 같은 값을 조정 RPC에 전달하면 PostgreSQL `2201B invalid regular expression: invalid repetition count(s)`가 발생했다.
+- migration의 외부 ID와 조정자 검사는 `^[A-Za-z0-9_-]{5,256}$`를 사용했다.
+
+### 근본 원인과 대안
+
+PostgreSQL 정규식 반복 횟수 상한은 255인데 SQL 계약은 최대 256자를 정규식 하나로 검사했다. 입력값과 무관하게 해당 정규식을 평가하는 순간 실패해 Meta 쓰기는 성공하고 내부 checkpoint만 저장되지 않았다. 이미 생성된 이미지를 지우거나 요청을 처음부터 재시도하면 중복 생성 가능성이 있어 기각했다. 256자 지원을 255자로 줄이는 방법도 기존 TypeScript 계약과 불필요하게 달라져 기각했다.
+
+### 해결과 회귀 방지
+
+후속 migration에서 허용 문자는 `^[A-Za-z0-9_-]+$`, 길이는 `char_length(...) between 5 and 256`으로 분리한다. 이미 확인된 Meta hash는 `VERIFIED_CREATED` 조정으로 audit history와 checkpoint에 기록한 뒤 같은 operation key를 재개한다. focused 정적 테스트가 잘못된 `{5,256}` 반복식의 재도입과 길이 검사 누락을 막는다.
+
+### 남은 위험과 예상 질문
+
+운영 migration 적용과 조정, 최종 Meta 객체의 `PAUSED` 상태·지출 0원 확인이 남았다. 면접에서는 외부 API 성공과 내부 기록 실패 사이의 불확실성을 자동 재시도하지 않고 durable reconciliation로 해결한 이유를 설명할 수 있다.
+
 ## 2026-08-26 — 첫 Oracle release가 BuildKit daemon 재시작 루프에서 중단됨
 
 ### 맥락과 영향

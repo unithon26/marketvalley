@@ -180,6 +180,20 @@ describe("SupabaseMetaOperationLedger RPC adapter", () => {
 });
 
 describe("Meta operation migration static contract (not PostgreSQL execution proof)", () => {
+  it("keeps external IDs within the PostgreSQL regex bound and checks length separately", async () => {
+    const root = fileURLToPath(new URL("../../", import.meta.url));
+    const sql = await readFile(
+      `${root}supabase/migrations/202608250004_meta_external_id_regex.sql`,
+      "utf8",
+    );
+
+    expect(sql).not.toContain("{5,256}");
+    expect(sql).toContain("p_external_id !~ '^[A-Za-z0-9_-]+$'");
+    expect(sql).toContain("p_resolved_by !~ '^[A-Za-z0-9_-]+$'");
+    expect(sql).toContain("char_length(p_external_id) not between 5 and 256");
+    expect(sql).toContain("char_length(p_resolved_by) not between 5 and 256");
+  });
+
   it("guards required RPC arguments and exposes only SECURITY DEFINER RPC execution to service_role", async () => {
     const root = fileURLToPath(new URL("../../", import.meta.url));
     const sql = await readFile(

@@ -1,5 +1,13 @@
 # 작업 기록
 
+## 2026-08-26 — Meta 운영 원장 외부 ID 검증 복구
+
+- 목적: 첫 운영 `PAUSED` 초안 생성에서 Meta 이미지 업로드 뒤 체크포인트 저장이 중단된 원인을 제거하고, 이미 만들어진 자산을 중복 생성하지 않고 이어서 처리한다.
+- 변경: PostgreSQL 정규식 반복 상한을 넘던 `{5,256}` 검사를 문자 허용 정규식과 `char_length` 범위 검사로 분리하는 후속 migration `202608250004`를 추가했다. 전환·조정 RPC의 권한과 상태 전이 계약은 유지했다.
+- 검증: focused migration 계약 테스트로 256자 상한, 허용 문자와 기존 잘못된 반복식 제거를 확인한다. 운영 적용과 첫 이미지 checkpoint 조정, 나머지 Meta 객체 생성 결과는 완료 뒤 갱신한다.
+- 전달: 운영 migration 적용과 Git 전달 전이다.
+- 남은 일: 운영 DB에 migration을 적용하고 확인된 첫 이미지 hash를 감사 기록과 함께 원장에 복구한 뒤 캠페인·광고 세트·크리에이티브·광고를 모두 `PAUSED`로 완성한다.
+
 ## 2026-08-26 — Vercel·Oracle Compose 운영 배포 완료
 
 - 목적: 발표 snapshot과 분리된 메인 제품을 공식 Vercel URL과 기존 Oracle VM의 Kubernetes 밖 Compose 환경에 같은 검증 source로 배포한다.
