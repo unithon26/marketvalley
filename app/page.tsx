@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { PlusIcon } from "@/components/icons";
+import { CardFlowIcon, PlusIcon } from "@/components/icons";
 import { SiteHeader } from "@/components/site-header";
 
 const projects = [
@@ -36,15 +36,11 @@ export default function HomePage() {
         </div>
 
         <section className="project-grid" aria-label="프로젝트 목록">
-          {visibleProjects.map((project, index) => {
+          {visibleProjects.map((project) => {
             const card = <>
               <div className={`project-visual ${project.tone}`}>
                 <span className="visual-pill">{project.state}</span>
-                <div className="visual-copy">
-                  <small>{index === 0 ? "마감 전 남은 메뉴를" : "아이디어의 가능성을"}</small>
-                  <strong>{index === 0 ? "동네 이웃에게 바로" : "첫 반응으로 확인"}</strong>
-                </div>
-                <div className="visual-orb" />
+                <div className="visual-flow"><CardFlowIcon size={22} /></div>
               </div>
               <div className="project-card-body">
                 <strong>{project.name}</strong>
