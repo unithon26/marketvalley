@@ -5,7 +5,10 @@ import { getCampaignRepository } from "@/lib/demo/repository";
 import { resolveCampaignRepositoryMode } from "@/lib/demo/repositoryConfig";
 import { resolveReservationProtectionConfig } from "@/lib/security/reservationProtection";
 
-type PublicCampaignPageProps = { params: Promise<{ slug: string }> };
+type PublicCampaignPageProps = {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ preview?: string | string[] }>;
+};
 
 export async function generateMetadata({ params }: PublicCampaignPageProps): Promise<Metadata> {
   const { slug } = await params;
@@ -19,8 +22,8 @@ export async function generateMetadata({ params }: PublicCampaignPageProps): Pro
   };
 }
 
-export default async function PublicCampaignPage({ params }: PublicCampaignPageProps) {
-  const { slug } = await params;
+export default async function PublicCampaignPage({ params, searchParams }: PublicCampaignPageProps) {
+  const [{ slug }, query] = await Promise.all([params, searchParams]);
   const campaignRepository = await getCampaignRepository("public");
   const published = await campaignRepository.getBySlug(slug);
   if (!published) notFound();
@@ -31,6 +34,7 @@ export default async function PublicCampaignPage({ params }: PublicCampaignPageP
       spec={published.spec}
       campaignId={published.id}
       turnstileSiteKey={protection.mode === "turnstile" ? protection.siteKey : undefined}
+      trackVisit={query.preview !== "1"}
     />
   );
 }

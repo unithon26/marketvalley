@@ -56,7 +56,16 @@ function formatKoreanDateTime(value: string): string {
   return `${year}.${month}.${day} ${hour}:${minute}`;
 }
 
-function MetricCards({ metrics }: { metrics: CampaignAnalytics }) {
+function formatCurrency(value: number | null, currency: string | null): string {
+  if (value === null || !currency) return "집계 전";
+  return new Intl.NumberFormat("ko-KR", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function MetricCards({ metrics, isPresentation }: { metrics: CampaignAnalytics; isPresentation: boolean }) {
   const ctr = calculateRate(metrics.linkClicks, metrics.impressions);
   const reservationRate = calculateRate(metrics.reservations, metrics.landingVisits);
   return (
@@ -75,7 +84,7 @@ function MetricCards({ metrics }: { metrics: CampaignAnalytics }) {
       <article>
         <strong>{formatMetric(ctr, "%")}</strong>
         <span>Meta 링크 CTR</span>
-        <p>{metrics.updatedAt ? `마지막 동기화 ${formatKoreanDateTime(metrics.updatedAt)}` : "Meta Insights 집계 전"}</p>
+        <p>{metrics.updatedAt ? `${isPresentation ? "예시 집계 종료" : "마지막 동기화"} ${formatKoreanDateTime(metrics.updatedAt)}` : "Meta Insights 집계 전"}</p>
       </article>
       <article>
         <strong>{formatMetric(reservationRate, "%")}</strong>
@@ -86,7 +95,7 @@ function MetricCards({ metrics }: { metrics: CampaignAnalytics }) {
   );
 }
 
-function FunnelAnalysis({ metrics }: { metrics: CampaignAnalytics }) {
+function FunnelAnalysis({ metrics, isPresentation }: { metrics: CampaignAnalytics; isPresentation: boolean }) {
   const steps = [
     ["노출", formatMetric(metrics.impressions)],
     ["링크 클릭", formatMetric(metrics.linkClicks)],
@@ -111,19 +120,50 @@ function FunnelAnalysis({ metrics }: { metrics: CampaignAnalytics }) {
           </div>
         ))}
       </div>
-      <p className="report-insight">모든 값은 실제 Meta Insights, 고유 방문, 예약 기록에서만 계산됩니다.</p>
+      <p className="report-insight">
+        {isPresentation
+          ? "발표용 예시 퍼널입니다. 실제 운영 화면은 Meta Insights, 고유 방문, 예약 기록에서만 계산합니다."
+          : "모든 값은 실제 Meta Insights, 고유 방문, 예약 기록에서만 계산됩니다."}
+      </p>
     </section>
   );
 }
 
-function MeasurementCoverage({ metrics }: { metrics: CampaignAnalytics }) {
+function MetaDetail({ metrics, isPresentation }: { metrics: CampaignAnalytics; isPresentation: boolean }) {
+  if (metrics.status === "not_connected") return null;
+  const costPerLinkClick = metrics.spendMinor !== null && metrics.linkClicks
+    ? Math.round(metrics.spendMinor / metrics.linkClicks)
+    : null;
+  const frequency = metrics.impressions !== null && metrics.reach
+    ? Math.round((metrics.impressions / metrics.reach) * 100) / 100
+    : null;
+
+  return (
+    <section className="figma-report-card meta-detail-card report-animated-section" aria-label="Meta 집계 상세">
+      <div className="report-section-title">
+        <h2>Meta 집계 상세</h2>
+        <span>{isPresentation ? "발표용 수집 완료 예시" : "Meta Insights"}</span>
+      </div>
+      <dl className="meta-detail-grid">
+        <div><dt>도달</dt><dd>{formatMetric(metrics.reach, "명")}</dd></div>
+        <div><dt>총 클릭</dt><dd>{formatMetric(metrics.clicks, "회")}</dd></div>
+        <div><dt>광고비</dt><dd>{formatCurrency(metrics.spendMinor, metrics.currency)}</dd></div>
+        <div><dt>링크 클릭당 비용</dt><dd>{formatCurrency(costPerLinkClick, metrics.currency)}</dd></div>
+        <div><dt>평균 노출 빈도</dt><dd>{formatMetric(frequency, "회")}</dd></div>
+        <div><dt>랜딩 도달률</dt><dd>{formatMetric(calculateRate(metrics.landingVisits, metrics.linkClicks), "%")}</dd></div>
+      </dl>
+    </section>
+  );
+}
+
+function MeasurementCoverage({ metrics, isPresentation }: { metrics: CampaignAnalytics; isPresentation: boolean }) {
   return (
     <section className="figma-report-card demographic-card report-animated-section">
       <h2>계측 상태</h2>
       <div className="demographic-layout">
         <div>
           <h3>Meta 광고</h3>
-          <p>{metrics.status === "not_connected" ? "광고 연결 전" : metrics.status === "collecting" ? "광고 심사·집계 중" : metrics.status === "final" ? "최종 집계" : "예비 집계"}</p>
+          <p>{isPresentation ? "24시간 수집 완료 예시" : metrics.status === "not_connected" ? "광고 연결 전" : metrics.status === "collecting" ? "광고 심사·집계 중" : metrics.status === "final" ? "최종 집계" : "예비 집계"}</p>
         </div>
         <div>
           <h3>수집하지 않는 값</h3>
@@ -160,6 +200,7 @@ type CampaignReportProps = {
   publicSlug: string;
   initialSummary: ReservationSummary;
   initialAnalytics?: CampaignAnalytics;
+  presentationMode?: { collectedHours: number };
 };
 
 export function CampaignReport({
@@ -167,6 +208,7 @@ export function CampaignReport({
   publicSlug,
   initialSummary,
   initialAnalytics = emptyCampaignAnalytics,
+  presentationMode,
 }: CampaignReportProps) {
   const [summary, setSummary] = useState(initialSummary);
   const [metrics, setMetrics] = useState(initialAnalytics);
@@ -178,7 +220,9 @@ export function CampaignReport({
   const cardPreviewRef = useRef<HTMLDivElement | null>(null);
   const refreshInFlightRef = useRef(false);
   const publicPath = `/p/${encodeURIComponent(publicSlug)}`;
+  const landingPreviewPath = `${publicPath}?preview=1`;
   const fit = classifyMarketFit(metrics);
+  const isPresentation = presentationMode !== undefined;
 
   const refresh = useCallback(async () => {
     if (refreshInFlightRef.current) return;
@@ -198,6 +242,7 @@ export function CampaignReport({
   }, [campaignId]);
 
   useEffect(() => {
+    if (isPresentation) return;
     const refreshReport = () => { void refresh(); };
     const refreshWhenVisible = () => {
       if (document.visibilityState === "visible") refreshReport();
@@ -212,7 +257,7 @@ export function CampaignReport({
       window.removeEventListener("focus", refreshReport);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, [refresh]);
+  }, [isPresentation, refresh]);
 
   useEffect(() => {
     const sections = reportRootRef.current?.querySelectorAll<HTMLElement>(".report-animated-section");
@@ -294,6 +339,16 @@ export function CampaignReport({
   return (
     <main ref={reportRootRef} className="figma-report-page" data-market-fit={fit}>
       <div className="figma-report-container">
+        {presentationMode ? (
+          <aside className="presentation-report-banner" role="note">
+            <strong>{presentationMode.collectedHours}시간 수집 구간 스킵</strong>
+            <span>발표용 수집 완료 예시</span>
+            <p>
+              아래 집계값과 예약자명은 녹화 시나리오를 위한 명시적 예시입니다.
+              실제 제품 리포트는 Meta Insights·고유 랜딩 방문·동의 기반 예약 기록만 사용합니다.
+            </p>
+          </aside>
+        ) : null}
         <header className="report-result-heading">
           <span className="report-result-check"><CheckIcon size={20} /></span>
           <p>검증 결과</p>
@@ -301,9 +356,10 @@ export function CampaignReport({
         </header>
 
         <div className="report-divider" />
-        <MetricCards metrics={metrics} />
-        <FunnelAnalysis metrics={metrics} />
-        <MeasurementCoverage metrics={metrics} />
+        <MetricCards metrics={metrics} isPresentation={isPresentation} />
+        <MetaDetail metrics={metrics} isPresentation={isPresentation} />
+        <FunnelAnalysis metrics={metrics} isPresentation={isPresentation} />
+        <MeasurementCoverage metrics={metrics} isPresentation={isPresentation} />
 
         <section className="report-creative-grid report-animated-section">
           <article className="figma-report-card creative-card">
@@ -366,7 +422,7 @@ export function CampaignReport({
           <article className="figma-report-card landing-preview-card">
             <h2>랜딩페이지</h2>
             <div className="landing-live-preview">
-              <iframe src={publicPath} title="AI가 생성한 랜딩페이지 미리보기" loading="lazy" />
+              <iframe src={landingPreviewPath} title="AI가 생성한 랜딩페이지 미리보기" loading="lazy" />
             </div>
             <Link className="report-outline-button" href={publicPath} target="_blank">서비스 바로가기</Link>
           </article>

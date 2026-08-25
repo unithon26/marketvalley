@@ -41,4 +41,14 @@ describe("automatic Meta boundary", () => {
     expect(lifecycle).toContain("renderCampaignCarouselPngAssets");
     expect(lifecycle).toContain("assertMetaAutomaticActivationAuthorized");
   });
+
+  it("발표용 결과는 별도 모드로 명시되고 운영 제어 기능을 만들지 않는다", () => {
+    const report = renderToStaticMarkup(createElement(CampaignReport, {
+      ...props,
+      presentationMode: { collectedHours: 24 },
+    }));
+    expect(report).toContain("24시간 수집 구간 스킵");
+    expect(report).toContain("발표용 수집 완료 예시");
+    expect(report).not.toContain("실제 광고 활성화");
+  });
 });
