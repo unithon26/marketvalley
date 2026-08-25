@@ -7,7 +7,7 @@
 - 안전: OpenAI 모드의 `/api/generate`는 JSON Content-Type, same-origin, Google `getClaims()` 로그인, 사용자별 단일 프로세스 분당 3회 제한을 모델 호출 전에 적용한다. 노출 이력 있는 로컬 키는 `.env.local`의 빈 값으로 덮어써 실제 호출과 과금을 막았다.
 - 결정: 제품은 OpenAI를 기본으로 사용하고 자동 테스트와 비상 발표만 fixture를 명시한다. 선택과 기각 대안은 ADR-0015에 기록했다.
 - 검증: `pnpm check`의 lint·typecheck·단위 테스트 79개, build/start 생성 모드를 다르게 둔 production E2E 15개, configured production build와 server-secret client bundle smoke, coverage, high audit, peer·diff 검사가 통과했다. 독립 리뷰의 공개 유료 endpoint와 정적 환경 상태 지적을 수정하고 재검토했다.
-- 전달: 로컬 구현과 검증 완료. 실제 OpenAI 요청·과금, 배포와 행사 제출은 수행하지 않았다.
+- 전달: 기능 커밋 `d18d193`을 비공개 `unithon26/marketvalley`의 `main`에 push했다. GitHub Actions run `32814869482`에서 install·lint·typecheck·단위 테스트 79개·configured auth/server-secret bundle·production build·Chromium E2E 15개가 모두 통과했다. 실제 OpenAI 요청·과금, 배포와 행사 제출은 수행하지 않았다.
 - 남은 일: 회전된 키와 비용 승인 아래 대표 입력 품질 eval을 수행한다. Vercel OpenAI 활성화 전 Supabase 기반 분산 rate limit과 일·월 총예산 차단 또는 OpenAI 프로젝트 예산 상한을 적용한다.
 
 ## 2026-08-25 — 로컬 OAuth origin 불일치 복구
