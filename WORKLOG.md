@@ -156,7 +156,7 @@
 - 영향 범위: Google Auth Platform, Supabase Authentication 설정, 로컬 `.env.local`, `SiteHeader`, Supabase 공개 설정 helper, 단위·E2E 설정, README·인증·아키텍처·연동·검증·troubleshooting 문서
 - 검증: 실제 Google 동의와 PKCE callback, GNB 사용자 표시, Supabase Auth 사용자 생성, 현재 세션 POST 로그아웃과 익명 복귀를 확인했다. `pnpm check`의 lint·typecheck·단위 테스트 67개, configured production bundle smoke, production Chromium E2E 14개, `pnpm test:coverage`, `pnpm audit --audit-level high`, `pnpm peers check`, `git diff --check`가 통과했다. 커버리지는 statements 82.24%, branches 75.43%, functions 90.71%, lines 85.38%다. 독립 보안 재검토가 찾은 client bundle 회귀 테스트 공백을 별도 build smoke와 CI gate로 닫았다.
 - 결정: Google Client Secret은 Supabase provider에만 저장하고 로컬 파일·Git에는 두지 않는다. `.env.local`은 공개 URL과 publishable key만 가지며 Git에서 제외한다. 실제 로그인 연결과 광고 데이터 소유권은 별개이므로 fixture route에는 아직 로그인을 강제하지 않는다.
-- 전달: local Google·Supabase 설정과 종단 검증까지 완료했다. production URL·Vercel 설정, 배포와 행사 제출은 수행하지 않았다.
+- 전달: local Google·Supabase 설정과 종단 검증을 완료하고 기능 커밋 `0f12f61`과 팀원의 예약자명단 설계를 보존한 병합 커밋 `e205985`를 비공개 `unithon26/marketvalley`의 `main`에 push했다. GitHub Actions run `32809977111`에서 install·lint·typecheck·단위 테스트 67개·configured production bundle smoke·production build·Chromium E2E 14개가 모두 통과했다. production URL·Vercel 설정, 배포와 행사 제출은 수행하지 않았다.
 - 남은 일: G3 migration·RLS·repository에 `auth.uid()` 소유권을 연결한다. 배포 시 production Site URL·Redirect URL·Vercel 환경변수를 추가하고 새로고침·토큰 갱신·동시 탭 OAuth를 실제 도메인에서 재검증한다. 디자이너 확정본이 오면 `AuthControls` markup과 `auth-*` CSS만 교체한다.
 
 ## 2026-08-25 — OpenAI 로컬 환경변수 준비
