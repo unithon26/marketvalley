@@ -10,14 +10,14 @@ import { requestAuthSession } from "@/lib/client/use-auth-session";
 import { hasCompleteBundledSupabaseConfig } from "@/lib/supabase/config";
 
 const newCampaignPath = "/new";
-const loginPath = "/login?next=%2Fnew";
+const googleLoginPath = "/auth/google?next=%2Fnew";
 
 export function resolveCampaignEntryPath(
   state: AuthSessionState | null,
   authEnabled = true,
 ): string {
   if (!authEnabled) return newCampaignPath;
-  return state?.status === "anonymous" ? loginPath : newCampaignPath;
+  return state?.status === "anonymous" ? googleLoginPath : newCampaignPath;
 }
 
 type CampaignEntryLinkProps = {
@@ -48,7 +48,14 @@ export function CampaignEntryLink({ children, className }: CampaignEntryLinkProp
     setChecking(true);
     const session = await requestAuthSession();
     setChecking(false);
-    router.push(resolveCampaignEntryPath(session, authEnabled));
+    const nextPath = resolveCampaignEntryPath(session, authEnabled);
+
+    if (nextPath === googleLoginPath) {
+      window.location.assign(nextPath);
+      return;
+    }
+
+    router.push(nextPath);
   }
 
   return (
