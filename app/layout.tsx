@@ -7,10 +7,16 @@ export const metadata: Metadata = {
     "아이디어 하나에서 검증 가설, 공개 랜딩, 캐러셀과 관심 응답까지 연결하는 시장검증 광고 도구",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({
+  children,
+  modal,
+}: Readonly<{
+  children: React.ReactNode;
+  modal: React.ReactNode;
+}>) {
   return (
     <html lang="ko" data-scroll-behavior="smooth">
-      <body>{children}</body>
+      <body>{children}{modal}</body>
     </html>
   );
 }

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import JSZip from "jszip";
 import { CheckIcon, CopyIcon, DownloadIcon, ExternalIcon } from "@/components/icons";
+import { CampaignEntryLink } from "@/components/campaign-entry-link";
 import { CarouselCard, carouselCoverAssets, carouselFileNames } from "@/components/renderers/carousel-card";
 import type { CampaignSpec, NextAction } from "@/lib/contracts/campaign";
 import type { CampaignResponse } from "@/lib/contracts/api";
@@ -399,7 +400,7 @@ export function CampaignReport({
         </div>
       </section>
 
-      <div className="report-footer-actions"><button className="text-button danger" type="button" onClick={reset} disabled={resetting || pendingAction !== null}>{resetting ? "초기화 중..." : "데모 데이터 초기화"}</button><Link className="button button-secondary" href="/new">새 광고 만들기</Link></div>
+      <div className="report-footer-actions"><button className="text-button danger" type="button" onClick={reset} disabled={resetting || pendingAction !== null}>{resetting ? "초기화 중..." : "데모 데이터 초기화"}</button><CampaignEntryLink className="button button-secondary">새 광고 만들기</CampaignEntryLink></div>
       {mutationError || loadError
         ? <div className="toast toast-error" role="alert">{mutationError || loadError}</div>
         : notice && <div className="toast" role="status">{notice}</div>}

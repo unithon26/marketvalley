@@ -74,6 +74,13 @@ button { color: inherit; }
 .google-login-button:hover:not(:disabled) { border-color: #b8a5f5; box-shadow: 0 8px 22px rgba(137,105,234,.14); transform: translateY(-1px); }
 .google-login-button:disabled { color: var(--tertiary); cursor: not-allowed; }
 .login-footnote { margin: 15px 0 0; color: var(--tertiary); font-size: 12px; text-align: center; }
+body:has(.login-modal-layer) > :not(.login-modal-layer) { filter: blur(3px); }
+.login-modal-layer { position: fixed; inset: 0; z-index: 100; display: grid; padding: 24px; overflow-y: auto; place-items: center; isolation: isolate; }
+.login-modal-backdrop { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; padding: 0; border: 0; background: rgba(25,31,40,.28); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); cursor: default; }
+.login-modal-content { position: relative; width: min(440px, calc(100% - 40px)); }
+.login-card-modal { width: 100%; }
+.login-modal-close { position: absolute; top: 17px; right: 19px; z-index: 1; display: grid; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; place-items: center; color: var(--tertiary); background: transparent; cursor: pointer; font-size: 27px; font-weight: 300; line-height: 1; }
+.login-modal-close:hover { color: var(--ink); background: var(--surface); }
 
 .button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 0 18px; border: 0; border-radius: 12px; cursor: pointer; font-weight: 700; transition: transform .18s ease, background .18s ease, box-shadow .18s ease; }
 .button:hover:not(:disabled) { transform: translateY(-1px); }
@@ -478,6 +485,8 @@ button { color: inherit; }
   .login-preview-grid { grid-template-columns: 1fr; }
   .login-preview-grid i:not(:first-child) { display: none; }
   .login-card { padding: 32px 25px 27px; border-radius: 24px; }
+  .login-modal-layer { padding: 16px; }
+  .login-modal-content { width: 100%; }
   .login-card > .brand-logo { width: 168px; margin-bottom: 24px; }
   .login-copy h1 { font-size: 22px; }
   .dashboard, .wizard-page, .progress-page, .report-page { padding-top: 34px; }

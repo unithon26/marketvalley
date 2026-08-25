@@ -1,6 +1,10 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ back: vi.fn() }),
+}));
 
 import { LoginPanel } from "@/components/login-panel";
 
@@ -31,6 +35,19 @@ describe("LoginPanel", () => {
       errorCode: "provider_denied",
     }));
     expect(denied).toContain("Google 로그인이 취소됐어요");
+  });
+
+  it("모달에서는 별도 미리보기 대신 현재 화면 위 대화상자를 렌더링한다", () => {
+    const html = renderToStaticMarkup(createElement(LoginPanel, {
+      enabled: true,
+      nextPath: "/new",
+      modal: true,
+    }));
+
+    expect(html).toContain('role="dialog"');
+    expect(html).toContain('aria-modal="true"');
+    expect(html).toContain("login-modal-backdrop");
+    expect(html).not.toContain("login-dashboard-preview");
   });
 
   it("로그아웃 실패 뒤 남은 세션을 숨기지 않고 계속 경로를 제공한다", () => {

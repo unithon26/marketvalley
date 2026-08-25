@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { CampaignEntryLink } from "@/components/campaign-entry-link";
 import { CardFlowIcon, PlusIcon } from "@/components/icons";
 import { SiteHeader } from "@/components/site-header";
 
@@ -27,7 +28,7 @@ export default function HomePage() {
             <h1>전체 프로젝트</h1>
             <p>아이디어에서 첫 시장 반응까지, 반복 제작 없이 한 흐름으로 관리하세요.</p>
           </div>
-          <Link className="button button-primary" href="/new"><PlusIcon size={18} /> 새 광고</Link>
+          <CampaignEntryLink className="button button-primary"><PlusIcon size={18} /> 새 광고</CampaignEntryLink>
         </div>
 
         <div className="segment-control" aria-label="프로젝트 상태 필터">
@@ -57,11 +58,11 @@ export default function HomePage() {
             );
           })}
           {activeGroup === "ongoing" ? (
-            <Link href="/new" className="new-project-card">
+            <CampaignEntryLink className="new-project-card">
               <span className="new-project-icon"><PlusIcon size={28} /></span>
               <strong>새 아이디어 검증하기</strong>
               <p>광고 제작에 필요한 반복 작업을 없애보세요.</p>
-            </Link>
+            </CampaignEntryLink>
           ) : (
             <div className="empty-projects" role="status">
               <strong>완료된 검증이 아직 없어요.</strong>
