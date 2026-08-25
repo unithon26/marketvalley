@@ -292,3 +292,11 @@
 - 검증: `pnpm check`의 lint·typecheck·단위 테스트 14파일 74개, focused production Chromium E2E 1개, 전체 production Chromium E2E 14개가 통과했다. 로컬 브라우저에서 데스크톱과 375px 모두 이미지 로드와 가로 overflow 0을 확인했다.
 - 전달: 기능 커밋 `dbab413`을 비공개 `unithon26/marketvalley`의 `main`에 push했다. 제품 배포와 행사 제출은 수행하지 않았다.
 - 남은 일: 디자이너 확정본을 받으면 `public/report/carousel-preview-placeholder.svg`를 최종 자산으로 교체하고 공개 전 사용권을 확인한다.
+
+## 2026-08-25 — 리포트 카드뉴스 실제 미리보기 연결
+
+- 목적: 마지막 리포트의 임시 디자인 슬롯을 없애고, 생성된 Instagram 카드뉴스 5장을 결과 화면에서 바로 확인할 수 있게 한다.
+- 변경: ZIP 생성에 쓰는 동일한 `CarouselCard` 렌더러를 반응형 SVG 미리보기에 재사용했다. 데스크톱은 5장을 한 줄에 배치하고, 모바일은 4:5 비율을 유지한 가로 스크롤·스냅 갤러리로 전환한다. 각 카드에 역할과 PNG 파일명을 표시하고 화면 미리보기와 다운로드 결과가 같은 디자인임을 안내한다.
+- 검증: `pnpm check`의 lint·typecheck·단위 테스트 26파일 115개, configured server-secret client bundle smoke, production Chromium E2E 20개, coverage, high audit, peer dependency, diff 검사가 모두 통과했다. 커버리지는 statements 83.58%, branches 76.19%, functions 90.13%, lines 87.93%다. 로컬 브라우저에서 실제 카드 5장, 4:5 비율, 모바일 230px 카드 스크롤과 첫 장·마지막 장 표시를 직접 확인했다.
+- 전달: 기능 변경과 작업 기록을 비공개 `unithon26/marketvalley`의 `main`에 전달한다. 제품 배포와 행사 제출은 수행하지 않는다.
+- 남은 일: 이 작업 범위의 제품 변경은 없다. 표지 `32`·`34`를 실제 사용한다면 기존 사진 사용권 확인은 계속 필요하다.

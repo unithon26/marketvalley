@@ -84,14 +84,25 @@ function CarouselCover({ spec }: { spec: CampaignSpec }) {
   );
 }
 
-export function CarouselCard({ spec, index, exportRef }: { spec: CampaignSpec; index: number; exportRef?: (node: HTMLDivElement | null) => void }) {
+export function CarouselCard({
+  spec,
+  index,
+  exportRef,
+  preview = false,
+}: {
+  spec: CampaignSpec;
+  index: number;
+  exportRef?: (node: HTMLDivElement | null) => void;
+  preview?: boolean;
+}) {
   const copy = cardCopy(spec, index);
   const coverTemplate = spec.templates.carouselCover;
   return (
     <div
       ref={exportRef}
-      className={`carousel-card carousel-card-${index + 1} carousel-cover-template-${coverTemplate}`}
+      className={`carousel-card ${preview ? `carousel-preview-render carousel-preview-render-${index + 1}` : `carousel-card-${index + 1}`} carousel-cover-template-${coverTemplate}`}
       style={campaignThemeStyle(spec.brand)}
+      data-carousel-index={index + 1}
       data-brand-tone={spec.brand.tone}
       data-carousel-cover-template={coverTemplate}
       data-product-name={spec.project.name}

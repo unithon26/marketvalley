@@ -286,15 +286,18 @@ test("fixture 생성부터 산출물, 예약, 판단, 초기화까지 실제 API
   await expect(page.locator(".carousel-card-1")).toHaveAttribute("data-product-name", "마감한입");
   await expect(page.locator(".carousel-card-3")).toContainText("공개 페이지와 게시 카드 동시 생성");
   const carouselDownloadButton = page.getByRole("button", { name: "캐러셀 ZIP 다운로드" });
-  const carouselDesignPlaceholder = page.getByText("카드뉴스 디자인 이미지가 들어갈 자리입니다.");
-  await expect(carouselDesignPlaceholder).toBeVisible();
-  const [downloadButtonBox, placeholderBox] = await Promise.all([
+  const carouselPreviewGallery = page.getByRole("list", { name: "생성된 Instagram 카드뉴스 5장" });
+  await expect(carouselPreviewGallery.locator(".carousel-preview-item")).toHaveCount(5);
+  await expect(carouselPreviewGallery.locator(".carousel-preview-render")).toHaveCount(5);
+  await expect(carouselPreviewGallery.getByText("01-hook.png")).toBeVisible();
+  await expect(page.getByText("카드뉴스 디자인 이미지가 들어갈 자리입니다.")).toHaveCount(0);
+  const [downloadButtonBox, previewGalleryBox] = await Promise.all([
     carouselDownloadButton.boundingBox(),
-    carouselDesignPlaceholder.boundingBox(),
+    carouselPreviewGallery.boundingBox(),
   ]);
   expect(downloadButtonBox).not.toBeNull();
-  expect(placeholderBox).not.toBeNull();
-  expect(placeholderBox!.y).toBeGreaterThan(downloadButtonBox!.y + downloadButtonBox!.height);
+  expect(previewGalleryBox).not.toBeNull();
+  expect(previewGalleryBox!.y).toBeGreaterThan(downloadButtonBox!.y + downloadButtonBox!.height);
   const copyCases = [
     { cardLabel: "게시 문구", noticeLabel: "게시 문구", value: campaign.spec.messaging.caption },
     { cardLabel: "후킹 문구 3개", noticeLabel: "후킹 문구", value: campaign.spec.messaging.hooks.join("\n") },

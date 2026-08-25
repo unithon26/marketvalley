@@ -1,6 +1,5 @@
 "use client";
 
-import NextImage from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toPng } from "html-to-image";
@@ -29,6 +28,26 @@ function maskEmail(email: string): string {
   const visible = local.slice(0, Math.min(2, local.length));
   const masked = "*".repeat(Math.max(4, local.length - visible.length));
   return `${visible}${masked}@${domain}`;
+}
+
+const carouselPreviewLabels = ["첫 장", "문제", "핵심", "해결", "행동 유도"] as const;
+
+function CarouselPreviewCard({ spec, index }: { spec: CampaignSpec; index: number }) {
+  return (
+    <figure className="carousel-preview-item" role="listitem">
+      <div className="carousel-preview-canvas">
+        <svg viewBox="0 0 1080 1350" aria-hidden="true" focusable="false">
+          <foreignObject width="1080" height="1350">
+            <CarouselCard spec={spec} index={index} preview />
+          </foreignObject>
+        </svg>
+      </div>
+      <figcaption>
+        <strong>{carouselPreviewLabels[index]}</strong>
+        <span>{carouselFileNames[index]}</span>
+      </figcaption>
+    </figure>
+  );
 }
 
 type ReservationTrendGeometry = {
@@ -377,16 +396,10 @@ export function CampaignReport({
             <div className="deliverable-icon carousel-icon">05</div>
             <div><h3>Instagram 캐러셀</h3><p>1080×1350 PNG 5장 · 결정적 React/CSS 렌더러</p><code>01-hook.png — 05-cta.png</code></div>
             <button className="icon-button" type="button" onClick={downloadZip} disabled={exporting} aria-label="캐러셀 ZIP 다운로드"><DownloadIcon /></button>
-            <figure className="carousel-design-placeholder">
-              <NextImage
-                src="/report/carousel-preview-placeholder.svg"
-                alt=""
-                width={1600}
-                height={900}
-                sizes="(max-width: 640px) calc(100vw - 74px), 1060px"
-              />
-              <figcaption>카드뉴스 디자인 이미지가 들어갈 자리입니다.</figcaption>
-            </figure>
+            <div className="carousel-preview-gallery" role="list" aria-label="생성된 Instagram 카드뉴스 5장">
+              {[0, 1, 2, 3, 4].map((index) => <CarouselPreviewCard key={index} spec={spec} index={index} />)}
+            </div>
+            <p className="carousel-preview-note">화면 미리보기와 다운로드 PNG는 같은 디자인으로 만들어집니다.</p>
           </article>
           <article><div className="deliverable-icon meta-icon">M</div><div><h3>Meta 게시 준비</h3><p>PNG 5장·문구·CTA·대상 고객 가설·절대 URL을 ZIP 하나로</p><code>실제 게시 또는 집행 아님</code></div><button className="icon-button" type="button" onClick={downloadMetaPackage} disabled={exporting} aria-busy={exporting} aria-label="Meta 게시 준비 다운로드"><DownloadIcon /></button></article>
         </div>
