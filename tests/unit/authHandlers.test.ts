@@ -149,11 +149,11 @@ describe("auth route handlers", () => {
 
   it("provider 거절과 잘못된 callback을 일반화된 오류 코드로 보낸다", async () => {
     const providerDenied = await handleAuthCallback(
-      new Request("https://marketvalley.example/auth/callback?error=access_denied"),
+      new Request("https://marketvalley.example/auth/callback?error=access_denied&sb_flow_id=flow_denied"),
       {
         environment,
         createClient: async () => clientWithAuth({}),
-        continuations: continuationStore(),
+        continuations: continuationStore(new Map([["flow_denied", "/campaigns/demo"]])),
       },
     );
     const missingCode = await handleAuthCallback(
@@ -166,7 +166,7 @@ describe("auth route handlers", () => {
     );
 
     expect(providerDenied.headers.get("location")).toBe(
-      "https://marketvalley.example/auth/error?code=provider_denied",
+      "https://marketvalley.example/auth/error?code=provider_denied&next=%2Fcampaigns%2Fdemo",
     );
     expect(missingCode.headers.get("location")).toBe(
       "https://marketvalley.example/auth/error?code=invalid_request",
@@ -287,7 +287,7 @@ describe("auth route handlers", () => {
 
   it("검증할 수 없는 세션도 local signOut을 실행하고 실패를 성공으로 표시하지 않는다", async () => {
     const failedSignOut = await handleLogout(
-      new Request("https://marketvalley.example/auth/logout", {
+      new Request("https://marketvalley.example/auth/logout?next=%2Fcampaigns%2Fdemo", {
         method: "POST",
         headers: { Origin: "https://marketvalley.example" },
       }),
@@ -302,7 +302,7 @@ describe("auth route handlers", () => {
 
     expect(failedSignOut.status).toBe(302);
     expect(failedSignOut.headers.get("location")).toBe(
-      "https://marketvalley.example/auth/error?code=logout_failed",
+      "https://marketvalley.example/auth/error?code=logout_failed&next=%2Fcampaigns%2Fdemo",
     );
   });
 

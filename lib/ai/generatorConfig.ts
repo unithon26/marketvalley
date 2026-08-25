@@ -1,17 +1,17 @@
-export const DEFAULT_OPENAI_TEXT_MODEL = "gpt-4o-mini";
+export const DEFAULT_ANTHROPIC_TEXT_MODEL = "claude-haiku-4-5-20251001";
 
-export type CampaignGeneratorMode = "fixture" | "openai";
+export type CampaignGeneratorMode = "fixture" | "anthropic";
 
 export type CampaignGeneratorStatus =
   | { mode: "fixture"; ready: true }
-  | { mode: "openai"; ready: boolean };
+  | { mode: "anthropic"; ready: boolean };
 
 type Environment = Record<string, string | undefined>;
 
 export type CampaignGeneratorConfig =
   | { mode: "fixture" }
   | {
-    mode: "openai";
+    mode: "anthropic";
     apiKey: string;
     model: string;
   };
@@ -31,11 +31,11 @@ function optionalValue(value: string | undefined): string | undefined {
 export function resolveCampaignGeneratorMode(
   environment: Environment = process.env,
 ): CampaignGeneratorMode {
-  const mode = optionalValue(environment.CAMPAIGN_GENERATOR_MODE) ?? "openai";
+  const mode = optionalValue(environment.CAMPAIGN_GENERATOR_MODE) ?? "anthropic";
 
-  if (mode !== "fixture" && mode !== "openai") {
+  if (mode !== "fixture" && mode !== "anthropic") {
     throw new CampaignGeneratorConfigError(
-      "CAMPAIGN_GENERATOR_MODE는 fixture 또는 openai여야 합니다.",
+      "CAMPAIGN_GENERATOR_MODE는 fixture 또는 anthropic이어야 합니다.",
     );
   }
 
@@ -50,7 +50,7 @@ export function resolveCampaignGeneratorStatus(
 
   return {
     mode,
-    ready: optionalValue(environment.OPENAI_API_KEY) !== undefined,
+    ready: optionalValue(environment.ANTHROPIC_API_KEY) !== undefined,
   };
 }
 
@@ -61,16 +61,16 @@ export function resolveCampaignGeneratorConfig(
 
   if (mode === "fixture") return { mode };
 
-  const apiKey = optionalValue(environment.OPENAI_API_KEY);
+  const apiKey = optionalValue(environment.ANTHROPIC_API_KEY);
   if (!apiKey) {
     throw new CampaignGeneratorConfigError(
-      "openai 모드에는 서버 전용 OPENAI_API_KEY가 필요합니다.",
+      "anthropic 모드에는 서버 전용 ANTHROPIC_API_KEY가 필요합니다.",
     );
   }
 
   return {
     mode,
     apiKey,
-    model: optionalValue(environment.OPENAI_TEXT_MODEL) ?? DEFAULT_OPENAI_TEXT_MODEL,
+    model: optionalValue(environment.ANTHROPIC_TEXT_MODEL) ?? DEFAULT_ANTHROPIC_TEXT_MODEL,
   };
 }

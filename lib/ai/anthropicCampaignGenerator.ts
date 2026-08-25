@@ -1,5 +1,5 @@
-import OpenAI from "openai";
-import { zodTextFormat } from "openai/helpers/zod";
+import Anthropic from "@anthropic-ai/sdk";
+import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 
 import {
@@ -18,10 +18,10 @@ import {
   CAMPAIGN_PROMPT_VERSION,
 } from "@/lib/ai/campaignPrompts";
 
-const OPENAI_TIMEOUT_MS = 20_000;
-const OPENAI_MAX_RETRIES = 1;
-const OPENAI_MAX_OUTPUT_TOKENS = 6_000;
-const OPENAI_EMPTY_RESPONSE_ATTEMPTS = 2;
+const ANTHROPIC_TIMEOUT_MS = 20_000;
+const ANTHROPIC_MAX_RETRIES = 1;
+const ANTHROPIC_MAX_OUTPUT_TOKENS = 6_000;
+const ANTHROPIC_EMPTY_RESPONSE_ATTEMPTS = 2;
 
 const uniqueArray = <T extends z.ZodType>(schema: T, length: number, maximum: number) => (
   z.array(schema).length(length).refine(
@@ -41,7 +41,7 @@ const structuredSignalOptionsSchema = z.array(signalOptionSchema).length(3)
     message: "신호 선택지 문구는 서로 달라야 합니다.",
   });
 
-export const openAICampaignSpecSchema = campaignSpecSchema.extend({
+export const anthropicCampaignSpecSchema = campaignSpecSchema.extend({
   validation: campaignSpecSchema.shape.validation.extend({
     signal: campaignSpecSchema.shape.validation.shape.signal.extend({
       options: structuredSignalOptionsSchema,
@@ -70,18 +70,21 @@ const BRAND_COLORS: Record<
   warm: { primaryColor: "#5A3E36", accentColor: "#D58C5B" },
 };
 
-export type OpenAIResponsesClient = Pick<OpenAI, "responses">;
+export type AnthropicMessagesClient = Pick<Anthropic, "messages">;
 
-type OpenAICampaignGeneratorOptions = {
+type AnthropicCampaignGeneratorOptions = {
   apiKey?: string;
   model: string;
-  client?: OpenAIResponsesClient;
+  client?: AnthropicMessagesClient;
   now?: () => Date;
 };
 
 export class CampaignGenerationError extends Error {
   constructor(
-    readonly code: "openai_request_failed" | "openai_empty_response",
+    readonly code:
+      | "anthropic_request_failed"
+      | "anthropic_empty_response"
+      | "anthropic_billing_error",
     message: string,
     options?: ErrorOptions,
   ) {
@@ -145,18 +148,18 @@ export function applyServerOwnedCampaignFields(
   });
 }
 
-export class OpenAICampaignGenerator implements CampaignGenerator {
-  private readonly client: OpenAIResponsesClient;
+export class AnthropicCampaignGenerator implements CampaignGenerator {
+  private readonly client: AnthropicMessagesClient;
   private readonly model: string;
   private readonly now: () => Date;
 
-  constructor(options: OpenAICampaignGeneratorOptions) {
+  constructor(options: AnthropicCampaignGeneratorOptions) {
     this.model = options.model;
     this.now = options.now ?? (() => new Date());
-    this.client = options.client ?? new OpenAI({
+    this.client = options.client ?? new Anthropic({
       apiKey: options.apiKey,
-      maxRetries: OPENAI_MAX_RETRIES,
-      timeout: OPENAI_TIMEOUT_MS,
+      maxRetries: ANTHROPIC_MAX_RETRIES,
+      timeout: ANTHROPIC_TIMEOUT_MS,
     });
   }
 
@@ -166,41 +169,48 @@ export class OpenAICampaignGenerator implements CampaignGenerator {
     try {
       const request = {
         model: this.model,
-        input: [
-          { role: "developer" as const, content: buildCampaignDeveloperPrompt() },
+        system: buildCampaignDeveloperPrompt(),
+        messages: [
           { role: "user" as const, content: buildCampaignUserPrompt(parsedInput) },
         ],
-        max_output_tokens: OPENAI_MAX_OUTPUT_TOKENS,
-        store: false,
-        text: {
-          format: zodTextFormat(
-            openAICampaignSpecSchema,
-            "campaign_spec",
-            { description: "marketvalley 시장검증 광고 문구 계약" },
-          ),
+        max_tokens: ANTHROPIC_MAX_OUTPUT_TOKENS,
+        output_config: {
+          format: zodOutputFormat(anthropicCampaignSpecSchema),
         },
       };
 
-      for (let attempt = 0; attempt < OPENAI_EMPTY_RESPONSE_ATTEMPTS; attempt += 1) {
-        const response = await this.client.responses.parse(request);
-        if (!response.output_parsed) continue;
+      for (let attempt = 0; attempt < ANTHROPIC_EMPTY_RESPONSE_ATTEMPTS; attempt += 1) {
+        const response = await this.client.messages.parse(request);
+        if (!response.parsed_output) continue;
 
         return applyServerOwnedCampaignFields(
-          response.output_parsed,
+          response.parsed_output,
           this.model,
           this.now(),
         );
       }
 
       throw new CampaignGenerationError(
-        "openai_empty_response",
-        "OpenAI가 검증 가능한 광고 문구를 반환하지 않았습니다.",
+        "anthropic_empty_response",
+        "Claude가 검증 가능한 광고 문구를 반환하지 않았습니다.",
       );
     } catch (error) {
       if (error instanceof CampaignGenerationError) throw error;
+      if (
+        typeof error === "object"
+        && error !== null
+        && (("status" in error && error.status === 402)
+          || ("type" in error && error.type === "billing_error"))
+      ) {
+        throw new CampaignGenerationError(
+          "anthropic_billing_error",
+          "Anthropic API 결제 상태를 확인해주세요.",
+          { cause: error },
+        );
+      }
       throw new CampaignGenerationError(
-        "openai_request_failed",
-        "OpenAI 문구 생성 요청을 완료하지 못했습니다.",
+        "anthropic_request_failed",
+        "Claude 문구 생성 요청을 완료하지 못했습니다.",
         { cause: error },
       );
     }

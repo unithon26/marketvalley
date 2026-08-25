@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AuthControls } from "@/components/auth-controls";
+import { BrandLogo } from "@/components/brand-logo";
 import { hasCompleteBundledSupabaseConfig } from "@/lib/supabase/config";
 
 export function SiteHeader({ compact = false }: { compact?: boolean }) {
@@ -10,8 +11,7 @@ export function SiteHeader({ compact = false }: { compact?: boolean }) {
     <header className={compact ? "site-header site-header-compact" : "site-header"}>
       <div className="header-inner">
         <Link href="/" className="brand" aria-label="marketvalley 홈">
-          <span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>
-          <span>marketvalley</span>
+          <BrandLogo priority />
         </Link>
         <nav className="header-nav" aria-label="주요 메뉴">
           <Link href="/">프로젝트</Link>

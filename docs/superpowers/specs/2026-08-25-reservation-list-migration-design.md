@@ -46,7 +46,7 @@ export type ReservationSummary = {
 
 `CampaignRepository` 인터페이스 변경:
 
-- `recordSignal(input: SignalInput)` → `recordReservation(input: ReservationInput): Promise<ReservationSummary>`
+- `recordSignal(input: SignalInput)` → `recordReservation(input: ReservationInput): Promise<void>`
 - `getSignalSummary(campaignId)` → `getReservationSummary(campaignId): Promise<ReservationSummary>`
 - `DuplicateSignalError`는 유지하되 판정 기준을 `visitorId` → `(campaignId, email)`로 변경한다.
 - `SignalInput`, `SignalCounts`, `SignalSummary`, `SignalDecisionStatus`, `InvalidSignalOptionError`는 삭제한다. `CampaignSpec.validation.signal`(질문·3개 선택지 스키마)도 함께 제거 대상이다 — B-2 작업에서 프롬프트와 스키마를 같이 정리한다.

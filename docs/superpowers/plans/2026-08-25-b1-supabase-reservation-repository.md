@@ -1,5 +1,8 @@
 # B-1: Supabase CampaignRepository 어댑터 Implementation Plan
 
+> 상태: 2026-08-25에 ADR-0016의 RLS·분산 quota 설계로 대체됐다. 아래 내용은 구현 전 기록이며,
+> service-role 단일 repository와 정책 없는 RLS를 실제 구현 기준으로 사용하지 않는다.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 >
 > **Codex 세션을 위한 안내:** 이 플랜은 Claude Code 세션이 아니라 별도 세션(Codex)이 실행한다. 위 서브스킬 지시는 Claude Code 전용이며, Codex는 아래 태스크를 순서대로 실행하면 된다.

@@ -63,7 +63,6 @@ export type CampaignResponse = PublishedCampaign & {
 
 export type RecordReservationResponse = {
   alreadyReserved: boolean;
-  summary: ReservationSummary;
 };
 
 export type ApiErrorResponse = {

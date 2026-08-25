@@ -100,12 +100,30 @@ export function routeErrorResponse(error: unknown): Response {
     return errorResponse(503, "campaign_generator_not_configured", "문구 생성 설정을 확인해주세요.");
   }
   if (hasErrorName(error, "AuthenticationRequiredError")) {
-    return errorResponse(401, "authentication_required", "AI 문구 생성을 위해 로그인이 필요합니다.");
+    return errorResponse(401, "authentication_required", "계속하려면 로그인이 필요합니다.");
   }
   if (hasErrorName(error, "SupabaseConfigurationError")) {
     return errorResponse(503, "auth_not_configured", "로그인 설정을 확인해주세요.");
   }
+  if (
+    hasErrorName(error, "SupabaseServiceConfigError")
+    || hasErrorName(error, "CampaignRepositoryConfigError")
+    || hasErrorName(error, "GenerationRateLimitConfigError")
+  ) {
+    return errorResponse(503, "campaign_repository_not_configured", "데이터 저장 설정을 확인해주세요.");
+  }
+  if (hasErrorName(error, "GenerationRateLimitUnavailableError")) {
+    return errorResponse(503, "generation_rate_limit_unavailable", "문구 생성 제한을 확인하지 못했습니다. 잠시 후 다시 시도해주세요.");
+  }
   if (hasErrorName(error, "CampaignGenerationError")) {
+    if (
+      typeof error === "object"
+      && error !== null
+      && "code" in error
+      && error.code === "anthropic_billing_error"
+    ) {
+      return errorResponse(503, "anthropic_billing_error", "AI 생성 결제 상태를 확인해주세요.");
+    }
     return errorResponse(503, "campaign_generation_unavailable", "문구를 생성하지 못했습니다. 잠시 후 다시 시도해주세요.");
   }
   return errorResponse(500, "internal_error", "요청을 처리하지 못했습니다.");

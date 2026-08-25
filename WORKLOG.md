@@ -1,5 +1,24 @@
 # 작업 기록
 
+## 2026-08-25 — Supabase 영속 저장·소유권 RLS와 분산 생성 quota 구현
+
+- 목적: 서버 메모리 repository를 실제 다중 기기 저장소로 교체하고, 광고·예약자 원문 소유권과 유료 AI 비용 한도를 DB에서 강제한다.
+- 변경: `campaigns`, `campaign_reservations`, 사용자 분당·일일·전체 일일 생성 quota 테이블과 migration을 추가했다. `auth.uid() = owner_id` operation별 RLS, server-only secret client, 요청별 사용자 session repository, HMAC 이메일 중복 방지, 동의 버전·시각, 원자 live reset RPC와 원자 quota RPC를 구현했다. `CAMPAIGN_REPOSITORY_MODE=fixture|supabase`를 명시적으로 분리하고 production 유료 생성은 Supabase 분산 제한 없이 실행되지 않게 했다. 작업 중 원격에 추가된 OpenAI preview는 현재 Anthropic 단일 공급자 결정에 맞춰 `preview:anthropic`으로 보존 이식했다.
+- 안전: service key는 공개 snapshot 조회·검증된 예약 저장·quota RPC에만 사용하고 소유자 작업에는 사용하지 않는다. `anon`의 테이블 권한과 quota RPC 실행 권한을 회수했으며 공개 예약 응답에서 예약자 수·목록을 제거했다. JSON·same-origin 예약 경계와 server secret client bundle 검사를 추가했다.
+- 결정: service-role 단일 repository 계획을 기각하고 사용자 JWT가 적용된 client와 DB RLS를 함께 사용한다. 선택과 기각 대안은 ADR-0016에 기록했다.
+- 실패와 해결: E2E에서 내부 `request.url`의 `localhost`와 실제 `Host/Origin`의 `127.0.0.1` 차이를 교차 출처로 오판해 예약 4개 시나리오가 실패했다. 실제 Host·forwarded authority 기준으로 수정하고 `TROUBLESHOOTING.md`에 재현·원인·회귀 방지를 기록했다. 다른 로컬 서버가 기본 E2E 포트를 점유한 경우를 위해 포트를 환경변수로 분리했고, clipboard 권한도 고정 포트가 아닌 실제 페이지 origin을 사용하게 했다.
+- 검증: Supabase focused 단위 테스트와 route 보안 테스트, 최종 `pnpm check`의 lint·typecheck·단위 테스트 24파일 106개, production build, configured server-secret bundle smoke, production Chromium E2E 16개, coverage, high audit, peer·diff 검사가 통과했다. 커버리지는 statements 82.65%, branches 74.48%, functions 86.75%, lines 87.31%다. 로컬 Docker/Postgres가 없어 `supabase db lint --local`은 연결되지 않았고 운영 DB migration은 실행하지 않았다.
+- 전달: 로컬 구현과 검증까지 완료했다. 운영 migration·실제 데이터 쓰기는 명시적 승인 전이라 수행하지 않았다. Anthropic·인증 UI 변경과 원격 preview 커밋을 충돌 없이 통합했고 Git·CI 전달을 진행한다.
+- 남은 일: 운영 Supabase에 migration을 적용하고 server key·고정 HMAC secret을 등록한 뒤 실제 계정 A/B RLS, 공개 예약, 중복, reset, quota RPC를 종단 검증한다. production OAuth·Vercel 설정과 Anthropic Console spend limit은 별도 외부 승인 경계다.
+
+## 2026-08-25 — 문구 생성 공급자를 Anthropic으로 교체
+
+- 목적: OpenAI를 사용하지 않고 제품의 모든 live 문구 생성을 Anthropic의 최저가 활성 Claude 모델로 통일한다.
+- 변경: OpenAI SDK·adapter·생성 모드·환경변수·오류 코드를 제거하고 `AnthropicCampaignGenerator`, Messages API Structured Outputs와 `claude-haiku-4-5-20251001`을 제품 기본 경로로 연결했다. 로컬 비밀 환경은 `ANTHROPIC_API_KEY`로 전환하고 fixture fallback, Google 로그인, same-origin, 분산 quota와 서버 소유 필드 덮어쓰기는 유지했다. 결정과 기각 대안은 ADR-0017에 기록했다.
+- 검증: Anthropic API에 실제 Structured Outputs 요청을 보내 `Claude Haiku 4.5` 응답을 확인했다. focused 단위 테스트 3파일 17개, `pnpm check`의 lint·typecheck·단위 테스트 99개, configured production build와 server-secret client bundle smoke, production Chromium E2E 16개가 통과했다. 실행 코드·테스트·환경변수 예시에서 OpenAI 참조가 없음을 검색했다.
+- 전달: 로컬 구현과 검증까지 완료했다. 작업 트리에 Supabase·인증 관련 진행 중 변경이 함께 있어 이 작업에서는 commit·push·배포를 수행하지 않았다.
+- 남은 일: 대표 제품 입력으로 Claude 문구 품질 eval을 수행하고 Anthropic Console의 spend limit을 설정한다. 배포 전 운영 Supabase migration과 production 환경변수·OAuth 검증도 완료해야 한다.
+
 ## 2026-08-25 — 랜딩 AI 문구 생성 기본 경로 전환
 
 - 목적: 구현돼 있던 OpenAI 문구 생성 adapter가 fixture 기본 설정 때문에 실제 랜딩 제작에 사용되지 않던 불일치를 해소한다.

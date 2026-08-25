@@ -39,6 +39,9 @@ function generationErrorMessage(code: string | null): string {
   if (code === "generation_rate_limited") {
     return "AI 문구 생성 요청이 많아요. 잠시 후 다시 시도해주세요.";
   }
+  if (code === "anthropic_billing_error") {
+    return "AI 생성 사용 한도가 부족해요. API 결제·사용 한도를 확인해주세요.";
+  }
   if (code === "campaign_generator_not_configured" || code === "auth_not_configured") {
     return "AI 문구 생성 설정을 확인해주세요.";
   }
@@ -75,8 +78,8 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
   const publishAttemptRef = useRef<PublishAttempt | null>(null);
 
   const canContinue = step === 1 ? background.trim().length >= 20 : solution.trim().length >= 20;
-  const usesOpenAI = generatorStatus.mode === "openai";
-  const generatorNotice = usesOpenAI
+  const usesLiveAI = generatorStatus.mode !== "fixture";
+  const generatorNotice = usesLiveAI
     ? generatorStatus.ready
       ? "AI가 랜딩·카드뉴스 문구를 생성해요"
       : "AI 문구 생성 · 회전된 API 키 설정 필요"
@@ -187,7 +190,7 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
               : !generatorStatus.ready
                 ? "AI 설정 필요"
                 : submitting
-                  ? usesOpenAI ? "AI 문구 만드는 중..." : "광고 만드는 중..."
+                  ? usesLiveAI ? "AI 문구 만드는 중..." : "광고 만드는 중..."
                   : <>광고 만들기 <ArrowRightIcon size={17} /></>}
           </button>
         </div>

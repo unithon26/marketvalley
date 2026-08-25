@@ -1,14 +1,14 @@
 import type { CampaignResponse } from "@/lib/contracts/api";
-import type { PublishedCampaign } from "@/lib/contracts/repository";
-import { campaignRepository } from "@/lib/demo/repository";
+import type { CampaignRepository, PublishedCampaign } from "@/lib/contracts/repository";
 
 export async function toCampaignResponse(
   campaign: PublishedCampaign,
   requestUrl: string,
+  repository: CampaignRepository,
 ): Promise<CampaignResponse> {
   return {
     ...campaign,
     url: new URL(`/p/${campaign.slug}`, requestUrl).toString(),
-    summary: await campaignRepository.getReservationSummary(campaign.id),
+    summary: await repository.getReservationSummary(campaign.id),
   };
 }

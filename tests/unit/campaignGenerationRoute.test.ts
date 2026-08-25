@@ -23,7 +23,7 @@ function request(options: { origin?: string; contentType?: string } = {}): Reque
 }
 
 function dependencies(options: {
-  mode?: "openai" | "fixture";
+  mode?: "anthropic" | "fixture";
   requireIdentity?: () => Promise<{ userId: string }>;
   consumeQuota?: (userId: string) => boolean;
 } = {}) {
@@ -35,8 +35,8 @@ function dependencies(options: {
     generator,
     value: {
       environment: {
-        CAMPAIGN_GENERATOR_MODE: options.mode ?? "openai",
-        OPENAI_API_KEY: "test-key-that-must-not-be-used",
+        CAMPAIGN_GENERATOR_MODE: options.mode ?? "anthropic",
+        ANTHROPIC_API_KEY: "test-key-that-must-not-be-used",
         NEXT_PUBLIC_SITE_URL: "https://marketvalley.example",
         NODE_ENV: "production",
       },
@@ -48,7 +48,7 @@ function dependencies(options: {
 }
 
 describe("AI campaign generation route", () => {
-  it("같은 origin의 로그인 사용자만 OpenAI 문구 생성을 실행한다", async () => {
+  it("같은 origin의 로그인 사용자만 AI 문구 생성을 실행한다", async () => {
     const { generator, value } = dependencies();
     const response = await handleGenerateCampaign(request({
       origin: "https://marketvalley.example",
@@ -57,11 +57,11 @@ describe("AI campaign generation route", () => {
 
     expect(response.status).toBe(200);
     expect(value.requireIdentity).toHaveBeenCalledTimes(1);
-    expect(value.consumeQuota).toHaveBeenCalledWith("user-1");
+    expect(value.consumeQuota).toHaveBeenCalledWith("user-1", value.environment);
     expect(generator.generate).toHaveBeenCalledWith(idea);
   });
 
-  it("교차 origin과 JSON이 아닌 OpenAI 요청을 인증·생성 전에 거절한다", async () => {
+  it("교차 origin과 JSON이 아닌 AI 요청을 인증·생성 전에 거절한다", async () => {
     for (const [incoming, expectedCode, expectedStatus] of [
       [request({ origin: "https://attacker.example", contentType: "application/json" }), "invalid_origin", 403],
       [request({ origin: "https://marketvalley.example", contentType: "text/plain" }), "unsupported_media_type", 415],
@@ -77,7 +77,7 @@ describe("AI campaign generation route", () => {
     }
   });
 
-  it("로그인하지 않은 OpenAI 요청과 사용자별 할당량 초과를 명시한다", async () => {
+  it("로그인하지 않은 AI 요청과 사용자별 할당량 초과를 명시한다", async () => {
     const unauthenticated = dependencies({
       requireIdentity: vi.fn(async () => { throw new AuthenticationRequiredError(); }),
     });

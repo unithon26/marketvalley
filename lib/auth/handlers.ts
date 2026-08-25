@@ -65,7 +65,8 @@ export async function handleGoogleSignIn(
   request: Request,
   dependencies: OAuthHandlerDependencies,
 ): Promise<Response> {
-  let origin: string;
+  let origin: string | null = null;
+  let next = "/";
   try {
     origin = resolveAppOrigin(request.url, dependencies.environment);
     const requestUrl = new URL(request.url);
@@ -75,7 +76,7 @@ export async function handleGoogleSignIn(
       return redirect(canonicalUrl);
     }
 
-    const next = sanitizeNextPath(requestUrl.searchParams.get("next"));
+    next = sanitizeNextPath(requestUrl.searchParams.get("next"));
     const callbackUrl = new URL("/auth/callback", origin);
 
     const supabase = await dependencies.createClient();
@@ -88,12 +89,13 @@ export async function handleGoogleSignIn(
     });
 
     if (error || !data.url || !isValidPkceFlowId(data.flowId)) {
-      return redirect(authErrorUrl(origin, "login_failed"));
+      return redirect(authErrorUrl(origin, "login_failed", next));
     }
     dependencies.continuations.set(data.flowId, next);
     return redirect(data.url);
   } catch (error) {
     if (error instanceof SupabaseConfigurationError) return configurationErrorResponse();
+    if (origin) return redirect(authErrorUrl(origin, "login_failed", next));
     return authError("login_failed", "Google 로그인을 시작하지 못했습니다.", 502);
   }
 }
@@ -113,8 +115,10 @@ export async function handleAuthCallback(
   const url = new URL(request.url);
   const flowId = url.searchParams.get("sb_flow_id");
   if (url.searchParams.has("error")) {
-    if (isValidPkceFlowId(flowId)) dependencies.continuations.take(flowId);
-    return redirect(authErrorUrl(origin, "provider_denied"));
+    const next = isValidPkceFlowId(flowId)
+      ? dependencies.continuations.take(flowId) ?? "/"
+      : "/";
+    return redirect(authErrorUrl(origin, "provider_denied", next));
   }
 
   const code = url.searchParams.get("code");
@@ -126,11 +130,11 @@ export async function handleAuthCallback(
   try {
     const supabase = await dependencies.createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code, { flowId });
-    if (error) return redirect(authErrorUrl(origin, "callback_failed"));
+    if (error) return redirect(authErrorUrl(origin, "callback_failed", next));
     return redirect(new URL(next, origin));
   } catch (error) {
     if (error instanceof SupabaseConfigurationError) return configurationErrorResponse();
-    return redirect(authErrorUrl(origin, "callback_failed"));
+    return redirect(authErrorUrl(origin, "callback_failed", next));
   }
 }
 
@@ -180,12 +184,12 @@ export async function handleLogout(
     const supabase = await dependencies.createClient();
     const { error } = await supabase.auth.signOut({ scope: "local" });
     if (error && !isMissingAuthSession(error)) {
-      return redirect(authErrorUrl(origin, "logout_failed"));
+      return redirect(authErrorUrl(origin, "logout_failed", next));
     }
     return redirect(new URL(next, origin), 303);
   } catch (error) {
     if (error instanceof SupabaseConfigurationError) return configurationErrorResponse();
-    return redirect(authErrorUrl(origin, "logout_failed"));
+    return redirect(authErrorUrl(origin, "logout_failed", next));
   }
 }
 

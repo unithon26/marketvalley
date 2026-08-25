@@ -1,6 +1,6 @@
 import type { GenerateCampaignResponse } from "@/lib/contracts/api";
 import { createCampaignGenerator } from "@/lib/ai/campaignGenerator";
-import { generationRateLimiter } from "@/lib/ai/generationRateLimit";
+import { consumeGenerationQuota } from "@/lib/ai/generationRateLimit";
 import { resolveCampaignGeneratorMode } from "@/lib/ai/generatorConfig";
 import { requireVerifiedIdentity } from "@/lib/auth/authorization";
 import { isSameOriginMutation, resolveAppOrigin } from "@/lib/auth/security";
@@ -20,14 +20,14 @@ type GenerateCampaignDependencies = {
   environment: Environment;
   createGenerator: (environment: Environment) => CampaignGenerator;
   requireIdentity: () => Promise<{ userId: string }>;
-  consumeQuota: (userId: string) => boolean;
+  consumeQuota: (userId: string, environment: Environment) => boolean | Promise<boolean>;
 };
 
 const defaultDependencies: GenerateCampaignDependencies = {
   environment: process.env,
   createGenerator: (environment) => createCampaignGenerator(environment),
   requireIdentity: requireVerifiedIdentity,
-  consumeQuota: (userId) => generationRateLimiter.consume(userId),
+  consumeQuota: consumeGenerationQuota,
 };
 
 function requireJsonContentType(request: Request): void {
@@ -45,7 +45,7 @@ export async function handleGenerateCampaign(
     const mode = resolveCampaignGeneratorMode(dependencies.environment);
     let userId: string | null = null;
 
-    if (mode === "openai") {
+    if (mode !== "fixture") {
       requireJsonContentType(request);
       const origin = resolveAppOrigin(request.url, dependencies.environment);
       if (!isSameOriginMutation(request, origin)) {
@@ -55,7 +55,7 @@ export async function handleGenerateCampaign(
     }
 
     const input = ideaInputSchema.parse(await readJsonBody(request, 8_192));
-    if (userId && !dependencies.consumeQuota(userId)) {
+    if (userId && !(await dependencies.consumeQuota(userId, dependencies.environment))) {
       throw new ApiRequestError(
         429,
         "generation_rate_limited",

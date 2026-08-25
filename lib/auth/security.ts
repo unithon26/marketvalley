@@ -73,9 +73,10 @@ export function isSameOriginMutation(request: Request, expectedOrigin: string): 
   }
 }
 
-export function authErrorUrl(origin: string, code: string): URL {
+export function authErrorUrl(origin: string, code: string, nextPath?: string | null): URL {
   const url = new URL("/auth/error", origin);
   url.searchParams.set("code", code);
+  if (nextPath) url.searchParams.set("next", sanitizeNextPath(nextPath));
   return url;
 }
 

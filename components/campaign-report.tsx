@@ -9,7 +9,7 @@ import { CheckIcon, CopyIcon, DownloadIcon, ExternalIcon } from "@/components/ic
 import { CarouselCard, carouselCoverAssets, carouselFileNames } from "@/components/renderers/carousel-card";
 import type { CampaignSpec, NextAction } from "@/lib/contracts/campaign";
 import type { CampaignResponse } from "@/lib/contracts/api";
-import type { ReservationSummary } from "@/lib/contracts/repository";
+import type { ReservationRecord, ReservationSummary } from "@/lib/contracts/repository";
 import { getCampaignDraftId } from "@/lib/client/demo-store";
 import { createNextActionState } from "@/lib/demo/campaignReservations";
 
@@ -22,26 +22,96 @@ function triggerDownload(blob: Blob, name: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/**
- * 실제 방문·클릭 트래킹을 아직 구현하지 않았다 (ADR-0013). 예약자 수·리스트만 실제 데이터이고,
- * 이 값들은 화면에 "예시 지표" 라벨과 함께 표시해 실측치로 오인되지 않게 한다.
- */
-const EXAMPLE_METRICS = {
-  impressions: 4_312,
-  ctr: 3.8,
-  industryCtr: 1.9,
-  reservationRate: 25,
-  industryReservationRate: 10,
-  dwellTimeSeconds: 47,
-  bounceRate: 42,
-} as const;
-
 function maskEmail(email: string): string {
   const [local, domain] = email.split("@");
   if (!domain) return email;
   const visible = local.slice(0, Math.min(2, local.length));
   const masked = "*".repeat(Math.max(4, local.length - visible.length));
   return `${visible}${masked}@${domain}`;
+}
+
+type ReservationTrendGeometry = {
+  area: string;
+  line: string;
+  points: Array<{ id: string; x: number; y: number }>;
+};
+
+export function buildReservationTrendGeometry(
+  source: readonly ReservationRecord[],
+  width = 720,
+  baseline = 148,
+  top = 24,
+): ReservationTrendGeometry {
+  const records = [...source].sort((a, b) => a.reservedAt.localeCompare(b.reservedAt));
+  if (records.length === 0) {
+    const line = `M24 ${baseline} H${width - 24}`;
+    return { area: `${line} Z`, line, points: [] };
+  }
+
+  const timestamps = records.map((record) => new Date(record.reservedAt).getTime());
+  const firstTimestamp = Math.min(...timestamps);
+  const lastTimestamp = Math.max(...timestamps);
+  const timeRange = lastTimestamp - firstTimestamp;
+  const heightRange = baseline - top;
+  const points = records.map((record, index) => ({
+    id: record.id,
+    x: timeRange === 0
+      ? width / 2
+      : 24 + ((timestamps[index] - firstTimestamp) / timeRange) * (width - 48),
+    y: baseline - ((index + 1) / records.length) * heightRange,
+  }));
+  const [firstPoint, ...remainingPoints] = points;
+  const line = remainingPoints.reduce(
+    (path, point) => `${path} H${point.x} V${point.y}`,
+    `M${firstPoint.x} ${baseline} V${firstPoint.y}`,
+  );
+  return {
+    area: `${line} L${points.at(-1)?.x ?? firstPoint.x} ${baseline} Z`,
+    line,
+    points,
+  };
+}
+
+function ReservationTrend({ summary }: { summary: ReservationSummary }) {
+  const records = [...summary.recent].sort((a, b) => a.reservedAt.localeCompare(b.reservedAt));
+  const width = 720;
+  const height = 180;
+  const baseline = 148;
+  const geometry = buildReservationTrendGeometry(records, width, baseline);
+  const timeFormatter = new Intl.DateTimeFormat("ko-KR", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Seoul",
+  });
+
+  return (
+    <article className="reservation-trend-card">
+      <div className="trend-heading">
+        <div><span>예약 접수 추이</span><strong>{summary.total}<small>건 누적</small></strong></div>
+        <em>저장된 예약 기준</em>
+      </div>
+      <svg className="reservation-trend" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`예약이 ${summary.total}건까지 누적된 추이`}>
+        <defs>
+          <linearGradient id="reservation-area" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#8969EA" stopOpacity=".42" />
+            <stop offset="1" stopColor="#8969EA" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path className="trend-grid-line" d={`M24 ${baseline} H${width - 24}`} />
+        <path className="trend-area" d={geometry.area} />
+        <path className="trend-line" d={geometry.line} />
+        {records.map((record, index) => (
+          <circle key={record.id} cx={geometry.points[index].x} cy={geometry.points[index].y} r="4" />
+        ))}
+      </svg>
+      <div className="trend-axis">
+        <span>{records[0] ? timeFormatter.format(new Date(records[0].reservedAt)) : "예약 대기 중"}</span>
+        <span>{records.at(-1) ? timeFormatter.format(new Date(records.at(-1)!.reservedAt)) : ""}</span>
+      </div>
+    </article>
+  );
 }
 
 type CampaignReportProps = {
@@ -259,14 +329,14 @@ export function CampaignReport({
     <main className="report-page page-container">
       <div className="report-intro">
         <span className="report-check"><CheckIcon /></span>
-        <div><span className="eyebrow">{spec.project.name} · DEMO AD</span><h1>검증 리포트를 보여드릴게요</h1><p>모든 수치는 발표 흐름을 확인하기 위한 목데이터입니다.</p></div>
+        <div><span className="eyebrow">{spec.project.name} · DEMO AD</span><h1>검증 리포트를 보여드릴게요</h1><p>저장된 예약자명단과 사전에 정한 판단 기준만 표시합니다.</p></div>
       </div>
 
       <section className="metric-grid">
-        <article><span>예약자 수</span><strong>{summary.total}<small>명</small></strong><p>실제 예약자명단 기준</p></article>
-        <article className="example-metric"><span>노출 수<em className="example-tag">예시 지표</em></span><strong>{EXAMPLE_METRICS.impressions.toLocaleString("ko-KR")}</strong><p>실제 계측 전 참고용 값</p></article>
-        <article className="example-metric"><span>CTR<em className="example-tag">예시 지표</em></span><strong>{EXAMPLE_METRICS.ctr}<small>%</small></strong><p>업계 평균 {EXAMPLE_METRICS.industryCtr}% 대비</p></article>
-        <article className="example-metric"><span>예약률<em className="example-tag">예시 지표</em></span><strong>{EXAMPLE_METRICS.reservationRate}<small>%</small></strong><p>업계 평균 {EXAMPLE_METRICS.industryReservationRate}% 대비</p></article>
+        <article className="metric-primary"><span>예약자 수</span><strong>{summary.total}<small>명</small></strong><p>현재 저장소의 예약자명단 기준</p></article>
+        <article><span>사전 판단 기준</span><strong>{summary.total}<small> / {spec.validation.decisionRule.minimumResponses}명</small></strong><p>{summary.total >= spec.validation.decisionRule.minimumResponses ? "최소 표본 도달" : "표본 수집 중"}</p></article>
+        <article><span>사람에게 남은 판단</span><strong className="metric-copy">{nextAction ? state.options.find((option) => option.selected)?.label : "선택 전"}</strong><p>AI가 시장성을 판정하지 않음</p></article>
+        <ReservationTrend summary={summary} />
       </section>
 
       <section className="report-section response-section">
@@ -285,7 +355,11 @@ export function CampaignReport({
             </table>
           </div>
         )}
-        <p className="data-note">서버 메모리에 준비된 seed 예약과 공개 랜딩에서 제출한 예약만 표시합니다. 랜딩 체류시간 {EXAMPLE_METRICS.dwellTimeSeconds}초·이탈률 {EXAMPLE_METRICS.bounceRate}%를 포함해 노출 수·CTR·예약률은 실제 계측 전 예시 지표입니다.</p>
+        <div className="measurement-boundary" aria-label="아직 연결하지 않은 지표">
+          <strong>계측 연결 전</strong>
+          <span>방문 수</span><span>Meta CTR</span><span>체류시간</span><span>스크롤 깊이</span><span>성별·연령·지역</span>
+        </div>
+        <p className="data-note">서버에 준비된 seed 예약과 공개 랜딩에서 실제 제출한 예약만 목록과 그래프에 반영합니다. 방문 이벤트와 Meta Insights를 연결하기 전에는 전환율·CTR·인구 통계를 만들지 않습니다.</p>
       </section>
 
       <section className="report-section deliverables-section">

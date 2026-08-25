@@ -4,20 +4,20 @@ import {
   resolveCampaignGeneratorConfig,
   type CampaignGeneratorConfig,
 } from "@/lib/ai/generatorConfig";
-import { OpenAICampaignGenerator } from "@/lib/ai/openaiCampaignGenerator";
+import { AnthropicCampaignGenerator } from "@/lib/ai/anthropicCampaignGenerator";
 
 type Environment = Record<string, string | undefined>;
 
 type CampaignGeneratorDependencies = {
   fixture: CampaignGenerator;
-  createOpenAI: (
-    config: Extract<CampaignGeneratorConfig, { mode: "openai" }>,
+  createAnthropic: (
+    config: Extract<CampaignGeneratorConfig, { mode: "anthropic" }>,
   ) => CampaignGenerator;
 };
 
 const defaultDependencies: CampaignGeneratorDependencies = {
   fixture: fixtureCampaignGenerator,
-  createOpenAI: (config) => new OpenAICampaignGenerator(config),
+  createAnthropic: (config) => new AnthropicCampaignGenerator(config),
 };
 
 export function createCampaignGenerator(
@@ -26,5 +26,5 @@ export function createCampaignGenerator(
 ): CampaignGenerator {
   const config = resolveCampaignGeneratorConfig(environment);
   if (config.mode === "fixture") return dependencies.fixture;
-  return dependencies.createOpenAI(config);
+  return dependencies.createAnthropic(config);
 }

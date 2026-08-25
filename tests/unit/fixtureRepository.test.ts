@@ -34,7 +34,8 @@ describe("FixtureCampaignRepository", () => {
       name: "홍길동",
       email: "visitor-one@example.com",
       consent: true,
-    })).resolves.toMatchObject({ total: 1 });
+    })).resolves.toBeUndefined();
+    await expect(repository.getReservationSummary(demoCampaignId)).resolves.toMatchObject({ total: 1 });
 
     await expect(repository.recordReservation({
       campaignId: demoCampaignId,

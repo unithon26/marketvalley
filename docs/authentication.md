@@ -13,11 +13,12 @@ marketvalley 로그인은 Google 토큰을 애플리케이션이 직접 교환�
 | OAuth code 교환 | `GET /auth/callback` — Supabase가 호출 |
 | 로그인 상태 조회 | `GET /api/auth/session` |
 | 현재 기기 로그아웃 | same-origin `POST /auth/logout?next=/` |
-| 인증 오류 | `GET /auth/error?code=...` |
+| 로그인 화면 | `GET /login?next=/new` |
+| 인증 오류 | `GET /auth/error?code=...` → `/login?next=/new&error=...` |
 
-`next`는 같은 앱의 화면 경로만 허용한다. 외부 URL, `/auth/*`, `/api/*`, 역슬래시와 제어문자가 포함된 값은 `/`로 바꾼다. 이동 경로는 PKCE flow ID별 10분짜리 HttpOnly 쿠키에 저장하고 callback URL 자체는 고정한다. 나중에 디자인을 교체할 때 로그인 버튼은 첫 route로 이동하고, GNB는 session API의 `authenticated`와 최소 사용자 정보만 사용하면 된다. 로그아웃은 링크가 아니라 POST form 또는 same-origin fetch로 호출해야 한다.
+`next`는 같은 앱의 화면 경로만 허용한다. 외부 URL, `/auth/*`, `/api/*`, 역슬래시와 제어문자가 포함된 값은 `/`로 바꾼다. 이동 경로는 PKCE flow ID별 10분짜리 HttpOnly 쿠키에 저장하고 callback URL 자체는 고정한다. `/new`는 제품 환경에서 서버가 세션을 먼저 확인하고 비로그인 사용자를 확정 Figma 로그인 화면으로 보낸다. GNB는 session API의 `authenticated`와 최소 사용자 정보만 사용한다. 로그아웃은 링크가 아니라 POST form 또는 same-origin fetch로 호출해야 한다.
 
-현재 GNB에는 임시 `AuthControls`가 연결되어 있다. `lib/client/use-auth-session.ts`가 상태와 API 계약을 소유하고 `components/auth-controls.tsx`는 표현만 소유한다. 디자이너 버튼을 받으면 hook과 route는 유지하고 이 컴포넌트의 markup과 `auth-*` CSS만 교체한다. Supabase가 미설정된 발표 모드에서는 session API를 반복 호출하지 않고 `로그인 준비 중`을 표시한다.
+확정 `market valley` SVG 로고와 전용 로그인 카드가 적용돼 있다. `lib/client/use-auth-session.ts`가 GNB 상태와 API 계약을 소유하고 `components/auth-controls.tsx`는 표현만 소유한다. Supabase가 미설정된 발표 모드에서는 session API를 반복 호출하지 않고 `로그인 준비 중`을 표시한다.
 
 서버에서 소유권을 확인하는 데이터 작업은 `requireVerifiedIdentity()`로 서명 검증된 JWT의 `sub`를 사용한다. session API는 Supabase Auth 서버의 `getUser()`로 최신 사용자를 다시 확인한다. 쿠키에서 읽은 `getSession()` 사용자 객체를 권한 판단에 사용하지 않는다.
 
@@ -81,9 +82,9 @@ https://<production-domain>/auth/callback\?sb_flow_id=*
 - 두 탭의 callback이 시작 역순으로 돌아와도 각 화면과 세션 code가 올바른 flow로 교환된다.
 - 교차 origin 로그아웃과 외부 `next` redirect가 거절된다.
 - 로그아웃 뒤 session API가 비로그인 상태로 돌아가고 다른 기기의 세션은 유지된다.
-- Supabase RLS와 repository가 `auth.uid()` 기준으로 자신의 광고만 변경·삭제하게 한다.
+- Supabase RLS와 repository가 `auth.uid()` 기준으로 자신의 광고만 조회·변경·삭제하게 한다.
 
-마지막 항목은 G3 Supabase 데이터 adapter에서 구현한다. 현재 로그인 백엔드는 준비됐지만 기존 fixture 광고 route에 로그인 강제를 적용하지 않았으므로 발표 데모는 그대로 실행된다.
+마지막 항목은 G3 Supabase 데이터 adapter 코드와 migration에 구현했다. 운영 DB에 migration을 적용하기 전까지 live 검증 완료로 간주하지 않으며, 기존 fixture 광고 route는 로그인 없이 발표 데모를 유지한다.
 
 ## 2026-08-25 실제 검증 결과
 

@@ -4,29 +4,30 @@ if (existsSync(".env.local")) {
   process.loadEnvFile(".env.local");
 }
 
-import { OpenAICampaignGenerator } from "@/lib/ai/openaiCampaignGenerator";
-import { demoIdeaInput } from "@/lib/demo/demo-campaign";
+import { AnthropicCampaignGenerator } from "@/lib/ai/anthropicCampaignGenerator";
+import { DEFAULT_ANTHROPIC_TEXT_MODEL } from "@/lib/ai/generatorConfig";
 import type { IdeaInput } from "@/lib/contracts/generator";
+import { demoIdeaInput } from "@/lib/demo/demo-campaign";
 
 const background = process.argv[2] ?? demoIdeaInput.background;
 const solution = process.argv[3] ?? demoIdeaInput.solution;
 
-const apiKey = process.env.OPENAI_API_KEY;
+const apiKey = process.env.ANTHROPIC_API_KEY;
 if (!apiKey) {
-  console.error("OPENAI_API_KEY가 .env.local에 없습니다. 먼저 채워주세요.");
+  console.error("ANTHROPIC_API_KEY가 .env.local에 없습니다. 먼저 채워주세요.");
   process.exit(1);
 }
 
-const generator = new OpenAICampaignGenerator({
+const generator = new AnthropicCampaignGenerator({
   apiKey,
-  model: process.env.OPENAI_TEXT_MODEL ?? "gpt-4o-mini",
+  model: process.env.ANTHROPIC_TEXT_MODEL ?? DEFAULT_ANTHROPIC_TEXT_MODEL,
 });
 
 const input: IdeaInput = { background, solution };
 
 console.log("=== 입력 ===");
 console.log(input);
-console.log("\nOpenAI 호출 중...\n");
+console.log("\nAnthropic 호출 중...\n");
 
 const started = Date.now();
 const spec = await generator.generate(input);

@@ -103,13 +103,24 @@ test("Supabase 미설정 GNB는 인증 요청 없이 준비 상태를 표시한�
   expect(authRequests).toEqual([]);
 });
 
+test("로그인 화면은 확정 로고와 Google 인증 진입점을 보여준다", async ({ page }) => {
+  await page.goto("/login?next=%2Fnew");
+  await expect(page.getByRole("img", { name: "market valley" }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: /시장 검증을 시작하려면/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "로그인 준비 중" })).toBeDisabled();
+  await expect(page).toHaveURL(/\/login\?next=%2Fnew$/);
+});
+
 test("fixture 생성부터 산출물, 예약, 판단, 초기화까지 실제 API 경계로 이어진다", async ({ context, page, request }) => {
   const runtimeErrors: string[] = [];
   captureRuntimeErrors(page, runtimeErrors);
-  await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: "http://127.0.0.1:3100" });
   const visitorEmail = "e2e-flow@example.com";
 
   await page.goto("/");
+  await context.grantPermissions(
+    ["clipboard-read", "clipboard-write"],
+    { origin: new URL(page.url()).origin },
+  );
   await page.evaluate(() => window.localStorage.clear());
 
   await expect(page.locator("body")).not.toContainText(/캠페인|CampaignSpec/u);
@@ -129,6 +140,9 @@ test("fixture 생성부터 산출물, 예약, 판단, 초기화까지 실제 API
   await expect(page).toHaveURL(new RegExp(`/campaigns/${campaignId}$`));
   await expect(page.locator("body")).not.toContainText(/캠페인|CampaignSpec/u);
   await expect(reservationCountMetric(page)).toHaveText("4명");
+  await expect(page.locator(".reservation-trend circle")).toHaveCount(4);
+  await expect(page.getByText("저장된 예약 기준")).toBeVisible();
+  await expect(page.locator("body")).not.toContainText(/예시 지표|업계 평균|4,312/u);
 
   const campaignResponse = await request.get(`/api/campaigns?id=${campaignId}`);
   expect(campaignResponse.ok()).toBe(true);
@@ -215,6 +229,7 @@ test("fixture 생성부터 산출물, 예약, 판단, 초기화까지 실제 API
 
   await page.bringToFront();
   await expect(reservationCountMetric(page)).toHaveText("5명");
+  await expect(page.locator(".reservation-trend circle")).toHaveCount(5);
   await expect(page.locator(".reservation-table tbody tr")).toHaveCount(5);
   await expect(page.locator(".reservation-table tbody tr").first()).toContainText("예약테스트");
 

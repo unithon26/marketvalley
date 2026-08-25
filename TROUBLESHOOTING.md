@@ -1,5 +1,65 @@
 # Troubleshooting
 
+## 2026-08-25 — 예약 API의 same-origin 검사가 정상 `127.0.0.1` 요청을 거절함
+
+### 맥락과 기대 동작
+
+공개 예약 API는 JSON과 same-origin 브라우저 요청만 허용하면서 `localhost`, `127.0.0.1`,
+reverse proxy를 거친 production 요청을 정상 처리해야 했다. 이 검사는 공개 endpoint의 교차 출처
+데이터 주입을 줄이되 실제 예약을 막아서는 안 된다.
+
+### 실제 동작과 영향
+
+production E2E에서 공개 예약 관련 시나리오 4개가 모두 저장 오류를 표시했다. 브라우저 요청은
+`http://127.0.0.1:3100`의 정상 same-origin POST였지만 API가 403 `invalid_origin`을 반환했다.
+배포 전 자동 테스트에서 발견돼 실제 사용자 데이터 영향은 없다.
+
+### 재현과 증거
+
+1. Next.js production server를 `127.0.0.1:3100`에서 실행한다.
+2. `/p/[slug]`에서 이름·이메일·동의를 입력하고 예약한다.
+3. Playwright trace의 요청 `Origin`과 `Host`는 모두 `127.0.0.1:3100`이다.
+4. Route Handler 응답은 403 `invalid_origin`이고 화면은 저장 실패를 표시한다.
+
+API body, 비밀값과 개인정보는 기록하지 않았고 trace의 header와 상태 코드만 원인 확인에 사용했다.
+
+### 검토한 가설과 근본 원인
+
+- JSON Content-Type 누락: trace에서 `application/json`을 확인해 제외했다.
+- fixture repository 실패: repository 호출 전 403이라 제외했다.
+- 교차 출처 요청: 브라우저 `Origin`, `Host`, `Referer`가 모두 같아 제외했다.
+
+Next.js가 Route Handler의 내부 `request.url` host를 `localhost`로 정규화한 반면 실제 브라우저
+요청의 `Origin`과 `Host`는 `127.0.0.1`이었다. `Origin`을 `request.url.origin`과만 비교해 정상
+요청을 다른 출처로 오판한 것이 근본 원인이다.
+
+### 대안과 해결
+
+- origin 검사를 제거하면 회귀는 사라지지만 공개 mutation의 브라우저 보안 경계가 약해져 기각했다.
+- 고정된 local host를 예외 처리하면 production proxy와 preview host를 설명하지 못해 기각했다.
+- 브라우저가 제어하는 `Host`와 신뢰한 proxy의 `X-Forwarded-Host`·`X-Forwarded-Proto`를 우선하고,
+  `request.url`은 fallback으로만 사용하도록 비교 기준을 바꿨다.
+
+잘못된 Origin 형식, host 또는 protocol 불일치는 계속 403으로 거절하고 JSON이 아니면 415로
+거절한다.
+
+### 검증과 회귀 방지
+
+- Host와 내부 request URL이 다른 정상 요청, 교차 origin, 잘못된 Content-Type 단위 테스트 통과
+- 기존 실패 시나리오 4개 focused Chromium E2E 통과
+- production Chromium E2E 16개 전체 통과
+- `pnpm check`의 lint·typecheck·단위 테스트 104개와 production build 통과
+
+production에서는 Vercel이 설정한 forwarded header만 신뢰하며, 임의 proxy를 앱 앞에 추가할 때는
+해당 proxy가 외부 입력 header를 덮어쓰는지 다시 확인해야 한다.
+
+### 면접 질문과 답변 근거
+
+- 왜 `request.url`만 비교하면 안 됐나? 프레임워크나 reverse proxy가 내부 host로 정규화할 수 있어
+  브라우저가 실제로 접속한 authority와 달라질 수 있기 때문이다.
+- 검사를 없애지 않은 이유는 무엇인가? 공개 예약 mutation의 교차 출처 데이터 주입 경계를
+  유지하면서 정상 proxy 환경만 정확히 해석하는 것이 목적이기 때문이다.
+
 ## 2026-08-25 — 127.0.0.1에서 시작한 Google OAuth callback 실패
 
 ### 맥락과 기대 동작

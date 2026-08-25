@@ -1,10 +1,11 @@
 import { notFound } from "next/navigation";
 import { ProgressView } from "@/components/progress-view";
 import { SiteHeader } from "@/components/site-header";
-import { campaignRepository } from "@/lib/demo/repository";
+import { getCampaignRepository } from "@/lib/demo/repository";
 
 export default async function CampaignProgressPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const campaignRepository = await getCampaignRepository("owner");
   const published = await campaignRepository.getById(id);
   if (!published) notFound();
 

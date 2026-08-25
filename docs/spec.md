@@ -1,10 +1,10 @@
 # marketvalley 해커톤 MVP 스펙
 
-상태: 기능 구현 기준 v0.7, OpenAI 문구 생성 제품 경로와 fixture fallback 구현 완료
+상태: 기능 구현 기준 v0.8, Claude 문구 생성 제품 경로와 fixture fallback 구현 완료
 마지막 갱신: 2026-08-25
 목표: 별도 랜딩 저장소의 시각 요소와 디자인 담당자의 메인 웹사이트 디자인을 반영해 2026 UNITHON 발표용 종단 흐름을 구현한다. 구조와 기능은 이 스펙을 따른다.
 
-현재 저장소에는 Figma 디자인을 반영한 화면, OpenAI 문구 생성 adapter, 검증된 fixture, 결정적 렌더러와 테스트가 있다. OpenAI는 제품 기본 생성 경로이며 fixture는 자동 테스트와 비상 발표 fallback으로만 명시한다. Supabase API와 실제 Meta 계정은 아직 연결하지 않았으며 live 연동의 완료 기준은 이 문서를 따른다.
+현재 저장소에는 Figma 디자인을 반영한 화면, Anthropic 문구 생성 adapter, 검증된 fixture, 결정적 렌더러와 테스트가 있다. Claude는 제품 기본 생성 경로이며 fixture는 자동 테스트와 비상 발표 fallback으로만 명시한다. Supabase API와 실제 Meta 계정은 아직 연결하지 않았으며 live 연동의 완료 기준은 이 문서를 따른다.
 
 ## 1. 우승 전략
 
@@ -35,6 +35,8 @@ generator가 추론한 내용은 `assumptions`에 표시한다. 제출 버튼을
 
 완료 기준:
 
+- Supabase Auth가 설정된 제품 환경에서는 비로그인 사용자를 입력 전에 `/login?next=/new`로 보내고, Google 로그인 뒤 `/new`로 복귀시킨다.
+- Supabase가 미설정된 자동 테스트·비상 발표 fixture는 외부 인증 장애와 무관하게 입력 흐름을 유지한다.
 - 필수값 검증과 오류 문구가 있다.
 - 제공된 데모 입력을 한 번에 채우는 `예시 불러오기`가 있다.
 - 예시 입력의 상품명과 핵심 특징 3개가 생성된 `CampaignSpec`, 랜딩, 캐러셀과 게시 준비 파일에 같은 값으로 나타난다.
@@ -42,7 +44,7 @@ generator가 추론한 내용은 `assumptions`에 표시한다. 제출 버튼을
 
 ### P0-2. 검증 가설 및 광고 생성
 
-서버에서 OpenAI Responses API와 Structured Outputs를 사용해 단일 `CampaignSpec` JSON을 생성한다. 자유 형식 텍스트를 파싱하지 않는다.
+서버에서 Anthropic Messages API와 Structured Outputs를 사용해 단일 `CampaignSpec` JSON을 생성한다. 자유 형식 텍스트를 파싱하지 않는다.
 
 Figma가 정의한 레이아웃, 타이포·색상 조합, 섹션 순서와 상태·개인정보·사람 판단 안내는 renderer에 고정한다. AI는 아래 문구 슬롯만 채우고 새 HTML·좌표·템플릿을 만들지 않는다.
 
@@ -141,7 +143,7 @@ AI는 문구와 선택적 배경 이미지 프롬프트만 만든다. 모든 텍
 완료 기준:
 
 - 서버 시작 직후 `/campaigns/demo`과 `/p/demo`으로 seed 캠페인에 접근할 수 있고, `/new` 입력은 reference fixture 3종 중 하나의 시각 템플릿을 선택한 뒤 중립 문장 골격에 입력한 상품명·특징·문제·솔루션을 주입한다.
-- OpenAI, 이미지 생성, Supabase 중 하나가 실패해도 샘플 흐름으로 랜딩·캐러셀·응답·사람의 판단·다운로드 시연을 끝낼 수 있다.
+- Anthropic, 이미지 생성, Supabase 중 하나가 실패해도 샘플 흐름으로 랜딩·캐러셀·응답·사람의 판단·다운로드 시연을 끝낼 수 있다.
 - 발표 전 데모용 공개 URL과 백업 화면 녹화를 준비한다.
 
 ## 3. P1과 중단 기준
@@ -168,7 +170,7 @@ Meta 연동은 다음 단계 경계를 지킨다.
 - Meta 광고 자동 활성화, 결제수단 등록, 무인 예산 증액·재시작
 - Instagram 일반 게시물 자동 업로드
 - 드래그 앤 드롭 페이지 빌더
-- 로그인, 권한, 협업, 결제
+- 팀 협업, 결제
 - 두 번째 랜딩 또는 캐러셀 디자인 테마
 - 범용 리서치 에이전트와 경쟁사 크롤러
 - 자동 A/B 승자 판정
@@ -330,8 +332,8 @@ Zod에서 배열 길이와 문자열 최대 길이를 제한한다. 한국어 �
 
 - Next.js App Router, TypeScript, React/CSS 결정적 렌더러
 - Zod
-- OpenAI JavaScript SDK와 Responses API
-- 제품 생성 기본값은 `openai`. 자동 테스트와 비상 발표 fallback만 외부 호출이 없는 `fixture`를 명시하며, 기본 `gpt-4o-mini`는 `OPENAI_TEXT_MODEL`로 교체 가능
+- Anthropic TypeScript SDK와 Messages API Structured Outputs
+- 제품 생성 기본값은 `anthropic`. 자동 테스트와 비상 발표 fallback만 외부 호출이 없는 `fixture`를 명시하며, 기본 `claude-haiku-4-5-20251001`은 `ANTHROPIC_TEXT_MODEL`로 교체 가능
 - 개발·발표에서는 이미지 모델도 비활성화하고 검증된 reference 자산과 결정적 renderer만 사용
 - Supabase Postgres
 - `html-to-image`와 JSZip
@@ -394,63 +396,73 @@ tests/e2e/
 
 ### API 경계
 
-- `POST /api/generate`: 2단계 입력을 검증하고 `{ spec: CampaignSpec }`을 반환한다. OpenAI 모드는 JSON·same-origin·Google 로그인과 사용자별 단일 프로세스 분당 3회 제한을 통과해야 한다. fixture fallback은 자동 테스트와 발표 복구를 위해 인증 없이 유지한다. 성공 시 클라이언트가 `crypto.randomUUID()`로 `draftId`를 만들고 바로 게시 요청을 보낸다.
+- `POST /api/generate`: 2단계 입력을 검증하고 `{ spec: CampaignSpec }`을 반환한다. Anthropic 모드는 JSON·same-origin·Google 로그인과 생성 quota 제한을 통과해야 한다. fixture fallback은 자동 테스트와 발표 복구를 위해 인증 없이 유지한다. 성공 시 클라이언트가 `crypto.randomUUID()`로 `draftId`를 만들고 바로 게시 요청을 보낸다.
 - `POST /api/campaigns`: `{ draftId, spec }`을 다시 검증해 공개 snapshot으로 저장한다. 같은 `draftId`와 동일한 spec의 재요청은 중복 캠페인을 만들지 않고 기존 결과를 반환한다. 이미 게시된 `draftId`에 다른 spec이 오면 충돌로 처리한다. 성공하면 게시 campaign, 공개 URL과 초기 예약자명단을 반환한다.
 - `POST /api/reservations`: `{ campaignId, name, email, consent, utm? }`를 검증해 동의된 예약 한 건을 기록한다. fixture는 `(campaignId, email)` hash, live는 서버 HMAC email hash와 DB unique constraint로 중복을 막는다.
 - `PATCH /api/campaigns`: `{ campaignId, draftId, nextAction }`을 받아 소유 draft가 맞을 때만 사람의 선택 `continue`, `revise`, `pause`를 저장한다.
-- `GET /api/campaigns?id=...`: 공개된 spec과 예약자 수·최근 예약자명단을 반환한다.
+- `GET /api/campaigns?id=...`: fixture 또는 로그인한 소유자에게 spec과 예약자 수·최근 예약자명단을 반환한다.
 - `POST /api/campaigns/reset`: `{ campaignId, draftId }` 소유권을 검증한 뒤 발표용 추가 예약과 다음 판단을 seed 상태로 되돌린다.
 - `DELETE /api/campaigns`: `{ campaignId, draftId }` 소유권을 검증해 캠페인을 삭제한다. 본문 없는 요청은 기존 `/campaigns/demo` 발표 초기화와 E2E 호환에만 사용한다.
 
-모든 route handler에서 입력 크기와 Zod 스키마를 검사한다. `POST /api/reservations`는 동의가 없는 제출을 거절하고 같은 캠페인의 같은 이메일 중복을 `alreadyReserved` 결과로 변환한다. 원문 이메일은 소유자 조회에만 사용하고 목록 화면에는 마스킹한다. OpenAI 키와 Supabase 서버 키는 클라이언트 번들에 포함하지 않는다.
+모든 route handler에서 입력 크기와 Zod 스키마를 검사한다. `POST /api/reservations`는 동의가 없는 제출을 거절하고 같은 캠페인의 같은 이메일 중복을 `alreadyReserved` 결과로 변환한다. 원문 이메일은 소유자 조회에만 사용하고 목록 화면에는 마스킹한다. Anthropic 키와 Supabase 서버 키는 클라이언트 번들에 포함하지 않는다.
 
 ### 데이터베이스
 
 ```text
 campaigns
 - id uuid primary key
-- draft_id uuid unique not null
+- owner_id uuid not null references auth.users(id)
+- draft_id text not null
 - slug text unique not null
 - spec jsonb not null
-- status text not null
 - next_action text null check in ('continue', 'revise', 'pause')
-- created_at timestamptz
-- updated_at timestamptz
+- published_at timestamptz not null
+- created_at timestamptz not null
+- unique (owner_id, draft_id)
 
-signals
-- id bigint generated identity primary key
-- campaign_id uuid references campaigns(id)
-- signal_type text not null check in ('problem_confirmation', 'solution_interest')
+campaign_reservations
+- id uuid primary key
+- campaign_id uuid references campaigns(id) on delete cascade
 - name text not null
 - email text not null
 - email_hash text not null
+- consent_version text not null
+- consented_at timestamptz not null
 - utm_source text
 - utm_medium text
 - utm_campaign text
 - utm_content text
-- created_at timestamptz
+- reserved_at timestamptz not null
 - unique (campaign_id, email_hash)
+
+generation_rate_limits / generation_daily_usage / generation_global_daily_usage
+- 사용자 분당, 사용자 일일, 전체 일일 유료 AI 생성 요청 수
+- service-role 전용 원자 RPC `consume_generation_quota`만 갱신
 ```
 
-(ADR-0013로 `signal_response` 테이블을 `campaign_reservation`으로 대체했다. `option_id`·`anonymous_id_hash` 컬럼은 더 이상 사용하지 않는다.)
+(ADR-0013으로 익명 신호를 이름·이메일 기반 `campaign_reservations`로 대체했다. ADR-0016으로
+소유자 작업에는 `auth.uid()` RLS를 적용하고 공개 예약·분산 quota만 server-only client가 처리한다.)
 
 현재 mock 입력은 `/new` 컴포넌트 상태에 남아 API 실패 뒤 재시도할 수 있다. 같은 입력의 재시도는 한 번 만든 draft ID와 검증된 spec을 재사용하며, 게시 성공 뒤 draft 소유 토큰을 `localStorage`에 보관한다. live 단계의 새로고침 전 입력 복구는 별도 초안 저장소를 연결한다. 게시 시점의 spec만 snapshot이 되며 게시된 snapshot은 수정하지 않는다.
 
-공개 페이지는 예약자명단 제출 시 이메일을 서버로 보낸다(ADR-0013). 중복 예약 방지는 `(campaignId, email)` 조합으로 판단하며, fixture는 원문을 남기지 않기 위해 무비밀 SHA-256을 사용한다. live Supabase adapter는 서버 전용 `SIGNAL_HASH_SECRET`으로 이메일 HMAC 해시(`email_hash`)를 만들어 dedupe에 쓰고, 원문 `email`은 소유자 화면·리스트 원본 조회용으로 별도 저장한다. 리스트 표시에는 마스킹된 이메일(`seon****@gmail.com` 형태)만 노출한다. DB 접근은 서버에서만 수행하며 IP 주소와 원문 user-agent를 저장하지 않는다.
+공개 페이지는 예약자명단 제출 시 이메일을 서버로 보낸다(ADR-0013). 중복 예약 방지는 `(campaignId, email)` 조합으로 판단하며, fixture는 원문을 남기지 않기 위해 무비밀 SHA-256을 사용한다. live Supabase adapter는 서버 전용 `SIGNAL_HASH_SECRET`으로 이메일 HMAC 해시(`email_hash`)를 만들어 dedupe에 쓰고, 원문 `email`은 소유자 화면·리스트 원본 조회용으로 별도 저장한다. 리스트 표시에는 마스킹된 이메일(`seon****@gmail.com` 형태)만 노출하고 공개 예약 응답에는 예약자 수나 목록을 반환하지 않는다. DB 접근은 서버에서만 수행하며 IP 주소와 원문 user-agent를 저장하지 않는다.
 
 ### 지표 정의 (ADR-0013로 갱신)
 
-리포트는 실제 지표와 예시(목업) 지표를 화면에서 명확히 구분해 표시한다. 예시 지표는 반드시 "예시 지표" 라벨을 붙여 실측치로 오인되지 않게 한다.
+리포트는 현재 저장소에 접수된 예약 데이터와 사전 판단 기준만 수치로 표시한다. 디자인 시안의 임의 우상향 그래프나 고정 노출 수·CTR·업계 평균은 사용하지 않는다.
 
 **실제 지표**
 
-- 예약자 수: `campaign_reservation`에 실제로 기록된 행 수.
+- 예약자 수: `campaign_reservations`에 실제로 기록된 행 수.
 - 예약자 리스트: 이름과 마스킹된 이메일. 응답이 0이면 `아직 예약 없음`을 표시한다.
+- 예약 접수 추이: 저장된 각 예약의 `reservedAt`을 시간순으로 정렬한 누적 건수. fixture seed와 공개 랜딩 제출을 같은 저장소 결과로 그리되 seed 포함 사실을 화면에 알린다.
+- 판단 기준 대비 표본: 현재 예약자 수와 `decisionRule.minimumResponses`의 단순 비교. 시장성 자동 판정은 하지 않는다.
 
-**예시 지표 (실제 트래킹 미구현, 값은 고정 상수)**
+**연동 전 지표**
 
-- 노출 수, CTR(업계 평균 대비), 랜딩 체류시간, 이탈률, 예약률(업계 평균 대비).
-- 이 항목들은 페이지뷰·클릭·체류시간 계측 인프라가 구현되기 전까지 예시 값을 유지한다. 실측으로 교체할 때는 이 문서와 ADR을 함께 갱신한다.
+- 방문 수·체류시간·스크롤 깊이·랜딩 예약률은 방문 이벤트 수집을 구현한 뒤에만 표시한다.
+- Meta CTR과 성별·연령·지역은 팀 소유 계정의 Meta Insights 연결과 사용 가능 필드 확인 뒤에만 표시한다.
+- 연동 전에는 값을 만들지 않고 화면에 `계측 연결 전` 상태만 표시한다.
 
 실입금·결제 관련 지표(레퍼런스의 "실입금 사전예약")는 이번 스코프에서 구현하지 않는다.
 
@@ -467,7 +479,7 @@ interface CampaignRepository {
   publish(draftId: string, spec: CampaignSpec): Promise<PublishedCampaign>;
   getById(id: string): Promise<PublishedCampaign | null>;
   getBySlug(slug: string): Promise<PublishedCampaign | null>;
-  recordReservation(input: ReservationInput): Promise<ReservationSummary>;
+  recordReservation(input: ReservationInput): Promise<void>;
   getReservationSummary(campaignId: string): Promise<ReservationSummary>;
   saveNextAction(input: NextActionInput): Promise<NextAction>;
   reset(input: ResetCampaignInput): Promise<PublishedCampaign>;
@@ -475,7 +487,7 @@ interface CampaignRepository {
 }
 ```
 
-실서비스는 OpenAI·Supabase adapter를, 테스트와 데모 모드는 fixture generator와 서버 프로세스 메모리 repository를 사용한다. 브라우저는 자신이 만든 캠페인의 draft 소유 토큰만 `localStorage`에 보관한다. 데모 모드는 생성뿐 아니라 게시, 공개 페이지 조회, 중복 예약, 예약자명단 조회, 판단과 초기화까지 실제 Route Handler를 통과한다.
+실서비스는 Anthropic·Supabase adapter를, 테스트와 데모 모드는 fixture generator와 서버 프로세스 메모리 repository를 사용한다. 브라우저는 자신이 만든 캠페인의 draft 소유 토큰만 `localStorage`에 보관한다. 데모 모드는 생성뿐 아니라 게시, 공개 페이지 조회, 중복 예약, 예약자명단 조회, 판단과 초기화까지 실제 Route Handler를 통과한다.
 
 ## 7. AI 생성 규칙
 
@@ -490,11 +502,11 @@ interface CampaignRepository {
 - 이미지 모델은 글자, 로고, UI, 카드 완성본을 생성하지 않는다.
 - 판단 기준의 숫자는 AI가 생성하지 않고 시스템 기본값을 넣는다.
 
-OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 위한 기능이며, GPT Image는 정밀한 텍스트 배치와 여러 이미지 간 일관성에 한계가 있다. 이 때문에 정형 JSON과 결정적 렌더러를 핵심 구조로 사용한다.
+Anthropic 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 위한 기능이다. 이미지 생성은 이번 범위에서 사용하지 않으므로 정형 JSON과 결정적 렌더러를 핵심 구조로 사용한다.
 
 ## 8. 실패 처리
 
-- OpenAI timeout: 입력 보존, 제한된 재시도 뒤 실패를 명시한다. live 성공을 fixture로 위장하지 않는다.
+- Anthropic timeout: 입력 보존, 제한된 재시도 뒤 실패를 명시한다. live 성공을 fixture로 위장하지 않는다.
 - 스키마 오류: 서버 검증 실패로 처리하고 한 번 재시도
 - 이미지 생성 실패: CSS/SVG 기본 배경 유지
 - 저장소 실패: 현재 입력을 유지하고 생성·게시·응답·판단·초기화 실패를 각각 명시
@@ -523,16 +535,16 @@ OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 �
 ### 개발자 B: 계약, AI, 공개·측정
 
 - `CampaignSpec` Zod 계약과 데모 fixture
-- OpenAI 생성 route와 프롬프트
+- Anthropic 생성 route와 프롬프트
 - Supabase migration과 서버 접근
 - 게시·조회·익명 신호·집계·다음 판단 API
 - `/p/[slug]`의 데이터 로딩과 상태 처리 wrapper
-- fixture·OpenAI·Supabase adapter와 단위 테스트
+- fixture·Anthropic·Supabase adapter와 단위 테스트
 - 향후 Meta OAuth·token·광고 쓰기·Insights를 담당하는 server-only provider
 
 소유 경로 예시: `lib/contracts/`, `lib/ai/`, `lib/db/`, `lib/demo/`, `app/api/`, `app/p/`, `supabase/`, `tests/unit/`.
 
-개발자 A는 OpenAI, Supabase, Meta를 브라우저에서 직접 호출하지 않고 개발자 B가 제공한 내부 API만 사용한다. 개발자 B는 공개 랜딩이나 캐러셀 HTML을 별도로 만들지 않는다. `/p/[slug]`는 데이터를 불러온 뒤 개발자 A의 `LandingRenderer(spec)`를 그대로 사용하며, PNG/ZIP도 같은 렌더러를 사용한다.
+개발자 A는 Anthropic, Supabase, Meta를 브라우저에서 직접 호출하지 않고 개발자 B가 제공한 내부 API만 사용한다. 개발자 B는 공개 랜딩이나 캐러셀 HTML을 별도로 만들지 않는다. `/p/[slug]`는 데이터를 불러온 뒤 개발자 A의 `LandingRenderer(spec)`를 그대로 사용하며, PNG/ZIP도 같은 렌더러를 사용한다.
 
 ### 디자이너: 제품 시스템과 발표 증거
 
@@ -563,7 +575,7 @@ OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 �
 
 외부 API를 먼저 연결하지 않는다. 핵심 의존 순서는 다음으로 고정한다.
 
-`CampaignSpec·fixture → 결정적 렌더러 → 외부 API 없는 종단 흐름 → Supabase 공개·응답 → OpenAI adapter → 안정화 → 선택적 Meta P1`
+`CampaignSpec·fixture → 결정적 렌더러 → 외부 API 없는 종단 흐름 → Supabase 공개·응답 → Anthropic adapter → 안정화 → 선택적 Meta P1`
 
 ### 0단계: 30~45분 공동 계약
 
@@ -578,7 +590,7 @@ OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 �
 | --- | --- |
 | Next.js 앱, 디자인 토큰, `/new`, `/campaigns/[id]`, `LandingRenderer`, `CarouselRenderer` | `CampaignSpec`, `demoCampaign`, generator·repository 인터페이스, 외부 키가 필요 없는 fixture adapter와 단위 테스트 |
 
-- Supabase와 OpenAI 계정·키 사용 가능 여부만 확인하되 아직 핵심 흐름에 연결하지 않는다.
+- Supabase와 Anthropic 계정·키 사용 가능 여부만 확인하되 아직 핵심 흐름에 연결하지 않는다.
 - Vercel 연결은 이 단계에 시작해 코드 배포 경로를 일찍 확인한다.
 - 완료 게이트 G1: 같은 fixture가 실제 공개 랜딩과 캐러셀 PNG 5장을 생성한다.
 
@@ -589,7 +601,7 @@ OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 �
 | 공개 랜딩 예약 폼, 결과 화면, `Meta 게시 준비` ZIP·복사 기능, PNG/ZIP | fixture 기반 게시·slug·예약·명단·다음 판단 adapter와 API 형태 고정 |
 
 - 완료 게이트 G2: 외부 API와 실제 계정 없이 `/ → /new 2단계 입력 → 생성·게시 → /campaigns/[id] → /p/[slug] → 예약 → 결과 → 사람의 판단 → PNG/ZIP`이 끝까지 작동한다.
-- 실제 OpenAI 없이도 완성된 흐름을 Vercel 검증 배포에 올리고 디자이너 1차 QA를 받는다.
+- 실제 Anthropic 없이도 완성된 흐름을 Vercel 검증 배포에 올리고 디자이너 1차 QA를 받는다.
 - G2가 끝나기 전에는 Meta OAuth나 광고 객체 생성을 시작하지 않는다.
 
 ### 3단계: Supabase 공개·예약 연결
@@ -600,7 +612,7 @@ OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 �
 
 - 완료 게이트 G3: 게시 후 실제 `/p/[slug]`가 발급되고 시크릿 창의 예약 한 건이 `/campaigns/[id]`에 반영되며 새로고침 뒤 다음 행동이 유지된다.
 
-### 4단계: OpenAI adapter 연결
+### 4단계: Anthropic adapter 연결
 
 | 개발자 A | 개발자 B |
 | --- | --- |
@@ -618,7 +630,7 @@ OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 �
 ### 발표 6시간 전
 
 - 기능을 동결하고 P1을 전부 중단한다.
-- 실제 입력 3종 회귀 테스트와 OpenAI·DB 각각의 실패 리허설을 수행한다.
+- 실제 입력 3종 회귀 테스트와 Anthropic·DB 각각의 실패 리허설을 수행한다.
 - 비밀정보, debug UI와 검증되지 않은 후기·수치를 제거한다.
 
 ### 발표 2시간 전
@@ -643,7 +655,7 @@ OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 �
 - 시크릿 창에서 공개 URL, 동의 기반 사전예약, 예약자명단과 판단 화면
 - 새로고침 후 초안 복구
 - API 키가 브라우저, 로그, 저장소에 나타나지 않음
-- OpenAI·DB를 각각 끈 상태에서 실패 안내를 확인하고, 개발·발표는 사전에 fixture 모드로 선택
+- Anthropic·DB를 각각 끈 상태에서 실패 안내를 확인하고, 개발·발표는 사전에 fixture 모드로 선택
 - 랜딩과 카드의 고객·문제·CTA 일치
 - `Meta 게시 준비`의 PNG·문구·CTA·대상 고객·절대 destination URL이 동일 spec과 공개 URL에서 파생됨
 - 랜딩과 캐러셀에 근거 없는 후기·수치·인증이 없음
@@ -665,8 +677,8 @@ OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 �
 - [Next.js App Router](https://nextjs.org/docs/app)
 - [Next.js Route Handlers](https://nextjs.org/docs/app/getting-started/route-handlers)
 - [Next.js layouts and dynamic segments](https://nextjs.org/docs/app/getting-started/layouts-and-pages)
-- [OpenAI Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs)
-- [OpenAI GPT-4o mini](https://developers.openai.com/api/docs/models/gpt-4o-mini)
+- [Anthropic Structured Outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs)
+- [Anthropic Claude 모델 목록](https://platform.claude.com/docs/en/about-claude/models/overview)
 - [Supabase Next.js Quickstart](https://supabase.com/docs/guides/getting-started/quickstarts/nextjs)
 - [Supabase JSON data](https://supabase.com/docs/guides/database/json)
 - [Vercel Functions](https://vercel.com/docs/functions)

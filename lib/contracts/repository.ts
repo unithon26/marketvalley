@@ -82,7 +82,7 @@ export interface CampaignRepository {
   publish(draftId: string, spec: CampaignSpec): Promise<PublishedCampaign>;
   getById(id: string): Promise<PublishedCampaign | null>;
   getBySlug(slug: string): Promise<PublishedCampaign | null>;
-  recordReservation(input: ReservationInput): Promise<ReservationSummary>;
+  recordReservation(input: ReservationInput): Promise<void>;
   getReservationSummary(campaignId: string): Promise<ReservationSummary>;
   saveNextAction(input: NextActionInput): Promise<NextAction>;
   reset(input: ResetCampaignInput): Promise<PublishedCampaign>;

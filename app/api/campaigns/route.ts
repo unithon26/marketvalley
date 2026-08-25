@@ -4,7 +4,7 @@ import {
   publishCampaignRequestSchema,
   updateCampaignRequestSchema,
 } from "@/lib/contracts/api";
-import { campaignRepository } from "@/lib/demo/repository";
+import { getCampaignRepository } from "@/lib/demo/repository";
 import { demoCampaignId } from "@/lib/demo/demo-campaign";
 import {
   jsonResponse,
@@ -18,6 +18,7 @@ export const runtime = "nodejs";
 
 export async function GET(request: Request): Promise<Response> {
   try {
+    const campaignRepository = await getCampaignRepository("owner");
     const url = new URL(request.url);
     const { id } = campaignIdQuerySchema.parse({ id: url.searchParams.get("id") });
     const campaign = await campaignRepository.getById(id);
@@ -27,7 +28,7 @@ export async function GET(request: Request): Promise<Response> {
         { status: 404 },
       );
     }
-    return jsonResponse(await toCampaignResponse(campaign, request.url));
+    return jsonResponse(await toCampaignResponse(campaign, request.url, campaignRepository));
   } catch (error) {
     return routeErrorResponse(error);
   }
@@ -35,9 +36,10 @@ export async function GET(request: Request): Promise<Response> {
 
 export async function POST(request: Request): Promise<Response> {
   try {
+    const campaignRepository = await getCampaignRepository("owner");
     const { draftId, spec } = publishCampaignRequestSchema.parse(await readJsonBody(request));
     const campaign = await campaignRepository.publish(draftId, spec);
-    return jsonResponse(await toCampaignResponse(campaign, request.url), { status: 201 });
+    return jsonResponse(await toCampaignResponse(campaign, request.url, campaignRepository), { status: 201 });
   } catch (error) {
     return routeErrorResponse(error);
   }
@@ -45,6 +47,7 @@ export async function POST(request: Request): Promise<Response> {
 
 export async function PATCH(request: Request): Promise<Response> {
   try {
+    const campaignRepository = await getCampaignRepository("owner");
     const input = updateCampaignRequestSchema.parse(await readJsonBody(request, 8_192));
     const nextAction = await campaignRepository.saveNextAction(input);
     return jsonResponse({ campaignId: input.campaignId, nextAction });
@@ -55,6 +58,7 @@ export async function PATCH(request: Request): Promise<Response> {
 
 export async function DELETE(request: Request): Promise<Response> {
   try {
+    const campaignRepository = await getCampaignRepository("owner");
     const url = new URL(request.url);
     const queryInput = {
       campaignId: url.searchParams.get("id"),

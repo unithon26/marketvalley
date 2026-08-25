@@ -126,7 +126,7 @@ export class FixtureCampaignRepository implements CampaignRepository {
     return copyCampaign(this.requireCampaign(id));
   }
 
-  async recordReservation(input: ReservationInput): Promise<ReservationSummary> {
+  async recordReservation(input: ReservationInput): Promise<void> {
     const campaign = this.requireCampaign(input.campaignId);
     const name = input.name.trim();
     const email = input.email.trim().toLowerCase();
@@ -145,7 +145,6 @@ export class FixtureCampaignRepository implements CampaignRepository {
       reservedAt: this.now().toISOString(),
     };
     records.set(emailHash, record);
-    return summarizeReservations([...records.values()]);
   }
 
   async getReservationSummary(campaignId: string): Promise<ReservationSummary> {

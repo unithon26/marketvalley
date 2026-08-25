@@ -6,7 +6,10 @@ const result = spawnSync("pnpm", ["exec", "next", "build"], {
   env: {
     ...process.env,
     CAMPAIGN_GENERATOR_MODE: "fixture",
-    OPENAI_API_KEY: "bundle-test-openai-secret",
+    CAMPAIGN_REPOSITORY_MODE: "fixture",
+    ANTHROPIC_API_KEY: "bundle-test-anthropic-secret",
+    SUPABASE_SECRET_KEY: "bundle-test-supabase-secret",
+    SIGNAL_HASH_SECRET: "bundle-test-hmac-secret-32-bytes-minimum",
     NEXT_PUBLIC_SITE_URL: "http://localhost:3000",
     NEXT_PUBLIC_SUPABASE_URL: "https://project.supabase.co",
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_bundle_test",
@@ -29,10 +32,12 @@ const clientChunkText = readdirSync(".next/static/chunks", { recursive: true })
   .join("\n");
 
 if (
-  clientChunkText.includes("bundle-test-openai-secret")
-  || clientChunkText.includes("OPENAI_API_KEY")
+  clientChunkText.includes("bundle-test-anthropic-secret")
+  || clientChunkText.includes("ANTHROPIC_API_KEY")
+  || clientChunkText.includes("bundle-test-supabase-secret")
+  || clientChunkText.includes("bundle-test-hmac-secret-32-bytes-minimum")
 ) {
-  throw new Error("서버 전용 OpenAI 설정이 client bundle에 포함됐습니다.");
+  throw new Error("서버 전용 Anthropic 또는 Supabase 설정이 client bundle에 포함됐습니다.");
 }
 
 console.log("Configured auth and server-secret client bundle smoke passed");
