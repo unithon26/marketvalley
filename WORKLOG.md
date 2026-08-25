@@ -1,5 +1,14 @@
 # 작업 기록
 
+## 2026-08-26 — Meta 최소 권한 token과 고정 Page 직접 검증
+
+- 목적: 회사 System User token에 Page 광고 권한을 보완하고, 실제 Meta 자산에서 `PAUSED` 초안 생성 전 검증이 유효한 고정 Page를 잘못 거절하지 않게 한다.
+- 변경: 앱 use case에 `pages_manage_ads`를 추가하고 `ads_management`, `ads_read`, `pages_manage_ads`, `pages_read_engagement`, `pages_show_list`를 가진 60일 token을 발급해 로컬 Keychain에 저장했다. provider는 빈 `promote_pages` 간접 목록 대신 광고계정 ID, 고정 Page 직접 조회, Page→Instagram ID와 광고계정 Instagram 목록을 순서대로 대조한다. 운영 가이드, ADR-0021과 troubleshooting 기록도 실제 응답에 맞췄다.
+- 운영 확인: 새 token의 5개 권한, 활성 광고계정의 `KRW`·`Asia/Seoul`, System User의 `MANAGE`·`ADVERTISE` task, 지정 Page와 Page→Instagram 쌍, 광고계정 Instagram identity를 Graph v26에서 확인했다. token과 App Secret 값은 출력·문서·저장소에 남기지 않았다. 기존 2개 권한 token은 선택 취소 수단이 없어 새 token까지 전체 취소하지 않고 미사용 상태로 만료시킨다.
+- 검증: provider focused 테스트 13개, `pnpm check`의 lint·typecheck·단위 테스트 41파일 220개, configured server-secret client bundle smoke, production build, Chromium E2E 22개, coverage, high audit, peer dependency와 diff 검사가 통과했다. 커버리지는 statements 85.37%, branches 78.16%, functions 92.53%, lines 88.52%다. 실제 광고 객체와 지출은 만들지 않았다.
+- 전달: 변경은 `codex/meta-asset-attestation` 로컬 브랜치에 있으며 push·CI·병합 전이다.
+- 남은 일: 명시적 production 변경 승인 아래 migration `202608250003`, Oracle 환경 secret과 운영자 UUID를 적용한다. 읽기 preflight 뒤 실제 `PAUSED` 초안 하나의 상태·중복 방지·지출 0원을 검증한다.
+
 ## 2026-08-26 — 공개 source 기반 Vercel Git 연결과 Turnstile 운영 설정
 
 - 목적: 공식 `marketvaley.vercel.app`과 Oracle Compose 배포가 같은 source SHA를 사용하고, 예약 폼의 운영 봇 방어와 Vercel 자동 배포를 연결한다.

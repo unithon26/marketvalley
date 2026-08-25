@@ -147,17 +147,28 @@ export class GraphMetaAdsProvider implements MetaAdsProvider {
     const account = objectRecord(
       await this.request(`act_${this.binding.adAccountId}`, {
         method: "GET",
-        query: { fields: "id,promote_pages.limit(100){id}" },
+        query: { fields: "id" },
       }),
     );
     if (account?.id !== `act_${this.binding.adAccountId}`) {
       throw new MetaConfigurationError("연결된 Meta ad account를 확인할 수 없습니다.");
     }
-    const promotedPages = objectRecord(account.promote_pages)?.data;
-    if (!Array.isArray(promotedPages) || !promotedPages.some((value) => (
-      objectRecord(value)?.id === this.binding.pageId
-    ))) {
-      throw new MetaConfigurationError("연결된 Meta Page가 ad account의 promote_pages에 없습니다.");
+
+    const page = objectRecord(
+      await this.request(this.binding.pageId, {
+        method: "GET",
+        query: { fields: "id,instagram_business_account{id}" },
+      }),
+    );
+    if (page?.id !== this.binding.pageId) {
+      throw new MetaConfigurationError("설정된 Meta Page를 확인할 수 없습니다.");
+    }
+    if (
+      objectRecord(page.instagram_business_account)?.id !== this.binding.instagramActorId
+    ) {
+      throw new MetaConfigurationError(
+        "설정된 Meta Page와 Instagram identity의 연결을 확인할 수 없습니다.",
+      );
     }
 
     const instagramAccounts = objectRecord(

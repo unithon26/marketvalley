@@ -159,7 +159,8 @@ describe("GraphMetaAdsProvider", () => {
   it("uses Graph v26.0, checks each configured asset is available, and sends PAUSED payloads once", async () => {
     const requests: Array<{ url: URL; init?: RequestInit }> = [];
     const responses = [
-      { id: "act_1234567890", promote_pages: { data: [{ id: "2345678901" }] } },
+      { id: "act_1234567890" },
+      { id: "2345678901", instagram_business_account: { id: "3456789012" } },
       { data: [{ id: "3456789012" }] },
       { images: { "01-card.png": { hash: "image_hash_0" } } },
       { id: "campaign_12345" },
@@ -191,7 +192,7 @@ describe("GraphMetaAdsProvider", () => {
       creativeId: "creative_12345",
     });
 
-    expect(requests).toHaveLength(7);
+    expect(requests).toHaveLength(8);
     expect(requests.every(({ url }) => url.pathname.startsWith("/v26.0/"))).toBe(true);
     expect(requests.every(({ url }) => !url.toString().includes(accessToken))).toBe(true);
     expect(requests.every(({ url }) => !url.toString().includes(appSecret))).toBe(true);
@@ -200,18 +201,21 @@ describe("GraphMetaAdsProvider", () => {
     ))).toBe(true);
     expect(requests.every(({ init }) => new Headers(init?.headers).get("authorization") === `Bearer ${accessToken}`)).toBe(true);
     expect(requests[0].url.pathname).toBe("/v26.0/act_1234567890");
-    expect(requests[0].url.searchParams.get("fields")).toContain("promote_pages");
-    expect(requests[1].url.pathname).toBe("/v26.0/act_1234567890/instagram_accounts");
-    expect(requests[2].init?.body).toBeInstanceOf(FormData);
+    expect(requests[0].url.searchParams.get("fields")).toBe("id");
+    expect(requests[1].url.pathname).toBe("/v26.0/2345678901");
+    expect(requests[1].url.searchParams.get("fields"))
+      .toBe("id,instagram_business_account{id}");
+    expect(requests[2].url.pathname).toBe("/v26.0/act_1234567890/instagram_accounts");
+    expect(requests[3].init?.body).toBeInstanceOf(FormData);
 
-    const campaignForm = requestBody(requests[3].init);
+    const campaignForm = requestBody(requests[4].init);
     expect(Object.fromEntries(campaignForm)).toMatchObject({
       status: "PAUSED",
       objective: "OUTCOME_TRAFFIC",
       buying_type: "AUCTION",
       special_ad_categories: "[]",
     });
-    const adSetForm = requestBody(requests[4].init);
+    const adSetForm = requestBody(requests[5].init);
     expect(Object.fromEntries(adSetForm)).toMatchObject({
       status: "PAUSED",
       campaign_id: "campaign_12345",
@@ -224,7 +228,7 @@ describe("GraphMetaAdsProvider", () => {
       age_max: 45,
       geo_locations: { countries: ["KR"], location_types: ["home", "recent"] },
     });
-    const creativeForm = requestBody(requests[5].init);
+    const creativeForm = requestBody(requests[6].init);
     const story = JSON.parse(creativeForm.get("object_story_spec") ?? "null");
     expect(story).toMatchObject({
       page_id: binding.pageId,
@@ -237,12 +241,12 @@ describe("GraphMetaAdsProvider", () => {
     expect(story.link_data.child_attachments).toHaveLength(5);
     expect(story.link_data.child_attachments.map((card: { image_hash: string }) => card.image_hash))
       .toEqual(creativePayload.cards.map((card) => card.imageHash));
-    expect(Object.fromEntries(requestBody(requests[6].init))).toMatchObject({
+    expect(Object.fromEntries(requestBody(requests[7].init))).toMatchObject({
       status: "PAUSED",
       adset_id: "adset_12345",
       creative: JSON.stringify({ creative_id: "creative_12345" }),
     });
-    expect(fetchImplementation).toHaveBeenCalledTimes(7);
+    expect(fetchImplementation).toHaveBeenCalledTimes(8);
   });
 
   it("rejects every non-PAUSED status before making a request", async () => {
@@ -293,9 +297,10 @@ describe("GraphMetaAdsProvider", () => {
 
   it("fails closed when a configured Instagram asset is unavailable to the ad account", async () => {
     const fetchImplementation = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ id: "act_1234567890" }))
       .mockResolvedValueOnce(jsonResponse({
-        id: "act_1234567890",
-        promote_pages: { data: [{ id: "2345678901" }] },
+        id: "2345678901",
+        instagram_business_account: { id: "3456789012" },
       }))
       .mockResolvedValueOnce(jsonResponse({ data: [{ id: "9999999999" }] })) as unknown as typeof fetch;
     const provider = new GraphMetaAdsProvider({
@@ -303,6 +308,37 @@ describe("GraphMetaAdsProvider", () => {
     });
 
     await expect(provider.verifyConfiguredAssets()).rejects.toBeInstanceOf(MetaConfigurationError);
+    expect(fetchImplementation).toHaveBeenCalledTimes(3);
+  });
+
+  it("fails closed when the configured Page is unavailable", async () => {
+    const fetchImplementation = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ id: "act_1234567890" }))
+      .mockResolvedValueOnce(jsonResponse({ id: "9999999999" })) as unknown as typeof fetch;
+    const provider = new GraphMetaAdsProvider({
+      binding, accessToken, appSecret, verifiedPageInstagramBinding, fetchImplementation,
+    });
+
+    await expect(provider.verifyConfiguredAssets()).rejects.toThrow(
+      "설정된 Meta Page를 확인할 수 없습니다.",
+    );
+    expect(fetchImplementation).toHaveBeenCalledTimes(2);
+  });
+
+  it("fails closed when the Page points to a different Instagram identity", async () => {
+    const fetchImplementation = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ id: "act_1234567890" }))
+      .mockResolvedValueOnce(jsonResponse({
+        id: "2345678901",
+        instagram_business_account: { id: "9999999999" },
+      })) as unknown as typeof fetch;
+    const provider = new GraphMetaAdsProvider({
+      binding, accessToken, appSecret, verifiedPageInstagramBinding, fetchImplementation,
+    });
+
+    await expect(provider.verifyConfiguredAssets()).rejects.toThrow(
+      "설정된 Meta Page와 Instagram identity의 연결을 확인할 수 없습니다.",
+    );
     expect(fetchImplementation).toHaveBeenCalledTimes(2);
   });
 

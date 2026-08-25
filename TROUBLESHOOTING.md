@@ -559,3 +559,48 @@ fixture는 서버 메모리이며 로그인 소유권과 RLS가 아직 연결되
 - 왜 단위 테스트는 통과했는데 E2E는 실패했나? repository와 API 단위 계약은 바뀌었지만 사용자 시나리오 locator가 옛 화면 문구와 endpoint를 그대로 사용했기 때문이다.
 - 왜 cache header를 정확한 문자열로 비교하지 않았나? 핵심 보안 속성은 `no-store`이며 Next.js가 추가한 `private`와 `no-cache`는 이를 약화하지 않고 강화하기 때문이다.
 - 충돌 해결이 양쪽 기능을 보존했다는 근거는 무엇인가? merge 전 준비된 통합 index와 해결 뒤 tree hash를 직접 비교해 동일함을 확인했다.
+
+## 2026-08-26 — Meta System User token의 빈 `promote_pages`로 운영 자산 검증이 중단됨
+
+### 상황과 기대 동작
+
+2026-08-26 회사 소유 Meta 광고계정에 5개 최소 권한을 가진 60일 System User token을 연결했다. 운영 provider는 실제 객체를 만들기 전에 고정 광고계정, Page와 Instagram identity가 모두 사용 가능한지 확인해야 한다.
+
+### 실제 동작과 영향
+
+광고계정, 지정 Page, Page→Instagram 연결과 광고계정의 Instagram 목록은 Graph v26에서 모두 정상 조회됐지만 `GET /act_<AD_ACCOUNT_ID>?fields=promote_pages`는 빈 목록을 반환했다. 기존 provider는 이 목록만으로 Page 연결을 판정해 실제 `PAUSED` 종단 검증 전에 실패했다. 광고 객체와 지출은 발생하지 않았다.
+
+### 재현과 증거
+
+- 새 token의 `ads_management`, `ads_read`, `pages_manage_ads`, `pages_read_engagement`, `pages_show_list`가 모두 `granted`였다.
+- 광고계정은 활성 상태이며 `KRW`, `Asia/Seoul`로 조회됐다.
+- 고정 Page 직접 조회가 성공했고 `instagram_business_account.id`가 설정된 Instagram actor ID와 일치했다.
+- 광고계정의 `instagram_accounts`에도 같은 Instagram actor ID가 있었다.
+- `assigned_users`에는 System User와 `MANAGE`, `ADVERTISE` task가 있었다.
+- 같은 token의 `promote_pages`만 빈 목록이었다. token과 App Secret 원문은 로그·문서에 남기지 않았다.
+
+### 검토한 가설과 원인
+
+처음에는 Page가 광고계정에 연결되지 않았거나 token에 Page 권한이 없다고 가정했다. Business Settings에서 Page·광고계정·Instagram 자산 권한을 다시 확인하고 `pages_manage_ads`를 앱 use case에 추가한 뒤 5개 권한 token을 발급했다. 직접 Page와 Page→Instagram 조회까지 성공했으므로 자산 권한 부재 가설은 배제됐다.
+
+원인은 고정 Page의 사용 가능성을 `promote_pages`라는 간접 목록 하나로 추론한 검증 계약이다. 이 edge가 빈 목록을 반환하면 실제 Page 접근과 identity 연결이 정상이어도 provider가 원인을 구분하지 못하고 실패한다.
+
+### 해결과 대안
+
+provider가 광고계정 ID를 확인한 뒤 고정 Page를 직접 조회하고, Page의 `instagram_business_account.id`와 서버 고정 Instagram actor ID를 대조하도록 바꿨다. 이어 광고계정의 `instagram_accounts`에도 같은 ID가 있는지 확인한다.
+
+Business Settings에서 추가 연결을 추측해 변경하거나 `business_management`를 token에 더하는 대안은 실제 필요한 광고 초안 권한보다 범위가 커서 선택하지 않았다. `promote_pages` 실패를 무시하는 대안도 Page 검증 자체를 없애므로 선택하지 않았다.
+
+### 검증과 회귀 방지
+
+단위 테스트는 성공 경로에서 광고계정, Page→Instagram, 광고계정 Instagram을 순서대로 검증하고, Page 접근 실패·Page가 다른 Instagram을 가리키는 경우·광고계정에서 Instagram을 사용할 수 없는 경우를 각각 fail-closed로 고정한다. 실제 production 쓰기 전 같은 token으로 세 읽기 요청을 다시 실행한다.
+
+### 남은 위험
+
+읽기 검증은 실제 creative 생성 가능성을 완전히 증명하지 않는다. 명시적 production 승인 아래 단일 `PAUSED` 초안을 만들고 Ads Manager의 상태, 중복 방지와 지출 0원을 대조해야 한다. 응답이 불확실하면 자동 재시도하지 않고 reconciliation 상태로 남긴다.
+
+### 인터뷰 질문
+
+- 왜 `promote_pages` 실패를 무시하지 않았는가? Page 검증을 없애지 않고 서버에 고정된 Page를 직접 확인해 더 강한 fail-closed 계약으로 교체했다.
+- 왜 권한을 더 추가하지 않았는가? 직접 조회로 필요한 자산 접근이 이미 증명됐고, 불필요한 `business_management`는 최소 권한 원칙을 약화하기 때문이다.
+- 실제 광고 생성은 어떻게 안전하게 확인하는가? 내부 운영자 allowlist, durable ledger, `PAUSED` 고정, 예산 상한과 단일 종단·중복·0원 지출 검증을 함께 사용한다.
