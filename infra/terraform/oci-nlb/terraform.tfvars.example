@@ -1,0 +1,13 @@
+region          = "ap-chuncheon-1"
+compartment_id  = "ocid1.compartment.oc1..replace-me"
+availability_domain = "replace-with-ssumcp-availability-domain"
+instance_id     = "ocid1.instance.oc1.ap-chuncheon-1.replace-me"
+vcn_id          = "ocid1.vcn.oc1.ap-chuncheon-1.replace-me"
+subnet_id       = "ocid1.subnet.oc1.ap-chuncheon-1.replace-me"
+
+backend_private_ip = "10.0.0.9"
+http_backend_port  = 13080
+https_backend_port = 13443
+
+data_volume_size_gbs = 50
+data_volume_device   = "/dev/oracleoci/oraclevdb"

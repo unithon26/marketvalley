@@ -11,13 +11,13 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: 11.15.1
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: pnpm
@@ -29,3 +29,107 @@ jobs:
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
+      - name: Validate production deployment files
+        run: |
+          bash -n deploy/bootstrap-ubuntu-rootless.sh
+          bash -n deploy/deploy-gateway.sh
+          bash -n deploy/prepare-host.sh
+          bash -n deploy/remote-release.sh
+          bash -n deploy/release-manager.sh
+          python3 -m py_compile deploy/validate-release-archive.py
+          grep -Fqx '.marketvalley-release-integrity' .dockerignore
+          bash -n infra/terraform/oci-nlb/attach-backend-nsg.sh
+          bash -n infra/terraform/oci-nlb/detach-backend-nsg.sh
+          node --check deploy/verify-external-dependencies.mjs
+          test "$(head -n 1 deploy/Dockerfile)" = '# syntax=docker/dockerfile:1.7.1@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e'
+          test "$(cat deploy/runtime-contract)" = 'marketvalley-production-v1'
+          APP_IMAGE_TAG=0000000000000000000000000000000000000000 \
+          MARKETVALLEY_ENV_FILE="$PWD/deploy/production.env.example" \
+          MARKETVALLEY_CADDYFILE="$PWD/deploy/Caddyfile" \
+            docker compose \
+              --env-file deploy/production.env.example \
+              --file deploy/compose.production.yml \
+              config --quiet
+          rendered_compose="$(
+            APP_IMAGE_TAG=0000000000000000000000000000000000000000 \
+            MARKETVALLEY_ENV_FILE="$PWD/deploy/production.env.example" \
+            MARKETVALLEY_CADDYFILE="$PWD/deploy/Caddyfile" \
+              docker compose \
+                --env-file deploy/production.env.example \
+                --file deploy/compose.production.yml \
+                config --format json
+          )"
+          jq -e '
+            .services.app.cpus == 1.5 and
+            .services.app.mem_limit == 2147483648 and
+            .services.app.memswap_limit == 2147483648 and
+            .services.proxy.cpus == 0.25 and
+            .services.proxy.mem_limit == 268435456 and
+            .services.proxy.memswap_limit == 268435456 and
+            ([.services.proxy.ports[] | {host_ip, published, target, protocol}] == [
+              {host_ip: "10.0.0.9", published: "13080", target: 80, protocol: "tcp"},
+              {host_ip: "10.0.0.9", published: "13443", target: 443, protocol: "tcp"}
+            ])
+          ' <<<"$rendered_compose" >/dev/null
+          docker run --rm \
+            --env SITE_ADDRESS=marketvalley.example.com \
+            --volume "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d \
+            caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+          python3 -m unittest tests/test_validate_release_archive.py
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4
+        with:
+          terraform_version: 1.15.9
+          terraform_wrapper: false
+      - name: Validate OCI NLB infrastructure
+        run: |
+          terraform -chdir=infra/terraform/oci-nlb fmt -check
+          terraform -chdir=infra/terraform/oci-nlb init -backend=false -input=false -lockfile=readonly
+          terraform -chdir=infra/terraform/oci-nlb validate
+      - name: Build production runtime image
+        run: |
+          docker build \
+            --file deploy/Dockerfile \
+            --tag "marketvalley:${GITHUB_SHA}" \
+            --build-arg NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3000 \
+            --build-arg NEXT_PUBLIC_SUPABASE_URL= \
+            --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY= \
+            .
+      - name: Smoke production runtime image
+        env:
+          APP_VERSION: ${{ github.sha }}
+        run: |
+          set -Eeuo pipefail
+          container_name="marketvalley-ci-${GITHUB_RUN_ID}"
+          cleanup() { docker rm --force "$container_name" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+
+          docker run \
+            --detach \
+            --name "$container_name" \
+            --read-only \
+            --tmpfs /tmp:size=64m,mode=1777 \
+            --tmpfs /app/.next/cache:size=64m,uid=1001,gid=1001 \
+            --env CAMPAIGN_GENERATOR_MODE=fixture \
+            --env CAMPAIGN_REPOSITORY_MODE=fixture \
+            --env "APP_VERSION=${APP_VERSION}" \
+            "marketvalley:${GITHUB_SHA}" >/dev/null
+
+          for _ in $(seq 1 30); do
+            if docker exec "$container_name" node -e '
+              const expected = process.argv[1];
+              fetch("http://127.0.0.1:3000/api/health")
+                .then(async (response) => {
+                  const body = await response.json();
+                  if (!response.ok || body.status !== "ok" || body.version !== expected) process.exit(1);
+                })
+                .catch(() => process.exit(1));
+            ' "$APP_VERSION"; then
+              test "$(docker exec "$container_name" id -u)" = "1001"
+              exit 0
+            fi
+            sleep 2
+          done
+
+          docker logs "$container_name"
+          exit 1

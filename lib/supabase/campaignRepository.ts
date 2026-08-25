@@ -11,6 +11,8 @@ import {
   DraftConflictError,
   DraftOwnershipError,
   DuplicateSignalError,
+  ReservationRateLimitError,
+  ReservationStoreUnavailableError,
   type CampaignRepository,
   type DeleteCampaignInput,
   type NextActionInput,
@@ -21,6 +23,7 @@ import {
   type ResetCampaignInput,
 } from "@/lib/contracts/repository";
 import { summarizeReservations } from "@/lib/demo/campaignReservations";
+import type { ReservationProtectionLimits } from "@/lib/security/reservationProtection";
 
 type CampaignRow = {
   id: string;
@@ -102,6 +105,7 @@ export type SupabaseCampaignRepositoryOptions = {
   hashSecret: string;
   now?: () => Date;
   slugSuffix?: () => string;
+  reservationLimits?: ReservationProtectionLimits;
 };
 
 /**
@@ -114,6 +118,7 @@ export class SupabaseCampaignRepository implements CampaignRepository {
   private readonly hashSecret: string;
   private readonly now: () => Date;
   private readonly slugSuffix: () => string;
+  private readonly reservationLimits?: ReservationProtectionLimits;
 
   constructor(options: SupabaseCampaignRepositoryOptions) {
     this.ownerClient = options.ownerClient;
@@ -121,6 +126,7 @@ export class SupabaseCampaignRepository implements CampaignRepository {
     this.hashSecret = options.hashSecret;
     this.now = options.now ?? (() => new Date());
     this.slugSuffix = options.slugSuffix ?? (() => randomUUID().slice(0, 8));
+    this.reservationLimits = options.reservationLimits;
   }
 
   async publish(draftId: string, spec: CampaignSpec): Promise<PublishedCampaign> {
@@ -175,29 +181,34 @@ export class SupabaseCampaignRepository implements CampaignRepository {
   }
 
   async recordReservation(input: ReservationInput): Promise<void> {
-    await this.requirePublicCampaign(input.campaignId);
+    if (!this.reservationLimits) throw new ReservationStoreUnavailableError();
     const normalizedEmail = input.email.trim().toLowerCase();
-    const { error } = await this.serviceClient
-      .from("campaign_reservations")
-      .insert({
-        campaign_id: input.campaignId,
-        name: input.name.trim(),
-        email: normalizedEmail,
-        email_hash: this.emailHash(normalizedEmail),
-        consent_version: "reservation-v1",
-        consented_at: this.now().toISOString(),
-        utm_source: input.utm?.source ?? null,
-        utm_medium: input.utm?.medium ?? null,
-        utm_campaign: input.utm?.campaign ?? null,
-        utm_content: input.utm?.content ?? null,
-        reserved_at: this.now().toISOString(),
-      });
+    const timestamp = this.now().toISOString();
+    const { data, error } = await this.serviceClient.rpc("record_campaign_reservation", {
+      p_campaign_id: input.campaignId,
+      p_name: input.name.trim(),
+      p_email: normalizedEmail,
+      p_email_hash: this.emailHash(normalizedEmail),
+      p_consent_version: "reservation-v1",
+      p_consented_at: timestamp,
+      p_utm_source: input.utm?.source ?? null,
+      p_utm_medium: input.utm?.medium ?? null,
+      p_utm_campaign: input.utm?.campaign ?? null,
+      p_utm_content: input.utm?.content ?? null,
+      p_reserved_at: timestamp,
+      p_campaign_minute_limit: this.reservationLimits.campaignMinute,
+      p_global_minute_limit: this.reservationLimits.globalMinute,
+      p_campaign_total_limit: this.reservationLimits.campaignTotal,
+    });
 
-    if (error) {
-      if (isDatabaseError(error) && error.code === "23505") throw new DuplicateSignalError();
-      throw databaseFailure("reservation insert", error);
-    }
-
+    if (error) throw new ReservationStoreUnavailableError();
+    const result = Array.isArray(data) ? data[0] : data;
+    if (result === "inserted") return;
+    if (result === "duplicate") throw new DuplicateSignalError();
+    if (result === "not_found") throw new CampaignNotFoundError();
+    if (result === "rate_limited") throw new ReservationRateLimitError(60, result);
+    if (result === "capacity") throw new ReservationRateLimitError(86_400, result);
+    throw new ReservationStoreUnavailableError();
   }
 
   async getReservationSummary(campaignId: string): Promise<ReservationSummary> {
@@ -279,16 +290,6 @@ export class SupabaseCampaignRepository implements CampaignRepository {
     if (error) throw databaseFailure("owner campaign lookup", error);
     if (!data) throw new CampaignNotFoundError();
     return data as CampaignRow;
-  }
-
-  private async requirePublicCampaign(id: string): Promise<void> {
-    const { data, error } = await this.serviceClient
-      .from("campaigns")
-      .select("id")
-      .eq("id", id)
-      .maybeSingle();
-    if (error) throw databaseFailure("public campaign lookup", error);
-    if (!data) throw new CampaignNotFoundError();
   }
 
   private async getReservationSummaryWithClient(
