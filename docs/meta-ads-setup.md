@@ -1,6 +1,6 @@
 # Meta PAUSED 광고 초안 설정
 
-상태: 구현과 회사 자산 최소 권한 할당 완료, System User 앱 역할·token·migration·production 검증 전
+상태: 구현, 회사 자산 최소 권한과 System User 앱 테스트 역할 할당, 60일 token 발급 완료. migration·production 검증 전
 
 이 문서는 회사 소유 Meta 자산에 `PAUSED` 광고 초안만 생성하는 선택적 P1 연동을 다룬다. 일반 사용자는 랜딩과 PNG·ZIP을 만들 수 있지만, Meta 계정 쓰기는 서버 환경변수에 등록된 회사 내부 운영자만 실행한다. `ACTIVE` 전환, 결제수단 관리와 실제 지출은 이 연동의 책임이 아니다.
 
@@ -12,9 +12,11 @@
 - 개발자 앱: `MarketValley Ads Publisher` (`1437415924870020`), Marketing API의 `ads_management`·`ads_read`가 테스트 준비 완료
 - Employee System User: `Marketvalley Publisher` (`61593548470446`)
 - System User 자산 권한: Page 광고·인사이트, Instagram 광고·인사이트, 광고 계정 캠페인 관리·성과 보기·Creative Hub 모의 광고 관리. Meta가 선택한 최소 광고 권한의 종속 권한을 함께 표시한 결과다.
+- System User 앱 역할: `MarketValley Ads Publisher`의 부분 접근 `앱 테스트`. 앱 개발·인사이트·앱 관리 역할은 부여하지 않았다.
+- 광고 계정: `marketvalley` (`1026341707121609`). Business Settings URL의 `23859318575880798`은 내부 자산 식별자이므로 Graph API와 환경변수에는 사용하지 않는다.
 - 앱의 App Secret Proof 요구 설정은 켰다.
-- 광고 계정 숫자 ID와 통화·시간대는 Business Settings 상세 화면에서 다시 확인하기 전까지 운영 설정에 기록하지 않는다.
-- System User 앱 역할과 60일 token은 아직 만들지 않았다. token 생성 화면에 `사용 가능한 권한 없음`이 표시되어 앱 역할 연결을 먼저 해결해야 한다.
+- 2026-08-25에 `ads_management`·`ads_read`만 가진 60일 System User token을 발급했다. 값은 저장소·문서·채팅에 기록하지 않았고, 늦어도 2026-10-19에 회전한다.
+- 광고 계정 통화와 시간대는 운영 API 또는 Ads Manager 상세에서 다시 확인하기 전까지 운영 설정에 확정값으로 기록하지 않는다.
 - 결제수단, `ACTIVE`, 실제 광고 객체, 지출은 만들지 않았다.
 
 ## 1. 회사 자산 만들기
@@ -37,9 +39,9 @@
 
 1. Meta for Developers에서 회사 관리용 앱을 만들고 Business Portfolio에 연결한다.
 2. Marketing API 제품 또는 use case를 추가한다.
-3. Business settings의 `Users > System users`에서 `marketvalley-production-meta-publisher`를 직원 권한으로 만든다.
+3. Business settings의 `Users > System users`에서 `Marketvalley Publisher`를 직원 권한으로 만든다.
 4. System User에 광고 계정의 캠페인 관리, Page의 광고 만들기, 연결된 Instagram 계정의 광고 사용 권한만 할당한다.
-5. 앱을 선택해 System User token을 만들고 `ads_management`를 부여한다. 상태·Insights를 별도로 읽을 때 `ads_read`도 부여한다.
+5. 앱에 System User를 `앱 테스트` 최소 역할로 할당하고 60일 token을 만들어 `ads_management`·`ads_read`만 부여한다.
 6. 토큰 만료 시각, 회전 담당자와 다음 회전일을 운영 기록에 남긴다.
 
 `instagram_content_publish`, `business_management`, `instagram_basic`은 현재 유료 광고 초안 경로에 추가하지 않는다. Page와 Instagram 연결을 최초 확인할 때만 관리자 User token의 `pages_show_list`, `pages_read_engagement`를 사용하고 확인 후 그 User token은 저장하지 않는다.
