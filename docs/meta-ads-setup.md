@@ -1,6 +1,6 @@
 # Meta PAUSED 광고 초안 설정
 
-상태: 구현, 회사 자산 최소 권한과 System User 앱 테스트 역할 할당, 60일 token 발급 완료. migration·production 검증 전
+상태: 구현, 회사 자산 최소 권한과 System User 앱 테스트 역할 할당, 5개 권한 60일 token 발급·읽기 검증 완료. migration·production 쓰기 검증 전
 
 이 문서는 회사 소유 Meta 자산에 `PAUSED` 광고 초안만 생성하는 선택적 P1 연동을 다룬다. 일반 사용자는 랜딩과 PNG·ZIP을 만들 수 있지만, Meta 계정 쓰기는 서버 환경변수에 등록된 회사 내부 운영자만 실행한다. `ACTIVE` 전환, 결제수단 관리와 실제 지출은 이 연동의 책임이 아니다.
 
@@ -9,14 +9,15 @@
 - Business Portfolio: `Marketvalley` (`1039774862101186`)
 - Facebook Page: `Marketvalley` (`1184819474725303`)
 - Instagram professional account: `marketvalley__` (`17841438643564582`)
-- 개발자 앱: `MarketValley Ads Publisher` (`1437415924870020`), Marketing API의 `ads_management`·`ads_read`가 테스트 준비 완료
+- 개발자 앱: `MarketValley Ads Publisher` (`1437415924870020`), Marketing API의 `ads_management`·`ads_read`와 Page 광고·조회에 필요한 `pages_manage_ads`·`pages_read_engagement`·`pages_show_list`가 테스트 준비 완료
 - Employee System User: `Marketvalley Publisher` (`61593548470446`)
 - System User 자산 권한: Page 광고·인사이트, Instagram 광고·인사이트, 광고 계정 캠페인 관리·성과 보기·Creative Hub 모의 광고 관리. Meta가 선택한 최소 광고 권한의 종속 권한을 함께 표시한 결과다.
 - System User 앱 역할: `MarketValley Ads Publisher`의 부분 접근 `앱 테스트`. 앱 개발·인사이트·앱 관리 역할은 부여하지 않았다.
 - 광고 계정: `marketvalley` (`1026341707121609`). Business Settings URL의 `23859318575880798`은 내부 자산 식별자이므로 Graph API와 환경변수에는 사용하지 않는다.
 - 앱의 App Secret Proof 요구 설정은 켰다.
-- 2026-08-25에 `ads_management`·`ads_read`만 가진 60일 System User token을 발급했다. 값은 저장소·문서·채팅에 기록하지 않았고, 늦어도 2026-10-19에 회전한다.
-- 광고 계정 통화와 시간대는 운영 API 또는 Ads Manager 상세에서 다시 확인하기 전까지 운영 설정에 확정값으로 기록하지 않는다.
+- 2026-08-26에 위 5개 권한을 가진 60일 System User token을 새로 발급해 macOS Keychain에 저장했다. 값은 저장소·문서·채팅에 기록하지 않았다. 기존 2개 권한 token은 유출 정황이 없어 전체 token 취소로 새 token까지 폐기하지 않고 미사용 상태로 만료시킨다.
+- 운영 Graph API에서 광고 계정 통화 `KRW`, 시간대 `Asia/Seoul`, 활성 상태와 비활성 사유 없음까지 확인했다.
+- 새 token으로 광고 계정의 System User 광고 관리 task, 지정 Page, Page→Instagram 쌍과 광고 계정의 Instagram identity를 직접 확인했다. `promote_pages`는 빈 목록이어서 운영 검증 계약에서 사용하지 않는다.
 - 결제수단, `ACTIVE`, 실제 광고 객체, 지출은 만들지 않았다.
 
 ## 1. 회사 자산 만들기
@@ -41,28 +42,27 @@
 2. Marketing API 제품 또는 use case를 추가한다.
 3. Business settings의 `Users > System users`에서 `Marketvalley Publisher`를 직원 권한으로 만든다.
 4. System User에 광고 계정의 캠페인 관리, Page의 광고 만들기, 연결된 Instagram 계정의 광고 사용 권한만 할당한다.
-5. 앱에 System User를 `앱 테스트` 최소 역할로 할당하고 60일 token을 만들어 `ads_management`·`ads_read`만 부여한다.
+5. 앱에 System User를 `앱 테스트` 최소 역할로 할당하고 60일 token을 만들어 `ads_management`, `ads_read`, `pages_manage_ads`, `pages_read_engagement`, `pages_show_list`만 부여한다.
 6. 토큰 만료 시각, 회전 담당자와 다음 회전일을 운영 기록에 남긴다.
 
-`instagram_content_publish`, `business_management`, `instagram_basic`은 현재 유료 광고 초안 경로에 추가하지 않는다. Page와 Instagram 연결을 최초 확인할 때만 관리자 User token의 `pages_show_list`, `pages_read_engagement`를 사용하고 확인 후 그 User token은 저장하지 않는다.
+`instagram_content_publish`, `business_management`, `instagram_basic`은 현재 유료 광고 초안 경로에 추가하지 않는다. 게시물 발행이나 Business 자산 관리가 아니라 고정 Page identity를 사용하는 광고 초안 생성만 수행한다.
 
 ## 3. Page와 Instagram 연결 확인
 
-관리자 User token으로 아래 조회를 한 번 실행한다.
+Production System User token으로 아래 조회를 실행한다.
 
 ```http
 GET /<PAGE_ID>?fields=id,instagram_business_account{id}
 ```
 
-응답의 Page ID와 Instagram ID가 설정하려는 쌍과 일치하면 쌍과 UTC 확인 시각만 기록한다. Production System User token으로는 다음 자산 접근을 확인한다.
+응답의 Page ID와 Instagram ID가 설정하려는 쌍과 일치하면 쌍과 UTC 확인 시각만 기록한다. 이어서 다음 자산 접근을 확인한다.
 
 ```http
 GET /act_<AD_ACCOUNT_ID>/assigned_users?fields=id,user_type,permitted_tasks&business=<BUSINESS_ID>
-GET /act_<AD_ACCOUNT_ID>?fields=promote_pages
 GET /act_<AD_ACCOUNT_ID>/instagram_accounts
 ```
 
-첫 응답에서 System User와 광고 관리 task가, 다음 응답들에서 지정 Page와 Instagram ID가 보여야 한다. 응답 원문과 token은 저장소·채팅·화면 녹화에 남기지 않는다.
+첫 응답에서 System User와 `MANAGE`·`ADVERTISE` task가, Page 직접 조회에서 지정 Page→Instagram 쌍이, 마지막 응답에서 같은 Instagram ID가 보여야 한다. `promote_pages`는 System User token에서 빈 목록일 수 있어 고정 Page의 권한과 연결을 증명하는 운영 조건으로 사용하지 않는다. 응답 원문과 token은 저장소·채팅·화면 녹화에 남기지 않는다.
 
 ## 4. Production 환경변수
 
