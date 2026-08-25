@@ -1,10 +1,10 @@
 # marketvalley 해커톤 MVP 스펙
 
-상태: 기능 구현 기준 v0.9, Claude·Supabase 제품 경로와 별도 fixture 발표 snapshot 구현 완료
-마지막 갱신: 2026-08-25
+상태: 계정별 production lifecycle 구현 완료, 운영 migration·배포 대기
+마지막 갱신: 2026-08-26
 목표: 별도 랜딩 저장소의 시각 요소와 디자인 담당자의 메인 웹사이트 디자인을 반영해 2026 UNITHON 발표용 종단 흐름을 구현한다. 구조와 기능은 이 스펙을 따른다.
 
-현재 저장소에는 Figma 디자인을 반영한 화면, Anthropic 문구 생성 adapter, 운영 migration을 적용·검증한 Supabase repository, Google OAuth, 검증된 fixture, 결정적 렌더러와 테스트가 있다. Claude는 제품 기본 생성 경로이며 fixture는 자동 테스트와 별도 발표 snapshot에서만 명시한다. Meta 계정·광고 자동화는 이번 범위에서 제외했고 Oracle production 서버 적용과 실제 도메인 종단 검증은 남아 있다.
+현재 제품 경로는 Google 계정별 Supabase 캠페인을 먼저 접수하고 영속 worker가 Claude 문구, 공개 랜딩, 카드뉴스, Meta 광고 생성·활성화, Insights 수집, 최종 리포트를 순서대로 처리한다. 브라우저를 닫아도 진행되며 다시 로그인하면 저장된 현재 단계가 열린다. fixture는 seed 없이 자동 테스트에서만 명시한다.
 
 ## 1. 우승 전략
 
@@ -39,8 +39,8 @@ generator가 추론한 내용은 `assumptions`에 표시한다. 제출 버튼을
 - Supabase가 미설정된 자동 테스트·비상 발표 fixture는 외부 인증 장애와 무관하게 입력 흐름을 유지한다.
 - 1단계에서 2단계로 이동하면 브라우저 history에 입력 단계를 남기고, 뒤로·앞으로와 화면의 `이전` 버튼에서 작성한 값을 보존한 채 해당 단계로 복원한다.
 - 필수값 검증과 오류 문구가 있다.
-- 제공된 데모 입력을 한 번에 채우는 `예시 불러오기`가 있다.
-- 예시 입력의 상품명과 핵심 특징 3개가 생성된 `CampaignSpec`, 랜딩, 캐러셀과 게시 준비 파일에 같은 값으로 나타난다.
+- 제품 화면에 예시 자동 입력이나 더미 프로젝트를 제공하지 않는다.
+- 사용자가 입력한 상품명과 핵심 특징이 생성된 `CampaignSpec`, 랜딩과 캐러셀에 같은 값으로 나타난다.
 - 모바일과 노트북 화면에서 주요 CTA가 보인다.
 
 ### P0-2. 검증 가설 및 광고 생성
@@ -71,11 +71,11 @@ Figma가 정의한 레이아웃, 타이포·색상 조합, 섹션 순서와 상�
 - `schemaVersion`, 생성 모델·시각, Figma 색상, 판단 기준, 캠페인 ID·slug·공개 URL과 실제 예약은 서버가 기록하거나 모델 결과 위에 덮어쓴다.
 - 확인되지 않은 숫자, 고객 후기, 인증, 효능을 만들어내지 않는다.
 - 사실 검토가 필요한 표현은 `claimsToReview`에 별도로 표시한다.
-- 빈 구조화 응답을 포함한 전송·timeout·스키마 오류는 자동 재호출 없이 실패를 명시한 뒤 사용자가 재시도하거나 데모 샘플로 전환할 수 있다.
+- 빈 구조화 응답을 포함한 전송·timeout·스키마 오류는 입력과 접수 기록을 유지하고 제한된 횟수만 자동 재시도한다. 실패를 fixture 성공으로 바꾸지 않는다.
 
 ### P0-3. 광고 생성과 게시
 
-Figma 발표 흐름은 별도 가설 승인 화면을 두지 않는다. `/new`의 두 번째 입력을 제출하면 입력 화면을 즉시 `접수 → 준비 중 → 수집 중 → 결과 도착` 진행 화면으로 바꾼다. 카드뉴스·랜딩페이지 제작은 실제 `/api/generate` 응답까지, 시장 데이터 수집 표시는 실제 `/api/campaigns` 게시 응답까지 해당 단계에 머문다. 그 뒤에만 `/campaigns/[id]` 결과 CTA를 표시한다.
+별도 가설 승인 화면은 두지 않는다. `/new`의 두 번째 입력을 제출하면 DB 접수를 완료한 뒤 `/campaigns/[id]/progress`에서 `접수 → 준비 중 → 수집 중 → 결과 도착`을 실제 상태로 표시한다. 랜딩·카드뉴스·Meta 객체 생성과 ACTIVE 확인이 끝나야 수집 중으로, 종료 뒤 최종 Insights snapshot이 저장돼야 결과 도착으로 이동한다.
 
 랜딩, 캐러셀과 Meta용 사전 확인 화면은 만들지 않는다. 실제 랜딩은 발급된 공개 URL에서 확인하고, 캐러셀은 내려받은 PNG·ZIP이 최종 결과물이다. 내용을 바꾸려면 `/new`로 돌아가 새 광고를 생성한다.
 
@@ -84,7 +84,7 @@ Figma 발표 흐름은 별도 가설 승인 화면을 두지 않는다. `/new`�
 - 두 번째 입력 제출 전에는 공개 snapshot이나 다운로드 파일을 만들지 않는다.
 - 생성·게시 요청은 중복 실행되지 않으며 실패를 성공으로 표시하지 않고 입력을 보존한다.
 - 미구현 단계와 실제 실행 단계를 화면 문구로 구분하며 실제 API가 끝나기 전에 완료 상태를 표시하지 않는다.
-- 진행 화면에서 이탈하면 Figma 전환에 맞춘 1.6초 접수 안내 대기와 브라우저 요청을 취소하고, 생성 취소 신호는 서버의 Anthropic 요청까지 전달한다.
+- 진행 화면에서 이탈하거나 브라우저를 닫아도 서버 worker가 작업을 이어가며, 로그인 뒤 계정 소유 상태를 다시 불러온다.
 - `/campaigns/[id]`는 실제 공개 URL, PNG·ZIP 다운로드, 게시 문구 복사, 예약자 수·접수 추이, 사전 기준과 사람의 다음 행동만 제공한다.
 - 결과 화면은 현재 예약자 수가 사전 최소 표본에 충분한지 사실만 보여주고, `계속 검증`, `메시지 수정`, `보류` 선택은 사용자가 한다.
 - 선택한 다음 행동은 저장되어 새로고침 뒤에도 유지된다.
@@ -113,7 +113,7 @@ CTA를 누르면 이름·이메일과 개인정보 동의 체크박스를 받는
 - 같은 캠페인의 같은 이메일은 중복 접수되지 않으며 실제 예약자 수·목록·접수 추이가 `/campaigns/[id]` 결과 화면에 반영된다.
 - 랜딩 HTML에 `undefined`, 잘린 핵심 문구, 빈 필수 섹션이 없다.
 
-### P0-5. 인스타그램 캐러셀, 게시 문구와 광고 등록 패키지
+### P0-5. 인스타그램 캐러셀과 실제 광고 집행
 
 캐러셀은 1080×1350 비율의 5장으로 고정한다.
 
@@ -127,7 +127,7 @@ CTA를 누르면 이름·이메일과 개인정보 동의 체크박스를 받는
 
 AI는 문구와 선택적 배경 이미지 프롬프트만 만든다. 모든 텍스트는 디자이너가 정의한 React/CSS 템플릿으로 조판한다.
 
-`광고 등록 패키지`는 별도의 광고 카피를 다시 생성하지 않는다. `CampaignSpec`과 게시된 랜딩 URL에서 캐러셀 파일, 기본 문구, headline, CTA, 대상 고객 가설과 destination URL을 조합한다. `/campaigns/[id]`에서 PNG 5장과 `meta-ready.txt`를 하나의 ZIP으로 받거나 각 문구를 복사할 수 있게 하며 별도의 Meta용 시각 화면은 만들지 않는다. 사용자용 이름은 `Meta 게시 준비`이고 실제 광고가 등록됐다고 표현하지 않는다.
+서버는 `CampaignSpec`과 게시된 랜딩 URL에서 캐러셀 5장, 기본 문구, headline, CTA와 destination URL을 조합해 Meta 광고를 만든다. 운영자 UUID, 정확한 광고 계정과 고정 lifetime 예산 확인값이 모두 일치할 때만 활성화한다. 최종 리포트의 수동 초안·활성화·중지 버튼과 공개 수동 Meta API는 제공하지 않는다.
 
 완료 기준:
 
@@ -135,42 +135,39 @@ AI는 문구와 선택적 배경 이미지 프롬프트만 만든다. 모든 텍
 - 모든 장을 개별 PNG 또는 하나의 ZIP으로 받을 수 있다.
 - 파일명은 `01-hook.png`부터 `05-cta.png`까지 정렬된다.
 - 캡션, 후킹 문구 3개, CTA, 해시태그를 복사할 수 있다.
-- `Meta 게시 준비` ZIP과 복사 영역에서 사용할 미디어, 기본 문구, headline, CTA, 대상 고객 가설과 절대 랜딩 URL을 한 번에 받을 수 있다.
-- 예산, 통화, 기간, 세부 타기팅과 활성화는 AI가 임의로 확정하지 않으며 P0에서 Meta 계정이나 결제수단에 접근하지 않는다.
+- 광고에 업로드한 서버 PNG와 리포트 미리보기·ZIP의 서버 PNG가 같은 endpoint 결과다.
+- 예산, 통화, 기간과 타기팅은 서버 정책으로 고정하며 AI가 임의로 변경하지 않는다.
+- 동일 광고 계정에는 live run을 하나만 허용하고 기존 ACTIVE run이 있으면 새 광고를 만들지 않는다.
 - 이미지 생성 API 없이도 완성된 기본 시각 결과가 나온다.
 
-### P0-6. 결정적 데모 모드
+### P0-6. 결정적 테스트 fixture
 
-`lib/demo/demo-campaign.ts`에 완성된 샘플 `CampaignSpec` 3종을 둔다. 기존 camelCase import를 위한 `demoCampaign.ts`는 하위 호환 shim일 뿐 새 코드의 기준 파일로 사용하지 않는다. 데모 모드는 프로덕션 결과와 같은 API 경계와 렌더러를 사용해야 하며 별도의 가짜 UI를 만들지 않는다.
+fixture는 자동 테스트가 외부 과금 없이 같은 API 경계와 렌더러를 확인하기 위한 전용 adapter다. 제품 기본값은 Supabase·Anthropic이며 fixture repository는 명시해도 기본 seed를 넣지 않는다.
 
 완료 기준:
 
-- 서버 시작 직후 `/campaigns/demo`과 `/p/demo`으로 seed 캠페인에 접근할 수 있고, `/new` 입력은 reference fixture 3종 중 하나의 시각 템플릿을 선택한 뒤 중립 문장 골격에 입력한 상품명·특징·문제·솔루션을 주입한다.
-- 발표 전에 fixture 모드를 명시하면 외부 계정 없이 샘플 랜딩·캐러셀·예약·사람의 판단·다운로드 시연을 끝낼 수 있다. live 장애를 fixture 성공으로 자동 치환하지 않는다.
-- 발표 전 데모용 공개 URL과 백업 화면 녹화를 준비한다.
+- fixture도 사용자가 실제로 입력·접수한 캠페인만 목록에 보인다.
+- fixture 성공을 live 장애의 fallback으로 자동 사용하지 않는다.
 
-## 3. 향후 P1 후보와 현재 중단 기준
-
-아래는 P0와 production 배포가 모두 안정화된 뒤 별도 제품 결정으로 검토할 후보이며 이번 완료 범위에는 포함하지 않는다. 특히 사용자의 최신 지시에 따라 Meta 계정·광고 객체 자동화는 진행하지 않는다.
+## 3. 자동 집행 안전 경계
 
 - 선택한 카드 또는 Hero의 텍스트 없는 배경 이미지 1장 생성
 - 특정 필드 AI 재작성
 - 캠페인 QR 코드
 - 페이지 조회와 응답의 단순 전환율
 - 공유용 Open Graph 이미지
-- 팀 소유 테스트 광고 계정에서 `PAUSED` 상태 광고 객체를 만드는 제한된 연동 실험
+- Meta 자격증명은 서버에만 두고 브라우저 route나 번들로 전달하지 않는다.
+- 운영자 Google 계정 UUID, 광고 계정 ID, lifetime 예산이 배포 설정의 확인값과 모두 일치해야 활성화한다.
+- DB unique index와 실행 전 조회로 한 광고 계정의 live run을 하나로 제한한다.
+- 생성은 PAUSED 객체로 시작하고 자식부터 부모 순서로 활성화하며, 일부 실패 시 부모부터 전체를 PAUSED로 복구한다.
+- 수집 종료 시 부모부터 전체를 PAUSED로 확인한 뒤 최종 Insights 반영 시간을 기다린다.
+- 자동 예산 증액, 종료 뒤 재시작, 결제수단 등록은 구현하지 않는다.
 
-Meta 연동은 다음 단계 경계를 지킨다.
-
-- P0: OAuth, 계정 연결, 광고 객체 쓰기와 실제 집행 없이 `Meta 게시 준비` 파일·복사 기능만 제공한다.
-- 해커톤 P1: P0와 발표 준비가 모두 끝났고 팀 소유 테스트 계정과 필요한 권한이 준비된 경우에만 `PAUSED` 생성까지 실험한다. UI와 서버 모두 `ACTIVE` 전환을 막는다.
-- 실제 제품: 사용자가 OAuth로 계정을 연결하고 광고 계정·페이지·Instagram identity를 선택한 뒤, 서버가 `PAUSED` 초안을 만들고 계정·통화·시간대·소재·랜딩·타기팅·총예산·종료 시각을 한 화면에서 승인받은 경우에만 활성화할 수 있다. 결제수단 등록과 본인 확인은 Meta UI에서 사용자가 수행한다.
-
-상세 결정과 보안 불변조건은 `docs/decisions/0003-stage-meta-automation-behind-human-approval.md`를 따른다.
+상세 결정은 `docs/decisions/0023-run-account-owned-campaigns-as-a-durable-automatic-lifecycle.md`를 따른다.
 
 다음 기능은 시작하지 않는다.
 
-- Meta 광고 자동 활성화, 결제수단 등록, 무인 예산 증액·재시작
+- 결제수단 등록, 무인 예산 증액·종료 뒤 재시작
 - Instagram 일반 게시물 자동 업로드
 - 드래그 앤 드롭 페이지 빌더
 - 팀 협업, 결제
@@ -187,33 +184,33 @@ P1 때문에 P0 통합이나 발표 준비가 1시간 이상 밀리면 즉시 P1
 ### `/`
 
 - 전체 프로젝트 대시보드와 상태 필터
-- 발표 fixture 광고로 이동하는 카드
-- 발표 범위 밖 목 프로젝트는 비활성 카드로 명확히 구분
+- 로그인 계정이 소유한 실제 프로젝트만 표시
+- 비로그인·빈 목록·오류 상태를 더미 카드 없이 표시
 - `/new`로 이동하는 `새 광고` CTA
 - 제품이 없애는 기존 작업을 짧은 `before/after`로 표시
 
 ### `/new`
 
 - 제품 배경과 솔루션을 각각 받는 2단계 입력
-- 각 단계 20자 이상 검증과 `예시 불러오기`
+- 각 단계 20자 이상 검증
 - `이전`, `다음`, `광고 만들기` 제공
 - 처리 중 중복 실행 차단, 실패 안내와 입력 보존
-- 제출 직후 진행 화면으로 전환하고 `접수 → 카드뉴스·랜딩페이지 준비 중 → 시장 데이터 수집 중 → 결과 도착`을 표시
-- AI 생성·광고 게시가 실제 완료된 뒤에만 `/campaigns/[id]` 결과 CTA를 활성화
+- 접수 응답 뒤 진행 URL로 이동하고 `접수 → 카드뉴스·랜딩·광고 준비 중 → 실제 시장 데이터 수집 중 → 결과 도착`을 표시
+- AI 생성·광고 ACTIVE·최종 집계가 각기 실제 완료된 상태만 표시
 
 ### `/campaigns/[id]/progress`
 
-- 기존 게시 광고의 직접 접근 호환을 위한 완료 상태 화면
-- 신규 생성의 실제 진행 상태는 `/new` 제출 직후 화면에서 표시
+- DB lifecycle을 15초마다 갱신하고 focus·재로그인 때 즉시 복원
+- 완료 전에는 메인 이동 버튼이나 리포트 CTA를 표시하지 않음
 
 ### `/campaigns/[id]`
 
-- 광고 게시 상태와 실제 공개 URL
-- 캐러셀 PNG·ZIP과 `Meta 게시 준비` ZIP 다운로드
-- 캡션, 후킹 문구, CTA와 해시태그 복사
+- 실제 수집이 끝난 캠페인만 접근
+- 최종 Meta Insights, 랜딩 방문·예약 데이터와 실제 공개 URL
+- 실제 광고와 같은 서버 렌더 캐러셀 PNG·ZIP 다운로드
 - 실제 예약자 수·접수 추이, 사전 기준과 표본 부족 상태
 - `계속 검증`, `메시지 수정`, `보류` 중 사람의 다음 행동 저장
-- 랜딩·캐러셀·Meta용 시각 결과를 화면 안에 다시 그리지 않음
+- 수동 Meta 초안·활성화·중지 제어를 표시하지 않음
 
 ### `/p/[slug]`
 
@@ -341,7 +338,7 @@ Zod에서 배열 길이와 문자열 최대 길이를 제한한다. 한국어 �
 - 제품 생성 기본값은 `anthropic`. 자동 테스트와 비상 발표 fallback만 외부 호출이 없는 `fixture`를 명시하며, 기본 `claude-sonnet-4-6`은 `ANTHROPIC_TEXT_MODEL`로 교체 가능
 - 개발·발표에서는 이미지 모델도 비활성화하고 검증된 reference 자산과 결정적 renderer만 사용
 - Supabase Postgres
-- `html-to-image`와 JSZip
+- Next.js `ImageResponse` 서버 PNG와 JSZip
 - Oracle Compute의 Next.js standalone·Docker Compose·Caddy HTTPS 배포
 - Vitest 단위 테스트와 Playwright production E2E
 - 패키지 관리자는 `pnpm`
@@ -401,7 +398,9 @@ tests/e2e/
 
 ### API 경계
 
-- `POST /api/generate`: 2단계 입력을 검증하고 `{ spec: CampaignSpec }`을 반환한다. Anthropic 모드는 JSON·same-origin·Google 로그인과 생성 quota 제한을 통과해야 한다. fixture fallback은 자동 테스트와 발표 복구를 위해 인증 없이 유지한다. 성공 시 클라이언트가 `crypto.randomUUID()`로 `draftId`를 만들고 바로 게시 요청을 보낸다.
+- `POST /api/campaigns`: 2단계 입력과 client 생성 `draftId`를 검증해 계정 소유 접수를 먼저 저장하고 lifecycle ID를 반환한다. 같은 `draftId`와 입력의 재요청은 같은 캠페인을 반환한다.
+- `GET /api/campaigns/lifecycle`: 로그인 계정의 캠페인 목록 또는 한 캠페인의 현재 상태를 반환한다.
+- `GET /api/internal/lifecycle`: 32바이트 이상 Bearer secret으로만 worker가 호출하며 due campaign을 lease로 claim해 다음 외부 작업을 수행한다.
 - `POST /api/campaigns`: `{ draftId, spec }`을 다시 검증해 공개 snapshot으로 저장한다. 같은 `draftId`와 동일한 spec의 재요청은 중복 캠페인을 만들지 않고 기존 결과를 반환한다. 이미 게시된 `draftId`에 다른 spec이 오면 충돌로 처리한다. 성공하면 게시 campaign, 공개 URL과 초기 예약자명단을 반환한다.
 - `POST /api/reservations`: `{ campaignId, name, email, consent, utm? }`를 검증해 동의된 예약 한 건을 기록한다. fixture는 `(campaignId, email)` hash, live는 서버 HMAC email hash와 DB unique constraint로 중복을 막는다.
 - `PATCH /api/campaigns`: `{ campaignId, draftId, nextAction }`을 받아 소유 draft가 맞을 때만 사람의 선택 `continue`, `revise`, `pause`를 저장한다.
@@ -690,4 +689,4 @@ Anthropic 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를
 - [Next.js self-hosting](https://nextjs.org/docs/app/guides/self-hosting)
 - [Docker Compose production](https://docs.docker.com/compose/how-tos/production/)
 - [OCI security rules](https://docs.oracle.com/en-us/iaas/Content/Network/Concepts/securityrules.htm)
-- [`html-to-image`](https://github.com/bubkoo/html-to-image)
+- [Next.js ImageResponse](https://nextjs.org/docs/app/api-reference/functions/image-response)

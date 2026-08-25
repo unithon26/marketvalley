@@ -5,11 +5,11 @@ import { campaignThemeStyle } from "@/lib/brand-theme";
 export { carouselFileNames };
 
 export const carouselCoverAssets: Partial<Record<CampaignSpec["templates"]["carouselCover"], string>> = {
-  "cover-32": "/figma-templates/cover-32-original.webp",
-  "cover-34": "/figma-templates/cover-34-original.webp",
+  "cover-32": "/figma-templates/cover-32-original.png",
+  "cover-34": "/figma-templates/cover-34-original.png",
 };
 
-function cardCopy(spec: CampaignSpec, index: number) {
+export function getCarouselCardCopy(spec: CampaignSpec, index: number) {
   switch (index) {
     case 0: return { kicker: "첫 시장 반응 전에", headline: spec.messaging.hooks[0], body: spec.carousel.hookBody };
     case 1: return { kicker: "반복되는 제작 업무", headline: spec.carousel.problem.headline, body: spec.carousel.problem.body };
@@ -19,7 +19,7 @@ function cardCopy(spec: CampaignSpec, index: number) {
   }
 }
 
-function splitHighlight(text: string) {
+export function splitCarouselHighlight(text: string) {
   const words = text.trim().split(/\s+/);
   if (words.length === 1) return { before: "", highlight: words[0], after: "" };
 
@@ -33,7 +33,7 @@ function splitHighlight(text: string) {
 }
 
 function HighlightedText({ text }: { text: string }) {
-  const copy = splitHighlight(text);
+  const copy = splitCarouselHighlight(text);
   return (
     <>
       {copy.before && <span>{copy.before} </span>}
@@ -90,7 +90,7 @@ export function CarouselCard({
   exportRef?: (node: HTMLDivElement | null) => void;
   preview?: boolean;
 }) {
-  const copy = cardCopy(spec, index);
+  const copy = getCarouselCardCopy(spec, index);
   const coverTemplate = spec.templates.carouselCover;
   return (
     <div

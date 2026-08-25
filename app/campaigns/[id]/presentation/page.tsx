@@ -29,11 +29,8 @@ export default async function PresentationCampaignPage({
       <CampaignReport
         campaignId={published.id}
         publicSlug={published.slug}
-        initialSpec={published.spec}
         initialSummary={snapshot.summary}
         initialAnalytics={snapshot.analytics}
-        initialNextAction="continue"
-        metaAdsEnabled={false}
         presentationMode={{ collectedHours: snapshot.collectedHours }}
       />
     </div>

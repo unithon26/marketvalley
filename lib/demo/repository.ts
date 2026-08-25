@@ -8,8 +8,8 @@ import { createSupabaseServiceClient } from "@/lib/supabase/serviceClient";
 import { resolveReservationProtectionConfig } from "@/lib/security/reservationProtection";
 
 /**
- * fixture 모드는 서버 프로세스 메모리만 사용한다. 서버 재시작이나 serverless 인스턴스 전환
- * 뒤에는 초기 상태로 돌아가며, 실제 다중 기기 저장은 다음 Supabase adapter가 담당한다.
+ * fixture 모드는 자동 테스트에서만 명시적으로 사용한다. 제품 환경의 기본값은
+ * 계정별 RLS와 영속 저장을 제공하는 Supabase이며 설정 누락 시 fail-closed 한다.
  */
 const fixtureGlobal = globalThis as typeof globalThis & {
   __marketvalleyFixtureCampaignRepositoryV5?: FixtureCampaignRepository;

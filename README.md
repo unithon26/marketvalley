@@ -2,7 +2,7 @@
 
 marketvalley는 아이디어를 처음 검증하려는 예비창업가와 초기 1인 사업자가 반복하던 광고 기획, 채널별 재작성, 조판, 파일 정리와 반응 취합을 하나의 흐름으로 없애는 UNITHON 2026 프로젝트다.
 
-현재 저장소에는 Figma 디자인을 반영한 종단 데모가 있다. 카드뉴스 표지 3종과 랜딩 도입부 고정안 7종을 같은 `CampaignSpec`에서 선택하고, 입력에 명시한 상품명·핵심 특징과 문제·솔루션을 랜딩·카드뉴스·게시 준비 파일에 일관되게 반영한다. 제품 생성 기본 경로는 Anthropic Messages API의 Structured Outputs 한 번으로 랜딩 Hero·문제·혜택·단계·FAQ를 포함한 광고 문구 슬롯을 만들고, 서버가 고정 필드와 합쳐 최종 `CampaignSpec`을 검증한다. 자동 테스트와 외부 장애에 대비한 발표 fallback만 `CAMPAIGN_GENERATOR_MODE=fixture`를 명시해 결정적 결과를 사용한다.
+제품은 Google 계정별 아이디어를 Supabase에 먼저 접수한 뒤 Claude 문구, 공개 랜딩, 서버 렌더 카드뉴스, 실제 Meta 광고 활성화, Insights 수집과 최종 리포트를 영속 lifecycle로 처리한다. 브라우저를 닫아도 worker가 계속 진행하고 다시 로그인하면 해당 계정의 현재 단계가 열린다. 제품 화면에는 seed 프로젝트나 예시 자동 입력을 넣지 않으며 fixture는 자동 테스트에서만 명시한다.
 
 ## 실행
 
@@ -21,7 +21,7 @@ pnpm test:e2e
 pnpm dev
 ```
 
-개발 서버를 시작하면 `http://localhost:3000`에서 데모를 볼 수 있다. `pnpm check`는 lint, TypeScript와 단위 테스트를 검증한다. `pnpm test:e2e`는 코드를 새로 빌드한 뒤 전용 3100 포트의 standalone server로 실행해 Chromium에서 핵심 발표 흐름, API 오류 경계, 모바일·키보드, SEO·브랜드 대비와 두 ZIP의 실제 내용을 검증한다. 이미 실행 중인 개발 서버는 재사용하지 않는다.
+개발 서버는 `http://localhost:3000`에서 실행된다. `pnpm check`는 lint, TypeScript와 단위 테스트를 검증한다. `pnpm test:e2e`는 새 standalone build에서 빈 계정, 2단계 접수, 진행 복원, 결과, 서버 PNG·ZIP, 공개 예약과 마스킹 리포트를 확인한다.
 
 실제 AI 문구 생성에는 서버 전용 `ANTHROPIC_API_KEY`와 Google 로그인이 필요하다. `.env.example`처럼 `CAMPAIGN_GENERATOR_MODE=anthropic`을 사용하며, 기본 모델은 대표 입력 품질 검사를 통과한 `claude-sonnet-4-6`이다. 테스트와 비상 발표에서만 `fixture`로 전환한다. Supabase 모드에서는 JSON·same-origin·로그인 검증 뒤 Postgres RPC가 사용자 분당·일일·전체 일일 quota를 원자적으로 적용한다. production Anthropic은 분산 제한 없이 실행되지 않는다.
 
@@ -31,14 +31,14 @@ pnpm dev
 
 - `/`: 프로젝트와 사라지는 업무를 보여주는 홈
 - `/new`: 배경과 상품명·핵심 특징을 받는 2단계 입력과 실제 AI 생성·게시 진행 화면
-- `/campaigns/[id]/progress`: 이미 게시된 광고의 직접 접근 호환용 결정적 진행 화면
-- `/campaigns/[id]`: 예약자명단 리포트, PNG ZIP, PNG·문구·절대 URL이 든 Meta 게시 준비 ZIP과 다음 판단
+- `/campaigns/[id]/progress`: 실제 DB lifecycle을 복원하는 진행 화면
+- `/campaigns/[id]`: 최종 Insights·예약자명단 리포트, 실제 광고와 같은 PNG ZIP과 다음 판단
 - `/p/[slug]`: 동의 후 이름·이메일 사전예약을 받는 공개 랜딩
 - `/auth/google`: 제품에서는 Google OAuth를, 발표 mock 모드에서는 HttpOnly 데모 세션을 시작하는 endpoint
 - `/api/auth/session`: 토큰을 노출하지 않고 현재 로그인 상태를 반환하는 endpoint
 - `/login`: 비로그인 사용자가 광고 생성을 시작할 때 soft navigation은 현재 화면 위 로그인 모달, 직접 접근·새로고침은 전용 로그인 화면으로 안내하고 인증 뒤 원래 목적지로 복귀시키는 route
 
-서버 시작 시 발표용 `/campaigns/demo`와 `/p/demo`가 준비되며, `/new`에서 만든 광고는 기존 탭과 섞이지 않도록 별도 id와 slug를 받는다.
+제품과 테스트 fixture 모두 `/new`에서 실제로 접수한 캠페인만 목록에 나타나며 각 캠페인은 별도 id와 slug를 받는다.
 
 GNB의 Google 로그인·사용자·로그아웃 UI는 인증 상태 hook과 분리되어 있다. `NEXT_PUBLIC_AUTH_MODE=mock`인 발표 환경에서는 비로그인 상태의 `새 광고`가 메인 위 로그인 모달을 열고, Google 버튼이 외부 계정 없이 `마켓밸리 데모` HttpOnly 세션을 만든 뒤 메인으로 돌아온다. 로그인된 상태에서 `새 광고`를 다시 누르면 `/new`로 이동한다. `NEXT_PUBLIC_AUTH_MODE=supabase`인 제품 환경에서는 기존 Google OAuth와 PKCE callback을 그대로 사용한다.
 
@@ -63,12 +63,12 @@ GNB의 Google 로그인·사용자·로그아웃 UI는 인증 상태 hook과 분
 
 ## 범위 경계
 
-- 방문 이벤트와 Meta Insights를 연결하기 전에는 예약자 수 이외의 광고 성과 수치를 표시하지 않는다. Claude 문구와 Supabase adapter, 운영 migration·실DB 종단은 검증했다. Meta 자동화는 범위에서 제외한다.
-- Google OAuth는 local Google·Supabase provider와 실제 계정 로그인·로그아웃까지 검증했다. 공식 Vercel origin과 Oracle 검증 origin은 정했지만 Supabase·Google production redirect와 실제 OAuth 종단은 아직 설정·검증하지 않았다. 기존 fixture 데모에는 로그인을 강제하지 않는다.
+- 광고 지표는 저장된 Meta Insights와 실제 방문·예약만 표시하며 업계 평균이나 임의 수치를 만들지 않는다.
+- Google OAuth production origin과 계정 세션을 사용하고 Supabase RLS가 캠페인·예약자명단 소유권을 검사한다.
 - 공식 사용자 URL용 Vercel 프로젝트 `marketvaley`를 생성하고 Turnstile을 제외한 production 환경변수를 등록했다. 기존 Oracle VM의 Kubernetes·Traefik은 그대로 두고 OCI NLB·NSG·전용 50GiB volume, rootless Docker와 강제 명령 deploy gateway를 실제 적용했다. Oracle A1 capacity 부족으로 현재 사양은 2 OCPU·12GB이며 Compose 전체를 1.25 CPU·3GiB로 제한했다. 팀 source에는 운영 비밀을 두지 않고 개인 owner-only 저장소가 검토한 SHA만 Oracle에 배포한다. Vercel Git 권한, Turnstile·OAuth production 설정과 첫 앱 배포는 아직 완료하지 않았다.
 - P0는 명시적 동의 뒤 예약자명단 목적의 이름·이메일만 수집한다. 목록 화면의 이메일은 마스킹한다.
-- Meta 계정 연결, 광고 활성화와 실제 지출은 해커톤 P0 범위에 넣지 않는다.
-- 기본 fixture에서는 광고·예약자명단·판단이 Node.js 프로세스 메모리에만 남는다. 운영 migration과 server secret을 적용해 `CAMPAIGN_REPOSITORY_MODE=supabase`로 전환하면 계정 소유 RLS와 영속 저장을 사용한다.
+- Meta 자동 활성화는 운영자 UUID, 정확한 광고 계정과 고정 lifetime 예산 확인값이 모두 일치할 때만 허용한다. 자동 예산 증액·종료 뒤 재시작·결제수단 등록은 하지 않는다.
+- fixture repository는 자동 테스트의 한 Node.js 프로세스에만 존재하고 seed가 없다. 제품 기본 저장소는 Supabase다.
 - 예약 결과를 시장성 검증 완료나 매출 가능성으로 해석하지 않는다.
 - 외부 API가 연결되더라도 광고 공개와 다음 행동 결정에는 사람이 남는다.
 

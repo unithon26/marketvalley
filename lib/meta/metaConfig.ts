@@ -234,6 +234,49 @@ export function isMetaPausedDraftLiveConfigured(
   }
 }
 
+/**
+ * Automatic activation is fail-closed behind an exact account and budget
+ * acknowledgement. The owner must also be in the existing internal operator
+ * allowlist so a newly registered account cannot spend from the shared ad account.
+ */
+export function assertMetaAutomaticActivationAuthorized(
+  ownerId: string,
+  environment: Environment = process.env,
+): void {
+  assertMetaAdsLiveEnvironment(environment);
+  if (!isMetaDraftOperator(ownerId, environment)) {
+    throw new MetaConfigurationError("자동 Meta 게시가 허용된 계정이 아닙니다.");
+  }
+  if (environment.META_AUTO_ACTIVATION_ENABLED?.trim() !== "true") {
+    throw new MetaConfigurationError("Meta 자동 활성화가 잠겨 있습니다.");
+  }
+  const binding = readMetaConfiguredBinding(environment);
+  const policy = readMetaPausedDraftServerPolicy(environment);
+  if (
+    required(environment, "META_AUTO_ACTIVATION_AD_ACCOUNT_ID") !== binding.adAccountId
+    || integerInRange(
+      environment,
+      "META_AUTO_ACTIVATION_LIFETIME_BUDGET_MINOR",
+      100,
+      binding.maxLifetimeBudgetMinor,
+    ) !== policy.lifetimeBudgetMinor
+  ) {
+    throw new MetaConfigurationError("Meta 자동 활성화 계정 또는 예산 확인값이 일치하지 않습니다.");
+  }
+}
+
+export function isMetaAutomaticActivationConfigured(
+  ownerId: string,
+  environment: Environment = process.env,
+): boolean {
+  try {
+    assertMetaAutomaticActivationAuthorized(ownerId, environment);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function createGraphMetaAdsProviderFromEnvironment(
   environment: Environment = process.env,
 ): GraphMetaAdsProvider {

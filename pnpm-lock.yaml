@@ -17,9 +17,6 @@ importers:
       '@supabase/supabase-js':
         specifier: 2.112.4
         version: 2.112.4
-      html-to-image:
-        specifier: ^1.11.13
-        version: 1.11.13
       jszip:
         specifier: ^3.10.1
         version: 3.10.1
@@ -1716,9 +1713,6 @@ packages:
 
   html-escaper@2.0.2:
     resolution: {integrity: sha512-H2iMtd0I4Mt5eYiapRdIDjp+XzelXQ0tFE4JS7YFwFevXXMmOp9myNrUvCg0D6ws8iqkRPBfKHgbwig1SmlLfg==}
-
-  html-to-image@1.11.13:
-    resolution: {integrity: sha512-cuOPoI7WApyhBElTTb9oqsawRvZ0rHhaHwghRLlTuffoD1B2aDemlCruLeZrUIIdvG7gs9xeELEPm6PhuASqrg==}
 
   iceberg-js@0.8.1:
     resolution: {integrity: sha512-1dhVQZXhcHje7798IVM+xoo/1ZdVfzOMIc8/rgVSijRK38EDqOJoGula9N/8ZI5RD8QTxNQtK/Gozpr+qUqRRA==}
@@ -4377,8 +4371,6 @@ snapshots:
       hermes-estree: 0.25.1
 
   html-escaper@2.0.2: {}
-
-  html-to-image@1.11.13: {}
 
   iceberg-js@0.8.1: {}
 

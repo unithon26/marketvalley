@@ -5,11 +5,13 @@ import {
   nextActionSchema,
   type CampaignSpec,
 } from "@/lib/contracts/campaign";
+import { ideaInputSchema, type IdeaInput } from "@/lib/contracts/generator";
 import {
   CampaignNotFoundError,
   DraftConflictError,
   DraftOwnershipError,
   DuplicateSignalError,
+  type CampaignLifecycleRecord,
   type CampaignRepository,
   type DeleteCampaignInput,
   type NextActionInput,
@@ -24,12 +26,12 @@ import {
   demoCampaign,
   demoCampaignId,
   demoCampaignSlug,
-  seedReservations as defaultSeedReservations,
 } from "@/lib/demo/demo-campaign";
 
-type StoredCampaign = PublishedCampaign & {
-  draftId: string;
-  fingerprint: string;
+type StoredCampaign = CampaignLifecycleRecord & {
+  fingerprint: string | null;
+  nextAction: PublishedCampaign["nextAction"];
+  input: IdeaInput | null;
 };
 
 export type FixtureCampaignRepositoryOptions = {
@@ -38,17 +40,34 @@ export type FixtureCampaignRepositoryOptions = {
   seedReservations?: readonly Omit<ReservationRecord, "id">[];
 };
 
-const knownSlugBases: Record<string, string> = {
-  "마감한입": "magamhanip",
-  "동네공방 빈자리": "workshop-vacancy",
-  "클래스 문의형": "class-inquiry",
-};
-
 function fingerprint(spec: CampaignSpec): string {
   return JSON.stringify(spec);
 }
 
-function copyCampaign(campaign: StoredCampaign): PublishedCampaign {
+function copyLifecycle(campaign: StoredCampaign): CampaignLifecycleRecord {
+  return {
+    id: campaign.id,
+    draftId: campaign.draftId,
+    status: campaign.status,
+    spec: campaign.spec ? structuredClone(campaign.spec) : null,
+    slug: campaign.slug,
+    publishedAt: campaign.publishedAt,
+    createdAt: campaign.createdAt,
+    updatedAt: campaign.updatedAt,
+    preparationCompletedAt: campaign.preparationCompletedAt,
+    collectionStartedAt: campaign.collectionStartedAt,
+    collectionEndsAt: campaign.collectionEndsAt,
+    completedAt: campaign.completedAt,
+    nextAttemptAt: campaign.nextAttemptAt,
+    lastErrorCode: campaign.lastErrorCode,
+    lastErrorMessage: campaign.lastErrorMessage,
+  };
+}
+
+function copyPublished(campaign: StoredCampaign): PublishedCampaign {
+  if (!campaign.spec || !campaign.slug || !campaign.publishedAt) {
+    throw new CampaignNotFoundError();
+  }
   return {
     id: campaign.id,
     slug: campaign.slug,
@@ -68,23 +87,84 @@ export class FixtureCampaignRepository implements CampaignRepository {
   private readonly campaignIdsByDraft = new Map<string, string>();
   private readonly reservations = new Map<string, Map<string, ReservationRecord>>();
   private readonly now: () => Date;
-  private readonly seedReservations: readonly Omit<ReservationRecord, "id">[];
+  private readonly initialReservations: readonly Omit<ReservationRecord, "id">[];
   private sequence = 1;
 
   constructor(options: FixtureCampaignRepositoryOptions = {}) {
     this.now = options.now ?? (() => new Date());
-    this.seedReservations = options.seedReservations ?? defaultSeedReservations;
+    this.initialReservations = options.seedReservations ?? [];
 
-    if (options.seedDemoCampaign ?? true) {
+    if (options.seedDemoCampaign === true) {
+      const timestamp = demoCampaign.generation.generatedAt;
       this.insertCampaign({
         id: demoCampaignId,
-        slug: demoCampaignSlug,
         draftId: demoCampaignId,
+        status: "COMPLETED",
         spec: demoCampaign,
-        publishedAt: demoCampaign.generation.generatedAt,
+        slug: demoCampaignSlug,
+        publishedAt: timestamp,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        preparationCompletedAt: timestamp,
+        collectionStartedAt: timestamp,
+        collectionEndsAt: timestamp,
+        completedAt: timestamp,
+        nextAttemptAt: null,
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        fingerprint: fingerprint(demoCampaign),
         nextAction: null,
+        input: null,
       });
     }
+  }
+
+  async createSubmission(draftId: string, input: IdeaInput): Promise<CampaignLifecycleRecord> {
+    const normalizedDraftId = draftId.trim();
+    const parsedInput = ideaInputSchema.parse(input);
+    const existingId = this.campaignIdsByDraft.get(normalizedDraftId);
+    if (existingId) {
+      const existing = this.requireCampaign(existingId);
+      if (
+        existing.input?.background !== parsedInput.background
+        || existing.input?.solution !== parsedInput.solution
+      ) throw new DraftConflictError();
+      return copyLifecycle(existing);
+    }
+
+    const timestamp = this.now().toISOString();
+    const campaign = this.insertCampaign({
+      id: `fixture-${this.sequence++}`,
+      draftId: normalizedDraftId,
+      status: "SUBMITTED",
+      spec: null,
+      slug: null,
+      publishedAt: null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      preparationCompletedAt: null,
+      collectionStartedAt: null,
+      collectionEndsAt: null,
+      completedAt: null,
+      nextAttemptAt: timestamp,
+      lastErrorCode: null,
+      lastErrorMessage: null,
+      fingerprint: null,
+      nextAction: null,
+      input: parsedInput,
+    });
+    return copyLifecycle(campaign);
+  }
+
+  async getLifecycle(id: string): Promise<CampaignLifecycleRecord | null> {
+    const campaign = this.campaigns.get(id);
+    return campaign ? copyLifecycle(campaign) : null;
+  }
+
+  async listLifecycle(): Promise<CampaignLifecycleRecord[]> {
+    return [...this.campaigns.values()]
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+      .map(copyLifecycle);
   }
 
   async publish(draftId: string, spec: CampaignSpec): Promise<PublishedCampaign> {
@@ -94,61 +174,70 @@ export class FixtureCampaignRepository implements CampaignRepository {
 
     if (existingId) {
       const existing = this.requireCampaign(existingId);
-      if (existing.fingerprint !== fingerprint(parsedSpec)) {
+      if (existing.fingerprint && existing.fingerprint !== fingerprint(parsedSpec)) {
         throw new DraftConflictError();
       }
-      return copyCampaign(existing);
+      if (!existing.spec) this.materialize(existing, parsedSpec);
+      return copyPublished(existing);
     }
 
+    const timestamp = this.now().toISOString();
     const sequence = this.sequence++;
-    const id = `fixture-${sequence}`;
-    const slugBase = knownSlugBases[parsedSpec.project.name] ?? "campaign";
     const campaign = this.insertCampaign({
-      id,
-      slug: this.uniqueSlug(`${slugBase}-${sequence}`),
+      id: `fixture-${sequence}`,
       draftId: normalizedDraftId,
+      status: "COMPLETED",
       spec: parsedSpec,
-      publishedAt: this.now().toISOString(),
+      slug: this.uniqueSlug(`campaign-${sequence}`),
+      publishedAt: timestamp,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      preparationCompletedAt: timestamp,
+      collectionStartedAt: timestamp,
+      collectionEndsAt: timestamp,
+      completedAt: timestamp,
+      nextAttemptAt: null,
+      lastErrorCode: null,
+      lastErrorMessage: null,
+      fingerprint: fingerprint(parsedSpec),
       nextAction: null,
+      input: null,
     });
-
-    return copyCampaign(campaign);
+    return copyPublished(campaign);
   }
 
   async getById(id: string): Promise<PublishedCampaign | null> {
     const campaign = this.campaigns.get(id);
-    return campaign ? copyCampaign(campaign) : null;
+    return campaign?.spec ? copyPublished(campaign) : null;
   }
 
   async getBySlug(slug: string): Promise<PublishedCampaign | null> {
     const id = this.campaignIdsBySlug.get(slug);
     if (!id) return null;
-    return copyCampaign(this.requireCampaign(id));
+    return copyPublished(this.requireCampaign(id));
   }
 
   async recordReservation(input: ReservationInput): Promise<void> {
     const campaign = this.requireCampaign(input.campaignId);
+    if (!campaign.spec) throw new CampaignNotFoundError();
     const name = input.name.trim();
     const email = input.email.trim().toLowerCase();
     const records = this.requireReservations(campaign.id);
     const emailHash = fixtureEmailHash(email);
 
-    if (records.has(emailHash)) {
-      throw new DuplicateSignalError();
-    }
-
-    const record: ReservationRecord = {
+    if (records.has(emailHash)) throw new DuplicateSignalError();
+    records.set(emailHash, {
       id: `${campaign.id}-reservation-${records.size + 1}`,
       name,
       email,
       utm: input.utm,
       reservedAt: this.now().toISOString(),
-    };
-    records.set(emailHash, record);
+    });
   }
 
   async getReservationSummary(campaignId: string): Promise<ReservationSummary> {
     const campaign = this.requireCampaign(campaignId);
+    if (!campaign.spec) throw new CampaignNotFoundError();
     return summarizeReservations([...this.requireReservations(campaign.id).values()]);
   }
 
@@ -170,35 +259,44 @@ export class FixtureCampaignRepository implements CampaignRepository {
     const campaign = this.requireCampaign(input.campaignId);
     this.assertDraftOwnership(campaign, input.draftId);
     campaign.nextAction = null;
-    this.reservations.set(campaign.id, this.createSeedReservationMap());
-    return copyCampaign(campaign);
+    this.reservations.set(campaign.id, this.createInitialReservationMap());
+    return copyPublished(campaign);
   }
 
-  private insertCampaign(input: Omit<StoredCampaign, "fingerprint">): StoredCampaign {
-    const parsedSpec = campaignSpecSchema.parse(structuredClone(input.spec));
-    const campaign: StoredCampaign = {
-      ...input,
-      spec: parsedSpec,
-      fingerprint: fingerprint(parsedSpec),
-    };
-
-    this.campaigns.set(campaign.id, campaign);
+  private materialize(campaign: StoredCampaign, spec: CampaignSpec): void {
+    const timestamp = this.now().toISOString();
+    campaign.spec = structuredClone(spec);
+    campaign.slug = this.uniqueSlug(`campaign-${this.sequence++}`);
+    campaign.publishedAt = timestamp;
+    campaign.status = "COMPLETED";
+    campaign.updatedAt = timestamp;
+    campaign.preparationCompletedAt = timestamp;
+    campaign.collectionStartedAt = timestamp;
+    campaign.collectionEndsAt = timestamp;
+    campaign.completedAt = timestamp;
+    campaign.nextAttemptAt = null;
+    campaign.fingerprint = fingerprint(spec);
     this.campaignIdsBySlug.set(campaign.slug, campaign.id);
+  }
+
+  private insertCampaign(campaign: StoredCampaign): StoredCampaign {
+    this.campaigns.set(campaign.id, campaign);
+    if (campaign.slug) this.campaignIdsBySlug.set(campaign.slug, campaign.id);
     this.campaignIdsByDraft.set(campaign.draftId, campaign.id);
-    this.reservations.set(campaign.id, this.createSeedReservationMap());
+    this.reservations.set(campaign.id, this.createInitialReservationMap());
     return campaign;
   }
 
-  private createSeedReservationMap(): Map<string, ReservationRecord> {
-    return new Map(this.seedReservations.map((seed, index) => {
-      const record: ReservationRecord = { id: `seed-${index + 1}`, ...seed };
+  private createInitialReservationMap(): Map<string, ReservationRecord> {
+    return new Map(this.initialReservations.map((seed, index) => {
+      const record: ReservationRecord = { id: `fixture-${index + 1}`, ...seed };
       return [fixtureEmailHash(record.email), record] as const;
     }));
   }
 
   private removeCampaign(campaign: StoredCampaign): void {
     this.campaigns.delete(campaign.id);
-    this.campaignIdsBySlug.delete(campaign.slug);
+    if (campaign.slug) this.campaignIdsBySlug.delete(campaign.slug);
     this.campaignIdsByDraft.delete(campaign.draftId);
     this.reservations.delete(campaign.id);
   }
@@ -216,15 +314,11 @@ export class FixtureCampaignRepository implements CampaignRepository {
   }
 
   private assertDraftOwnership(campaign: StoredCampaign, draftId: string): void {
-    const normalizedDraftId = draftId.trim();
-    if (campaign.draftId !== normalizedDraftId) {
-      throw new DraftOwnershipError();
-    }
+    if (campaign.draftId !== draftId.trim()) throw new DraftOwnershipError();
   }
 
   private uniqueSlug(candidate: string): string {
     if (!this.campaignIdsBySlug.has(candidate)) return candidate;
-
     let suffix = 2;
     while (this.campaignIdsBySlug.has(`${candidate}-${suffix}`)) suffix += 1;
     return `${candidate}-${suffix}`;

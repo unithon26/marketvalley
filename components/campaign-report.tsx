@@ -1,19 +1,16 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { toPng } from "html-to-image";
 import JSZip from "jszip";
 
 import { CampaignEntryLink } from "@/components/campaign-entry-link";
 import { ArrowRightIcon, CheckIcon, DownloadIcon } from "@/components/icons";
-import { CarouselCard, carouselCoverAssets, carouselFileNames } from "@/components/renderers/carousel-card";
+import { carouselFileNames } from "@/components/renderers/carousel-card";
 import type { CampaignResponse } from "@/lib/contracts/api";
 import { emptyCampaignAnalytics, type CampaignAnalytics } from "@/lib/contracts/analytics";
-import type { CampaignSpec, NextAction } from "@/lib/contracts/campaign";
-import type { MetaDraftClientResponse } from "@/lib/contracts/metaDraft";
 import type { ReservationRecord, ReservationSummary } from "@/lib/contracts/repository";
-import { createMetaDraftFormData } from "@/lib/client/metaDraft";
 import {
   calculateRate,
   classifyMarketFit,
@@ -47,6 +44,18 @@ function formatMetric(value: number | null, suffix = ""): string {
   return value === null ? "집계 전" : `${value.toLocaleString("ko-KR")}${suffix}`;
 }
 
+function formatKoreanDateTime(value: string): string {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "동기화 시각 확인 불가";
+  const korea = new Date(date.getTime() + 9 * 60 * 60 * 1_000);
+  const year = korea.getUTCFullYear();
+  const month = String(korea.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(korea.getUTCDate()).padStart(2, "0");
+  const hour = String(korea.getUTCHours()).padStart(2, "0");
+  const minute = String(korea.getUTCMinutes()).padStart(2, "0");
+  return `${year}.${month}.${day} ${hour}:${minute}`;
+}
+
 function formatCurrency(value: number | null, currency: string | null): string {
   if (value === null || !currency) return "집계 전";
   return new Intl.NumberFormat("ko-KR", {
@@ -75,7 +84,7 @@ function MetricCards({ metrics, isPresentation }: { metrics: CampaignAnalytics; 
       <article>
         <strong>{formatMetric(ctr, "%")}</strong>
         <span>Meta 링크 CTR</span>
-        <p>{metrics.updatedAt ? `${isPresentation ? "예시 집계 종료" : "마지막 동기화"} ${new Date(metrics.updatedAt).toLocaleString("ko-KR")}` : "Meta Insights 집계 전"}</p>
+        <p>{metrics.updatedAt ? `${isPresentation ? "예시 집계 종료" : "마지막 동기화"} ${formatKoreanDateTime(metrics.updatedAt)}` : "Meta Insights 집계 전"}</p>
       </article>
       <article>
         <strong>{formatMetric(reservationRate, "%")}</strong>
@@ -189,47 +198,16 @@ function ReservationList({ records, onDownload }: { records: readonly Reservatio
 type CampaignReportProps = {
   campaignId: string;
   publicSlug: string;
-  initialSpec: CampaignSpec;
   initialSummary: ReservationSummary;
   initialAnalytics?: CampaignAnalytics;
-  initialNextAction: NextAction | null;
-  metaAdsEnabled: boolean;
   presentationMode?: { collectedHours: number };
-};
-
-type MetaDraftUiState = {
-  kind: "idle" | "creating" | "completed" | "busy" | "quota" | "reconciliation" | "error";
-  message: string;
-  adsManagerUrl?: string;
-  campaignId?: string;
-};
-
-type MetaRunUi = {
-  run: {
-    status: "PAUSED" | "ACTIVATING" | "ACTIVE" | "PAUSING" | "FAILED";
-    adAccountId: string;
-    lifetimeBudgetMinor: number;
-    startsAt: string;
-    endsAt: string;
-    metaCampaignId: string;
-    lastError: string | null;
-  };
-  activationEnabled: boolean;
-  readiness: { accountStatus: number; currency: string };
-  objectStatuses: {
-    campaign: { effectiveStatus: string };
-    adSet: { effectiveStatus: string };
-    ad: { effectiveStatus: string };
-  };
 };
 
 export function CampaignReport({
   campaignId,
   publicSlug,
-  initialSpec,
   initialSummary,
   initialAnalytics = emptyCampaignAnalytics,
-  metaAdsEnabled,
   presentationMode,
 }: CampaignReportProps) {
   const [summary, setSummary] = useState(initialSummary);
@@ -239,16 +217,8 @@ export function CampaignReport({
   const [exporting, setExporting] = useState(false);
   const [activeCardIndex, setActiveCardIndex] = useState(0);
   const reportRootRef = useRef<HTMLElement | null>(null);
-  const [metaDraftState, setMetaDraftState] = useState<MetaDraftUiState>({
-    kind: "idle",
-    message: "",
-  });
-  const [metaRun, setMetaRun] = useState<MetaRunUi | null>(null);
-  const [metaRunBusy, setMetaRunBusy] = useState(false);
-  const cardRefs = useRef<Array<HTMLDivElement | null>>([]);
   const cardPreviewRef = useRef<HTMLDivElement | null>(null);
   const refreshInFlightRef = useRef(false);
-  const spec = initialSpec;
   const publicPath = `/p/${encodeURIComponent(publicSlug)}`;
   const landingPreviewPath = `${publicPath}?preview=1`;
   const fit = classifyMarketFit(metrics);
@@ -271,14 +241,6 @@ export function CampaignReport({
     }
   }, [campaignId]);
 
-  const refreshMetaRun = useCallback(async () => {
-    if (!metaAdsEnabled) return;
-    const response = await fetch(`/api/meta/runs?campaignId=${encodeURIComponent(campaignId)}`, { cache: "no-store" });
-    if (response.status === 404) return;
-    if (!response.ok) throw new Error("meta_run_request_failed");
-    setMetaRun(await response.json() as MetaRunUi);
-  }, [campaignId, metaAdsEnabled]);
-
   useEffect(() => {
     if (isPresentation) return;
     const refreshReport = () => { void refresh(); };
@@ -286,7 +248,7 @@ export function CampaignReport({
       if (document.visibilityState === "visible") refreshReport();
     };
     const frame = window.requestAnimationFrame(refreshReport);
-    const interval = window.setInterval(refreshReport, 2_000);
+    const interval = window.setInterval(refreshReport, 60_000);
     window.addEventListener("focus", refreshReport);
     document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
@@ -296,20 +258,6 @@ export function CampaignReport({
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [isPresentation, refresh]);
-
-  useEffect(() => {
-    if (!metaAdsEnabled) return;
-    const frame = window.requestAnimationFrame(() => {
-      void refreshMetaRun().catch(() => undefined);
-    });
-    const interval = window.setInterval(() => {
-      void refreshMetaRun().then(refresh).catch(() => undefined);
-    }, 60_000);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.clearInterval(interval);
-    };
-  }, [metaAdsEnabled, refresh, refreshMetaRun]);
 
   useEffect(() => {
     const sections = reportRootRef.current?.querySelectorAll<HTMLElement>(".report-animated-section");
@@ -331,30 +279,20 @@ export function CampaignReport({
     return () => observer.disconnect();
   }, []);
 
-  async function renderCards() {
-    await document.fonts.ready;
-    const coverAsset = carouselCoverAssets[spec.templates.carouselCover];
-    if (coverAsset) {
-      await new Promise<void>((resolve, reject) => {
-        const image = new window.Image();
-        image.onload = () => resolve();
-        image.onerror = () => reject(new Error("carousel_cover_asset_failed"));
-        image.src = coverAsset;
-      });
-    }
-    return Promise.all(cardRefs.current.map(async (node, index) => {
-      if (!node) throw new Error(`${index + 1}번 카드 렌더러가 없습니다.`);
-      return toPng(node, { width: 1080, height: 1350, pixelRatio: 1, cacheBust: false });
-    }));
-  }
-
   async function downloadCards() {
     setExporting(true);
     setNotice("");
     try {
-      const images = await renderCards();
+      const images = await Promise.all([1, 2, 3, 4, 5].map(async (index) => {
+        const response = await fetch(
+          `/api/campaigns/${encodeURIComponent(campaignId)}/cards/${index}`,
+          { cache: "no-store" },
+        );
+        if (!response.ok) throw new Error("card_download_failed");
+        return response.blob();
+      }));
       const zip = new JSZip();
-      images.forEach((dataUrl, index) => zip.file(carouselFileNames[index], dataUrl.split(",")[1], { base64: true }));
+      images.forEach((blob, index) => zip.file(carouselFileNames[index], blob));
       triggerDownload(await zip.generateAsync({ type: "blob" }), `${campaignId}-carousel.zip`);
       setNotice("카드뉴스 저장을 완료했어요.");
     } catch {
@@ -387,81 +325,6 @@ export function CampaignReport({
     if (!scroller || !slide) return;
     const gap = Number.parseFloat(window.getComputedStyle(scroller).columnGap) || 0;
     scroller.scrollBy({ left: direction * (slide.offsetWidth + gap), behavior: "smooth" });
-  }
-
-  async function createMetaPausedDraft() {
-    if (!metaAdsEnabled || metaDraftState.kind === "creating") return;
-    setExporting(true);
-    setMetaDraftState({ kind: "creating", message: "PNG 5장을 만들고 PAUSED 초안을 요청하고 있어요." });
-    try {
-      const images = await renderCards();
-      const response = await fetch("/api/meta/drafts", {
-        method: "POST",
-        body: createMetaDraftFormData(campaignId, images),
-      });
-      const body = await response.json() as MetaDraftClientResponse;
-      if (response.ok && "state" in body && body.state === "completed") {
-        setMetaDraftState({
-          kind: "completed",
-          message: "Meta 계정의 Ads Manager에 PAUSED 초안을 만들었어요. 실제 노출·광고비 지출은 없습니다.",
-          adsManagerUrl: body.adsManagerUrl,
-          campaignId: body.campaignId,
-        });
-        await refreshMetaRun();
-        return;
-      }
-      if ("state" in body && body.state === "reconciliation_required") {
-        setMetaDraftState({
-          kind: "reconciliation",
-          message: "자동 재시도를 중단했어요. 운영자가 Ads Manager와 작업 기록을 확인해야 합니다.",
-        });
-        return;
-      }
-      const code = "error" in body ? body.error.code : "meta_draft_failed";
-      if (code === "meta_operation_busy") {
-        setMetaDraftState({ kind: "busy", message: "다른 PAUSED 초안 요청이 진행 중이에요. 잠시 후 직접 다시 확인해주세요." });
-      } else if (code === "meta_quota_exceeded") {
-        setMetaDraftState({ kind: "quota", message: "오늘의 PAUSED 초안 생성 한도에 도달했어요." });
-      } else if (code === "meta_disabled") {
-        setMetaDraftState({ kind: "error", message: "Meta 초안 기능이 현재 비활성화되어 있어요." });
-      } else {
-        setMetaDraftState({ kind: "error", message: "PAUSED 초안을 만들지 못했어요. 자동 재시도하지 않았습니다." });
-      }
-    } catch {
-      setMetaDraftState({ kind: "error", message: "PAUSED 초안을 만들지 못했어요. 자동 재시도하지 않았습니다." });
-    } finally {
-      setExporting(false);
-    }
-  }
-
-  async function controlMetaRun(action: "activate" | "pause") {
-    if (!metaRun || metaRunBusy) return;
-    const amount = metaRun.run.lifetimeBudgetMinor.toLocaleString("ko-KR");
-    const question = action === "activate"
-      ? `광고계정 ${metaRun.run.adAccountId}에서 총 예산 ₩${amount} 광고를 실제로 활성화할까요?`
-      : `광고계정 ${metaRun.run.adAccountId}의 광고를 즉시 중지할까요?`;
-    if (!window.confirm(question)) return;
-    setMetaRunBusy(true);
-    try {
-      const response = await fetch("/api/meta/runs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          campaignId,
-          action,
-          confirmAdAccountId: metaRun.run.adAccountId,
-          confirmLifetimeBudgetMinor: metaRun.run.lifetimeBudgetMinor,
-        }),
-      });
-      if (!response.ok) throw new Error("meta_control_failed");
-      setNotice(action === "activate" ? "실제 광고 활성화를 요청했습니다." : "광고를 PAUSED로 중지했습니다.");
-      await refreshMetaRun();
-      await refresh();
-    } catch {
-      setNotice(action === "activate" ? "광고 활성화에 실패해 자동으로 중지를 시도했습니다." : "광고 중지 확인에 실패했습니다.");
-    } finally {
-      setMetaRunBusy(false);
-    }
   }
 
   function syncActiveCard() {
@@ -522,7 +385,14 @@ export function CampaignReport({
                 {[0, 1, 2, 3, 4].map((index) => (
                   <div className="creative-carousel-slide" key={index} aria-label={`${index + 1}번째 카드뉴스`}>
                     <div className="creative-carousel-scale">
-                      <CarouselCard spec={spec} index={index} preview />
+                      <Image
+                        className="creative-carousel-image"
+                        src={`/api/campaigns/${encodeURIComponent(campaignId)}/cards/${index + 1}`}
+                        width={1080}
+                        height={1350}
+                        alt={`${index + 1}번째 실제 광고 카드뉴스`}
+                        unoptimized
+                      />
                     </div>
                   </div>
                 ))}
@@ -548,61 +418,6 @@ export function CampaignReport({
             >
               {exporting ? "저장 중..." : "카드뉴스 저장"}
             </button>
-            <span className="sr-only">
-              Meta 게시 준비 다운로드. {" "}
-              {metaAdsEnabled
-                ? "Meta 계정에 PAUSED 초안 생성 · 실제 노출·광고비 지출 없음"
-                : "실제 게시 또는 집행 아님"}
-            </span>
-            {metaAdsEnabled ? (
-              <>
-                <button
-                  className="report-outline-button meta-draft-button"
-                  type="button"
-                  onClick={createMetaPausedDraft}
-                  disabled={exporting || ["completed", "quota", "reconciliation"].includes(metaDraftState.kind)}
-                  aria-busy={metaDraftState.kind === "creating"}
-                  title="Meta 계정의 Ads Manager에 PAUSED 초안 생성 · 실제 노출·광고비 지출 없음"
-                >
-                  Ads Manager PAUSED 초안 만들기
-                </button>
-                {metaDraftState.message ? (
-                  <div className={`meta-draft-status meta-draft-status-${metaDraftState.kind}`}>
-                    <p role={metaDraftState.kind === "completed" ? "status" : "alert"}>
-                      {metaDraftState.message}
-                    </p>
-                    {metaDraftState.kind === "completed" && metaDraftState.adsManagerUrl ? (
-                      <a href={metaDraftState.adsManagerUrl} target="_blank" rel="noreferrer">
-                        Ads Manager에서 확인 (캠페인 ID {metaDraftState.campaignId})
-                      </a>
-                    ) : null}
-                  </div>
-                ) : null}
-                {metaRun ? (
-                  <div className="meta-draft-status meta-draft-status-completed" aria-live="polite">
-                    <p>
-                      계정 {metaRun.run.adAccountId} · 총 예산 ₩{metaRun.run.lifetimeBudgetMinor.toLocaleString("ko-KR")} · 상태 {metaRun.run.status}
-                    </p>
-                    <p>
-                      {new Date(metaRun.run.startsAt).toLocaleString("ko-KR")} ~ {new Date(metaRun.run.endsAt).toLocaleString("ko-KR")}
-                    </p>
-                    <p>
-                      캠페인 {metaRun.objectStatuses.campaign.effectiveStatus} · 광고 세트 {metaRun.objectStatuses.adSet.effectiveStatus} · 광고 {metaRun.objectStatuses.ad.effectiveStatus}
-                    </p>
-                    {metaRun.run.lastError ? <p role="alert">최근 오류: {metaRun.run.lastError}</p> : null}
-                    {metaRun.run.status === "ACTIVE" || metaRun.run.status === "ACTIVATING" ? (
-                      <button className="report-outline-button" type="button" disabled={metaRunBusy} onClick={() => controlMetaRun("pause")}>
-                        {metaRunBusy ? "처리 중..." : "광고 즉시 중지"}
-                      </button>
-                    ) : (
-                      <button className="report-outline-button" type="button" disabled={metaRunBusy || !metaRun.activationEnabled} onClick={() => controlMetaRun("activate")}>
-                        {metaRunBusy ? "처리 중..." : metaRun.activationEnabled ? "실제 광고 활성화" : "서버 활성화 잠금"}
-                      </button>
-                    )}
-                  </div>
-                ) : null}
-              </>
-            ) : null}
           </article>
           <article className="figma-report-card landing-preview-card">
             <h2>랜딩페이지</h2>
@@ -623,12 +438,6 @@ export function CampaignReport({
 
       {loadError ? <div className="toast toast-error" role="alert">{loadError}</div> : null}
       {!loadError && notice ? <div className="toast" role="status">{notice}</div> : null}
-
-      <div className="export-stage" aria-hidden="true">
-        {[0, 1, 2, 3, 4].map((index) => (
-          <CarouselCard key={index} spec={spec} index={index} exportRef={(node) => { cardRefs.current[index] = node; }} />
-        ))}
-      </div>
     </main>
   );
 }

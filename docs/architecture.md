@@ -1,35 +1,33 @@
 # 아키텍처
 
-상태: Supabase migration·RLS·repository와 분산 생성 quota 코드 완료, 운영 DB 적용·live 종단·production Auth 설정 대기
-기준일: 2026-08-25
+상태: 계정별 durable lifecycle·Meta 자동 집행·Insights 리포트 코드 완료, 운영 migration·배포 대기
+기준일: 2026-08-26
 
-현재 저장소는 Anthropic 문구 생성기와 검증된 reference fixture가 같은 `CampaignGenerator` 계약을 사용한다. `CAMPAIGN_REPOSITORY_MODE=fixture`에서는 서버 프로세스 메모리로 발표 경로를 실행하고, `supabase`에서는 요청별 사용자 세션 client와 server-only client의 역할을 분리해 실제 DB를 사용한다. 제품 기본 생성은 `anthropic`, 자동 테스트와 비상 발표 fallback은 명시적인 `fixture`다.
+현재 저장소는 Anthropic 문구 생성기와 테스트 fixture가 같은 `CampaignGenerator` 계약을 사용한다. 제품은 Supabase 접수를 먼저 저장한 뒤 service-role worker가 lease로 캠페인을 claim해 AI 생성, 랜딩·카드 렌더, Meta 활성화, Insights 집계를 수행한다. fixture는 자동 테스트에서만 명시하며 기본 seed는 없다.
 
 Google 로그인은 Supabase Auth PKCE를 사용하는 서버 계약과 local 실제 계정 종단 검증까지 완료했다. `/auth/google → /auth/callback → /api/auth/session → /auth/logout`은 UI와 분리되어 있으며 토큰은 HttpOnly 쿠키에만 둔다. Supabase repository 모드의 소유자 route는 `requireVerifiedIdentity()`를 통과한 cookie session client로 쿼리하고, RLS가 `auth.uid() = owner_id`를 다시 검사한다. fixture route는 발표 안정성을 위해 로그인 없이 유지한다.
 
 ## 목표
 
-발표용 mock과 Anthropic·Supabase 연동이 화면 코드를 바꾸지 않고 같은 `CampaignSpec`, `CampaignGenerator`, `CampaignRepository` 경계를 사용하게 한다. 외부 서비스 장애가 발표를 막지 않으며 fixture도 실제 Route Handler와 제품 화면을 그대로 지난다.
+계정별로 접수부터 결과까지 권위 있는 상태를 저장하고 브라우저·배포·외부 API 실패와 무관하게 재시도 가능하게 한다. fixture도 같은 Route Handler와 제품 화면을 지나지만 live 실패를 성공으로 대체하지 않는다.
 
 ## 구성
 
 ```text
-2단계 사용자 입력
-   ↓ POST /api/generate
-CampaignGenerator ── mock: 키워드 기반 시각 template 선택 + 중립 문장 골격 + 입력값 결정적 주입
-   │                live: 슬롯별 지시를 조합한 단일 Claude Structured Outputs
+2단계 사용자 입력 → POST /api/campaigns → Supabase SUBMITTED
+   ↓ service-role claim + 10분 lease
+Claude Structured Outputs → CampaignSpec + slug → PREPARING
    ↓
-CampaignSpec (Zod 검증, 단일 진실 공급원)
-   ↓ POST /api/campaigns
-CampaignRepository ── mock: Node.js 프로세스 메모리
-                     live: Supabase server repository
-   ├─ publish / getById / getBySlug
-   ├─ recordReservation / getReservationSummary
-   ├─ saveNextAction / delete
-   └─ LandingRenderer / CarouselRenderer / Meta 게시 준비 ZIP
+ImageResponse 1080×1350 PNG 5장 + 공개 /p/[slug]
+   ↓
+Meta PAUSED 객체 → exact 계정·예산 확인 → ACTIVE 확인
+   ↓
+COLLECTING → Meta Insights snapshot + 방문·예약
+   ↓ 종료 후 PAUSED 확인과 final snapshot
+COMPLETED → /campaigns/[id] 최종 리포트
 ```
 
-브라우저에는 자신이 만든 캠페인의 draft 소유 토큰만 `localStorage`에 둔다. 공개 랜딩의 이름·이메일·동의와 UTM은 예약 제출 요청으로 서버에 보내고, 예약자명단과 사람의 다음 행동은 서버 저장소가 소유한다.
+브라우저는 lifecycle 소유권 토큰을 저장하지 않는다. Google 세션과 RLS가 계정 소유권을 확인한다. 공개 랜딩의 이름·이메일·동의와 UTM은 예약 제출 요청으로 서버에 보내고, 예약자명단과 사람의 다음 행동은 서버 저장소가 소유한다.
 
 ## 상태 원칙
 
@@ -39,7 +37,7 @@ CampaignRepository ── mock: Node.js 프로세스 메모리
 - 상품명, 핵심 특징 3개, 문제·솔루션, 가치 제안, CTA와 공개 경로는 게시된 campaign snapshot에서 파생한다.
 - 공개 랜딩의 title·description과 랜딩·캐러셀 색상은 같은 snapshot의 SEO·brand 필드에서 파생한다.
 - 카드뉴스 표지와 랜딩 도입부는 같은 snapshot의 `templates` 필드에서 선택하며, tone이나 화면별 조건으로 암묵적으로 추론하지 않는다.
-- mock 데이터는 화면에서 `데모 데이터`로 식별한다.
+- 제품 화면에는 fixture seed나 더미 프로젝트를 넣지 않는다.
 - P0 예약은 명시적 동의 뒤 이름과 이메일만 저장한다. IP와 원문 user-agent는 저장하지 않고, 목록 화면의 이메일은 마스킹한다.
 - 저장·응답·판단·초기화 실패를 성공으로 표시하지 않으며 사용자가 재시도할 수 있다.
 - 동일 입력의 게시 재시도는 같은 draft ID와 생성 결과를 재사용한다.
@@ -63,13 +61,11 @@ AI가 채우는 문구는 상품 요약, 검증 가설, 동의 기반 사전예�
 
 mock 저장소의 `Map`은 한 Node.js 프로세스 안에서 브라우저 간 상태를 공유하지만 서버 재시작과 다중 인스턴스 전환에는 유지되지 않는다. 따라서 로컬 발표와 단일 프로세스 QA에만 사용하며 Oracle production의 실제 응답은 Supabase adapter에 저장한다.
 
-캐러셀 ZIP에는 선택된 Figma 표지와 같은 시각 규칙을 잇는 후속 카드로 구성된 1080×1350 PNG 5장을 넣는다. `Meta 게시 준비` ZIP에는 동일한 PNG 5장과 상품명·핵심 특징, 기본 문구, headline, CTA, 대상 고객 가설, 시각 방향, 표지·랜딩 템플릿 ID, 파일 목록과 절대 destination URL을 적은 `meta-ready.txt`를 함께 넣는다. 두 ZIP 모두 같은 숨은 React/CSS 렌더러를 사용하며 실제 Meta 계정에는 쓰지 않는다.
+카드 미리보기, ZIP과 Meta 업로드는 모두 `/api/campaigns/[id]/cards/[index]`와 같은 `ImageResponse` 렌더 함수를 사용한다. 사진 표지는 서버 렌더가 지원하는 PNG로 고정해 브라우저 캡처나 DOM 상태에 의존하지 않는다.
 
 ## 진행 상황 화면
 
-신규 생성은 `/new`의 입력 제출 직후 같은 화면 영역을 `접수 → 준비 중 → 수집 중 → 결과 도착` UI로 교체한다. `준비 중`은 `/api/generate`, `수집 중`은 `/api/campaigns` 응답에 연결한다. 게시가 끝난 뒤에만 결과 도착과 `/campaigns/[id]` CTA를 표시한다. 실패하면 입력 UI로 돌아가 같은 draft와 이미 생성된 spec을 재사용한다. 화면 이탈 시 `AbortController`가 Figma 전환에 맞춘 1.6초 접수 안내 delay와 두 fetch를 취소하며, `/api/generate`의 `Request.signal`은 generator 계약과 Anthropic SDK 요청 옵션까지 전달된다.
-
-기존 `/campaigns/[id]/progress`는 이미 게시된 광고에서 하지 않는 작업을 다시 진행한다고 표현하지 않고 완료 상태를 바로 보여준다. Supabase adapter를 선택하면 신규 생성 진행 화면의 게시 단계가 실제 live 저장소 완료를 기다린다.
+신규 생성은 접수 성공 뒤 `/campaigns/[id]/progress`로 이동한다. 이 화면은 15초 polling과 focus 갱신으로 DB lifecycle을 보여주며, 사용자가 닫아도 Oracle의 1분 worker가 계속 처리한다. 일시 오류는 입력과 현재 단계를 유지한 `RETRY_WAIT`, 안전하게 복구할 수 없는 오류는 `FAILED`로 남긴다. `COMPLETED` 전에는 리포트 route가 progress로 되돌린다.
 
 ## 배포 모델
 
