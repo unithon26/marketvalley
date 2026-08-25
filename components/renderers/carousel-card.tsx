@@ -1,13 +1,8 @@
 import type { CampaignSpec } from "@/lib/contracts/campaign";
+import { carouselFileNames } from "@/lib/contracts/carouselAssets";
 import { campaignThemeStyle } from "@/lib/brand-theme";
 
-export const carouselFileNames = [
-  "01-hook.png",
-  "02-problem.png",
-  "03-insight.png",
-  "04-solution.png",
-  "05-cta.png",
-] as const;
+export { carouselFileNames };
 
 export const carouselCoverAssets: Partial<Record<CampaignSpec["templates"]["carouselCover"], string>> = {
   "cover-32": "/figma-templates/cover-32-original.webp",
