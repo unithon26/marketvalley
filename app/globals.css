@@ -128,7 +128,7 @@ body:has(.login-modal-layer) > :not(.login-modal-layer) { filter: blur(3px); }
 .progress-track i { display: block; height: 100%; border-radius: inherit; background: var(--purple); }
 /* Wizard */
 .wizard-page { padding: 52px 0 100px; }
-.wizard-topline { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }
+.wizard-topline { display: flex; width: 100%; max-width: 930px; justify-content: space-between; align-items: center; margin: 0 auto 28px; }
 .mock-notice { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; }
 .mock-notice i { width: 7px; height: 7px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 0 4px rgba(24,185,130,.12); }
 .wizard-panel, .approval-panel { max-width: 930px; margin: 0 auto; }
