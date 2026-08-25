@@ -26,7 +26,7 @@ jq -e 'type == "array" and all(.[]; type == "string")' <<<"${backup_nsg_ids}" >/
   || fail "NSG backup is invalid"
 
 vnic_json="$(oci network vnic get --vnic-id "${vnic_id}")"
-nsg_json="$(oci network nsg get --network-security-group-id "${backend_nsg_id}")"
+nsg_json="$(oci network nsg get --nsg-id "${backend_nsg_id}")"
 actual_private_ip="$(jq -r '.data."private-ip"' <<<"${vnic_json}")"
 subnet_id="$(jq -r '.data."subnet-id"' <<<"${vnic_json}")"
 vnic_etag="$(jq -r '.etag // empty' <<<"${vnic_json}")"

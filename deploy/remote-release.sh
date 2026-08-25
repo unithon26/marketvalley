@@ -85,10 +85,10 @@ require_runtime() {
     grep -qw "${controller}" "${user_cgroup}/cgroup.controllers" \
       || fail "${controller} is not delegated to the deploy user cgroup"
   done
-  [[ "$(tr -d '[:space:]' <"${user_cgroup}/cpu.max")" == "225000100000" ]] \
-    || fail "deploy user aggregate CPU quota must be 225%"
-  [[ "$(tr -d '[:space:]' <"${user_cgroup}/memory.max")" == "6442450944" ]] \
-    || fail "deploy user aggregate memory limit must be 6 GiB"
+  [[ "$(tr -d '[:space:]' <"${user_cgroup}/cpu.max")" == "125000100000" ]] \
+    || fail "deploy user aggregate CPU quota must be 125%"
+  [[ "$(tr -d '[:space:]' <"${user_cgroup}/memory.max")" == "3221225472" ]] \
+    || fail "deploy user aggregate memory limit must be 3 GiB"
   [[ "$(tr -d '[:space:]' <"${user_cgroup}/memory.swap.max")" == "0" ]] \
     || fail "deploy user aggregate memory swap must be disabled"
   [[ "$(tr -d '[:space:]' <"${user_cgroup}/pids.max")" == "1024" ]] \
@@ -322,7 +322,7 @@ ensure_buildx_builder() {
     builder_inspect="$(docker buildx inspect "${buildx_builder}" 2>/dev/null || true)"
     resource_limits="$(docker inspect --format '{{.HostConfig.Memory}} {{.HostConfig.CpuQuota}}' "${buildkit_container}" 2>/dev/null || true)"
     if ! grep -Eq '^Driver:[[:space:]]+docker-container[[:space:]]*$' <<<"${builder_inspect}" \
-      || [[ "${resource_limits}" != "3221225472 100000" ]]; then
+      || [[ "${resource_limits}" != "2147483648 100000" ]]; then
       docker buildx rm "${buildx_builder}" >/dev/null \
         || fail "the dedicated Buildx builder could not be safely recreated"
     fi
@@ -333,9 +333,9 @@ ensure_buildx_builder() {
       --name "${buildx_builder}" \
       --driver docker-container \
       --driver-opt "image=${buildkit_image}" \
-      --driver-opt memory=3g \
+      --driver-opt memory=2g \
       --driver-opt cpu-quota=100000 \
-      --buildkitd-flags '--max-parallelism=2 --gc --gc-keepstorage=2147483648' \
+      --buildkitd-flags '--max-parallelism=1 --gc --gc-keepstorage=1073741824' \
       --driver-opt default-load=true >/dev/null
   fi
 
@@ -346,8 +346,8 @@ ensure_buildx_builder() {
   grep -Eq '^Driver:[[:space:]]+docker-container[[:space:]]*$' <<<"${builder_inspect}" \
     || fail "the dedicated Buildx builder must use the docker-container driver"
   resource_limits="$(docker inspect --format '{{.HostConfig.Memory}} {{.HostConfig.CpuQuota}}' "${buildkit_container}" 2>/dev/null || true)"
-  [[ "${resource_limits}" == "3221225472 100000" ]] \
-    || fail "the dedicated Buildx builder must be limited to 3 GiB and 1 CPU"
+  [[ "${resource_limits}" == "2147483648 100000" ]] \
+    || fail "the dedicated Buildx builder must be limited to 2 GiB and 1 CPU"
 }
 
 build_release_image() {
@@ -545,9 +545,9 @@ preflight_image() {
     --tmpfs /app/.next/cache:size=64m,uid=1001,gid=1001 \
     --security-opt no-new-privileges \
     --cap-drop ALL \
-    --cpus 1.5 \
-    --memory 2g \
-    --memory-swap 2g \
+    --cpus 0.75 \
+    --memory 1536m \
+    --memory-swap 1536m \
     --pids-limit 256 \
     --env-file "${production_environment}" \
     --env "APP_VERSION=${release_sha}" \
