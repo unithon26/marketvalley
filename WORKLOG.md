@@ -6,7 +6,7 @@
 - 변경: OAuth 시작 요청의 origin이 `NEXT_PUBLIC_SITE_URL`과 다르면 Supabase 호출과 PKCE 쿠키 생성 전에 query를 보존한 canonical `/auth/google`로 이동한다. 인증 운영 문서와 troubleshooting 기록, host 불일치 단위 회귀 테스트를 추가했다.
 - 원인: `127.0.0.1`과 `localhost`는 같은 로컬 서버에 닿지만 host-only PKCE cookie를 공유하지 않는다. 시작 host와 callback host가 달라 verifier가 callback에 전달되지 않았다.
 - 검증: 인증 focused 테스트 3파일 20개, `pnpm check`의 lint·typecheck·단위 테스트 73개, configured auth/server-secret bundle smoke, production Chromium E2E 14개, coverage, high audit, peer·diff 검사가 통과했다. 커버리지는 statements 79.53%, branches 73.5%, functions 84.21%, lines 82.63%다. 실제 Chrome에서 `127.0.0.1`로 시작해 `localhost` canonical 이동, Google 계정 선택, Supabase callback, 로그인 사용자 표시까지 확인했다.
-- 전달: 사용자 신원·원격 최신성·비밀정보를 확인해 commit·push하고 GitHub Actions 결과를 기록한다. 제품 배포와 행사 제출은 수행하지 않는다.
+- 전달: 사용자 Git/GitHub 신원·원격 최신성·staged 비밀정보를 확인한 뒤 수정 커밋 `eb0cd38`을 비공개 `unithon26/marketvalley`의 `main`에 push했다. GitHub Actions run `32813998399`에서 install·lint·typecheck·단위 테스트 73개·configured auth bundle smoke·production build·Chromium E2E 14개가 모두 통과했다. 제품 배포와 행사 제출은 수행하지 않았다.
 
 ## 2026-08-24 — 우승용 제품 및 구현 스펙 수립
 
