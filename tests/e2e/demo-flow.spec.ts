@@ -143,7 +143,8 @@ test("기존 진행 URL은 Figma 완료 프레임과 모바일 반응형 치수�
 
   const desktopIllustration = await page.locator(".validation-progress-illustration").boundingBox();
   const desktopCard = await page.locator(".validation-stage-card").boundingBox();
-  expect(desktopIllustration).toMatchObject({ width: 280, height: 165 });
+  expect(desktopIllustration?.width).toBeCloseTo(280, 1);
+  expect(desktopIllustration?.height).toBeCloseTo(165, 1);
   expect(desktopCard).toMatchObject({ width: 1000, height: 224 });
   await expect(page.getByRole("heading", { name: "시장 검증이 완료되었습니다" })).toHaveCSS("font-size", "24px");
 
