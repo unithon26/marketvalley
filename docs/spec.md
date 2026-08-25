@@ -99,7 +99,7 @@ Figma 발표 흐름은 별도 가설 승인 화면을 두지 않는다. `/new`�
 
 `CampaignSpec.templates.landingIntro`가 Figma의 고정 도입부 `intro-1`부터 `intro-7` 중 하나를 선택한다. 선택된 레이아웃만 달라지고 이후 섹션, CTA 질문과 응답 계약은 모두 같은 렌더러를 재사용한다. 자유 배치나 임의 HTML 생성은 하지 않는다.
 
-CTA를 누르면 `CampaignSpec.validation.signal`의 질문과 세 선택지를 보여준다. 제출된 답은 긍정·중립·부정 중 하나의 익명 `signal_response`로 기록한다. P0에서는 이메일, 이름, 전화번호 등 개인정보를 받지 않는다.
+CTA를 누르면 이름·이메일과 개인정보 동의 체크박스를 받는 예약자명단 폼을 보여준다. 제출된 답은 `campaign_reservation`으로 기록한다. 이 절은 ADR-0012로 갱신됐다 — 이전에는 긍정·중립·부정 익명 응답을 받고 개인정보를 받지 않았으나, 지금은 이름·이메일을 받는 예약자명단 모델을 채택한다.
 
 완료 기준:
 
@@ -412,25 +412,38 @@ signals
 - id bigint generated identity primary key
 - campaign_id uuid references campaigns(id)
 - signal_type text not null check in ('problem_confirmation', 'solution_interest')
-- option_id text check in ('positive', 'neutral', 'negative')
-- anonymous_id_hash text not null
+- name text not null
+- email text not null
+- email_hash text not null
+- utm_source text
+- utm_medium text
+- utm_campaign text
+- utm_content text
 - created_at timestamptz
-- unique (campaign_id, anonymous_id_hash)
+- unique (campaign_id, email_hash)
 ```
+
+(ADR-0012로 `signal_response` 테이블을 `campaign_reservation`으로 대체했다. `option_id`·`anonymous_id_hash` 컬럼은 더 이상 사용하지 않는다.)
 
 현재 mock 입력은 `/new` 컴포넌트 상태에 남아 API 실패 뒤 재시도할 수 있다. 같은 입력의 재시도는 한 번 만든 draft ID와 검증된 spec을 재사용하며, 게시 성공 뒤 draft 소유 토큰을 `localStorage`에 보관한다. live 단계의 새로고침 전 입력 복구는 별도 초안 저장소를 연결한다. 게시 시점의 spec만 snapshot이 되며 게시된 snapshot은 수정하지 않는다.
 
-공개 페이지는 첫 방문 시 무작위 `visitorId`를 `localStorage`에 만들고 서버에 보낸다. fixture는 원문을 남기지 않기 위해 무비밀 SHA-256을 사용한다. live Supabase adapter는 서버 전용 `SIGNAL_HASH_SECRET`으로 HMAC 해시만 저장한다. DB 접근은 서버에서만 수행하며 IP 주소와 원문 user-agent를 저장하지 않는다.
+공개 페이지는 예약자명단 제출 시 이메일을 서버로 보낸다(ADR-0012). 중복 예약 방지는 `(campaignId, email)` 조합으로 판단하며, fixture는 원문을 남기지 않기 위해 무비밀 SHA-256을 사용한다. live Supabase adapter는 서버 전용 `SIGNAL_HASH_SECRET`으로 이메일 HMAC 해시(`email_hash`)를 만들어 dedupe에 쓰고, 원문 `email`은 소유자 화면·리스트 원본 조회용으로 별도 저장한다. 리스트 표시에는 마스킹된 이메일(`seon****@gmail.com` 형태)만 노출한다. DB 접근은 서버에서만 수행하며 IP 주소와 원문 user-agent를 저장하지 않는다.
 
-### 지표 정의
+### 지표 정의 (ADR-0012로 갱신)
 
-서로 다른 분모와 수집 주체를 가진 지표를 하나의 `전환율`로 합치지 않는다.
+리포트는 실제 지표와 예시(목업) 지표를 화면에서 명확히 구분해 표시한다. 예시 지표는 반드시 "예시 지표" 라벨을 붙여 실측치로 오인되지 않게 한다.
 
-- 긍정 신호율: `positive 응답 수 / 전체 선택형 응답 수`. P0에서 실제로 수집하고, 응답이 0이면 비율 대신 `아직 응답 없음`을 표시한다.
-- 랜딩 응답률: `선택형 응답 수 / 랜딩 방문 수`. 방문 이벤트를 실제로 구현한 P1 이후에만 표시한다.
-- Meta 링크 CTR: Meta Insights가 반환한 `링크 클릭 수 / 노출 수`. Meta 연동 이후에만 표시하며 랜딩 응답률과 별도 영역에 둔다.
+**실제 지표**
 
-P0에는 예약 폼이 없으므로 `예약률`이라는 명칭을 사용하지 않는다. 표본이 작을 때 시장성이 검증됐다고 해석하지 않고, 응답 수·분포·사전 기준과 표본 부족 상태만 보여준다.
+- 예약자 수: `campaign_reservation`에 실제로 기록된 행 수.
+- 예약자 리스트: 이름과 마스킹된 이메일. 응답이 0이면 `아직 예약 없음`을 표시한다.
+
+**예시 지표 (실제 트래킹 미구현, 값은 고정 상수)**
+
+- 노출 수, CTR(업계 평균 대비), 랜딩 체류시간, 이탈률, 예약률(업계 평균 대비).
+- 이 항목들은 페이지뷰·클릭·체류시간 계측 인프라가 구현되기 전까지 예시 값을 유지한다. 실측으로 교체할 때는 이 문서와 ADR을 함께 갱신한다.
+
+실입금·결제 관련 지표(레퍼런스의 "실입금 사전예약")는 이번 스코프에서 구현하지 않는다.
 
 ### 외부 의존성 경계
 
