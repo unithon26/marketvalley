@@ -1,12 +1,12 @@
 # 기존 VM용 OCI NLB와 전용 data volume
 
-이 Terraform은 새 VM·VCN·서브넷을 만들지 않는다. 기존 `ssumcp` VM 앞에 public NLB와 전용 NSG 두 개를 만들고 public TCP 80·443을 rootless Compose의 `10.0.0.9:13080`·`:13443`으로 전달한다. rootless Docker image·build cache·release·app cache가 Kubernetes의 boot disk를 채우지 않도록 50GiB Block Volume 하나를 같은 VM의 `/dev/oracleoci/oraclevdb`에 paravirtualized·전송 중 암호화 방식으로 연결한다. 기존 k3s·Traefik·Ingress와 VM의 host 80·443은 변경하지 않는다.
+이 Terraform은 새 VM·VCN·서브넷을 만들지 않는다. 기존 `ssumcp` VM 앞에 public NLB와 전용 NSG 두 개를 만들고 public TCP 80·443을 rootless Compose의 `10.0.0.9:13080`·`:13443`으로 전달한다. rootless Docker image·build cache·release·app cache가 Kubernetes의 boot disk를 채우지 않도록 50GiB Block Volume 하나를 같은 VM의 `/dev/oracleoci/oraclevdb`에 paravirtualized 방식으로 연결한다. A1 VM이 paravirtualized 전송 중 암호화 옵션을 지원하지 않아 해당 옵션은 끄지만, OCI Block Volume의 저장 암호화는 유지한다. 기존 k3s·Traefik·Ingress와 VM의 host 80·443은 변경하지 않는다.
 
 HTTP와 HTTPS는 backend port가 다르므로 backend set을 두 개 사용한다. HTTP set은 `/api/health` 200 응답을 검사하고, TLS passthrough set은 인증서 발급 전에도 동작하는 TCP health를 사용한다. source preservation은 명시적으로 꺼 NLB full NAT 경계를 유지한다.
 
 ## 적용 경계
 
-- tenancy에 기존 NLB가 0개이고 Console에서 Always Free NLB 자격을 확인한 뒤에만 적용한다. home region의 boot·block volume 합계가 200GB Always Free 한도 안인지도 확인한다.
+- tenancy에 기존 NLB가 0개이고 Console에서 Always Free NLB 자격을 확인한 뒤에만 적용한다. 기존 boot volume이 이미 200GB이므로 추가 50GiB Block Volume은 무료 storage 한도를 넘는 유료 자원으로 취급하고 Billing에서 추적한다.
 - state와 plan에는 OCID가 포함되므로 Git에 commit하지 않는다. OCI Resource Manager의 managed state를 사용한다.
 - 운영 data volume은 `prevent_destroy`로 보호한다. NLB를 철거하더라도 volume 삭제가 포함된 plan은 실패해야 하며, 정말 삭제해야 할 때만 별도 변경으로 보호를 해제하고 데이터 백업을 확인한다.
 - `terraform.tfvars.example`을 복사한 실제 tfvars는 로컬에만 두고 commit하지 않는다.

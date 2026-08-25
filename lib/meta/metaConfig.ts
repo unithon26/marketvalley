@@ -1,0 +1,250 @@
+import "server-only";
+
+import {
+  type MetaConfiguredBinding,
+  MetaConfigurationError,
+  validateConfiguredBinding,
+} from "@/lib/meta/contracts";
+import { GraphMetaAdsProvider } from "@/lib/meta/graphMetaAdsProvider";
+import { resolveCampaignRepositoryMode } from "@/lib/demo/repositoryConfig";
+
+type Environment = Record<string, string | undefined>;
+export type MetaAdsMode = "disabled" | "live";
+export type MetaPageInstagramBindingAttestation = {
+  pageId: string;
+  instagramActorId: string;
+  verifiedAt: string;
+};
+export type MetaPausedDraftServerPolicy = {
+  targeting: { countries: readonly ["KR"]; ageMin: 18; ageMax: 65 };
+  lifetimeBudgetMinor: number;
+  startsAt: string;
+  endsAt: string;
+  dailyOwnerLimit: number;
+  dailyGlobalLimit: number;
+};
+const operatorUserIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+
+function required(environment: Environment, name: string): string {
+  const value = environment[name]?.trim();
+  if (!value) throw new MetaConfigurationError(`${name} 환경변수가 필요합니다.`);
+  return value;
+}
+
+function integerInRange(
+  environment: Environment,
+  name: string,
+  minimum: number,
+  maximum: number,
+  fallback?: number,
+): number {
+  const rawValue = environment[name]?.trim() || (fallback === undefined ? "" : String(fallback));
+  if (!/^\d+$/u.test(rawValue)) {
+    throw new MetaConfigurationError(`${name} 형식이 올바르지 않습니다.`);
+  }
+  const value = Number(rawValue);
+  if (!Number.isSafeInteger(value) || value < minimum || value > maximum) {
+    throw new MetaConfigurationError(`${name}이 서버 안전 범위를 벗어났습니다.`);
+  }
+  return value;
+}
+
+function canonicalIsoTimestamp(environment: Environment, name: string): string {
+  const value = required(environment, name);
+  if (
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(value) ||
+    !Number.isFinite(Date.parse(value)) ||
+    new Date(value).toISOString() !== value
+  ) {
+    throw new MetaConfigurationError(`${name}은 canonical UTC ISO timestamp여야 합니다.`);
+  }
+  return value;
+}
+
+export function readMetaAdsMode(environment: Environment = process.env): MetaAdsMode {
+  const mode = environment.META_ADS_MODE?.trim() || "disabled";
+  if (mode !== "disabled" && mode !== "live") {
+    throw new MetaConfigurationError("META_ADS_MODE는 disabled 또는 live여야 합니다.");
+  }
+  return mode;
+}
+
+/** Internal company operators allowed to write PAUSED objects to the shared Meta account. */
+export function readMetaDraftOperatorUserIds(
+  environment: Environment = process.env,
+): readonly string[] {
+  const rawValues = required(environment, "META_DRAFT_OPERATOR_USER_IDS")
+    .split(",")
+    .map((value) => value.trim());
+  if (
+    rawValues.length > 20 ||
+    rawValues.some((value) => !operatorUserIdPattern.test(value))
+  ) {
+    throw new MetaConfigurationError(
+      "META_DRAFT_OPERATOR_USER_IDS는 중복 없는 내부 운영자 UUID 1~20개여야 합니다.",
+    );
+  }
+  const values = rawValues.map((value) => value.toLowerCase());
+  if (new Set(values).size !== values.length) {
+    throw new MetaConfigurationError(
+      "META_DRAFT_OPERATOR_USER_IDS는 중복 없는 내부 운영자 UUID 1~20개여야 합니다.",
+    );
+  }
+  return values;
+}
+
+export function isMetaDraftOperator(
+  userId: unknown,
+  environment: Environment = process.env,
+): boolean {
+  if (typeof userId !== "string" || !operatorUserIdPattern.test(userId)) return false;
+  try {
+    return readMetaDraftOperatorUserIds(environment).includes(userId.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The value records a one-time operator Page→Instagram check performed with a User token.
+ * Store only this exact pair and timestamp; the temporary User token must not be retained.
+ * No expiry is inferred here because the product has not defined a defensible freshness policy.
+ */
+export function readMetaPageInstagramBindingAttestation(
+  environment: Environment = process.env,
+): MetaPageInstagramBindingAttestation {
+  const pageId = required(environment, "META_PAGE_ID");
+  const instagramActorId = required(environment, "META_INSTAGRAM_ACTOR_ID");
+  const expectedPair = `${pageId}:${instagramActorId}`;
+  if (required(environment, "META_VERIFIED_PAGE_INSTAGRAM_BINDING") !== expectedPair) {
+    throw new MetaConfigurationError(
+      "META_VERIFIED_PAGE_INSTAGRAM_BINDING이 설정된 Page–Instagram 쌍과 일치하지 않습니다.",
+    );
+  }
+  const verifiedAt = required(environment, "META_PAGE_INSTAGRAM_BINDING_VERIFIED_AT");
+  if (
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(verifiedAt) ||
+    !Number.isFinite(Date.parse(verifiedAt)) ||
+    new Date(verifiedAt).toISOString() !== verifiedAt
+  ) {
+    throw new MetaConfigurationError(
+      "META_PAGE_INSTAGRAM_BINDING_VERIFIED_AT은 유효한 UTC ISO timestamp여야 합니다.",
+    );
+  }
+  return { pageId, instagramActorId, verifiedAt };
+}
+
+export function assertMetaAdsLiveEnvironment(environment: Environment = process.env): void {
+  if (readMetaAdsMode(environment) !== "live") {
+    throw new MetaConfigurationError("Meta 광고 초안 live 모드가 비활성화되어 있습니다.");
+  }
+  if (
+    environment.NODE_ENV !== "production" ||
+    environment.CAMPAIGN_REPOSITORY_MODE !== "supabase" ||
+    environment.META_OPERATION_LEDGER_MODE !== "supabase"
+  ) {
+    throw new MetaConfigurationError(
+      "Meta live 모드는 production의 Supabase campaign repository와 durable ledger에서만 사용할 수 있습니다.",
+    );
+  }
+  try {
+    if (resolveCampaignRepositoryMode(environment) !== "supabase") throw new Error("not supabase");
+  } catch {
+    throw new MetaConfigurationError(
+      "Meta live 모드에는 완전히 설정된 Supabase campaign repository가 필요합니다.",
+    );
+  }
+  readMetaDraftOperatorUserIds(environment);
+  readMetaPageInstagramBindingAttestation(environment);
+}
+
+export function readMetaConfiguredBinding(
+  environment: Environment = process.env,
+): MetaConfiguredBinding {
+  const rawMaxBudget = required(environment, "META_MAX_LIFETIME_BUDGET_MINOR");
+  if (!/^\d+$/u.test(rawMaxBudget)) {
+    throw new MetaConfigurationError("META_MAX_LIFETIME_BUDGET_MINOR 형식이 올바르지 않습니다.");
+  }
+  return validateConfiguredBinding({
+    adAccountId: required(environment, "META_AD_ACCOUNT_ID"),
+    pageId: required(environment, "META_PAGE_ID"),
+    instagramActorId: required(environment, "META_INSTAGRAM_ACTOR_ID"),
+    allowedDestinationOrigins: [required(environment, "META_ALLOWED_DESTINATION_ORIGIN")],
+    maxLifetimeBudgetMinor: Number(rawMaxBudget),
+  });
+}
+
+export function readMetaPausedDraftServerPolicy(
+  environment: Environment = process.env,
+  now: Date = new Date(),
+): MetaPausedDraftServerPolicy {
+  const binding = readMetaConfiguredBinding(environment);
+  const lifetimeBudgetMinor = integerInRange(
+    environment,
+    "META_DRAFT_LIFETIME_BUDGET_MINOR",
+    100,
+    binding.maxLifetimeBudgetMinor,
+  );
+  const dailyOwnerLimit = integerInRange(
+    environment,
+    "META_DRAFT_DAILY_OWNER_LIMIT",
+    1,
+    20,
+    2,
+  );
+  const dailyGlobalLimit = integerInRange(
+    environment,
+    "META_DRAFT_DAILY_GLOBAL_LIMIT",
+    dailyOwnerLimit,
+    1_000,
+    50,
+  );
+  const startsAt = canonicalIsoTimestamp(environment, "META_DRAFT_STARTS_AT");
+  const endsAt = canonicalIsoTimestamp(environment, "META_DRAFT_ENDS_AT");
+  const startTime = Date.parse(startsAt);
+  const endTime = Date.parse(endsAt);
+  const nowTime = now.getTime();
+  if (
+    !Number.isFinite(nowTime) ||
+    startTime < nowTime + 5 * 60 * 1_000 ||
+    startTime > nowTime + 30 * 24 * 60 * 60 * 1_000 ||
+    endTime - startTime < 60 * 60 * 1_000 ||
+    endTime - startTime > 72 * 60 * 60 * 1_000
+  ) {
+    throw new MetaConfigurationError("Meta PAUSED 초안 일정은 5분 이후 시작하는 1~72시간 구간이어야 합니다.");
+  }
+  return {
+    targeting: { countries: ["KR"], ageMin: 18, ageMax: 65 },
+    lifetimeBudgetMinor,
+    startsAt,
+    endsAt,
+    dailyOwnerLimit,
+    dailyGlobalLimit,
+  };
+}
+
+export function isMetaPausedDraftLiveConfigured(
+  environment: Environment = process.env,
+  now: Date = new Date(),
+): boolean {
+  try {
+    assertMetaAdsLiveEnvironment(environment);
+    readMetaPausedDraftServerPolicy(environment, now);
+    createGraphMetaAdsProviderFromEnvironment(environment);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function createGraphMetaAdsProviderFromEnvironment(
+  environment: Environment = process.env,
+): GraphMetaAdsProvider {
+  assertMetaAdsLiveEnvironment(environment);
+  return new GraphMetaAdsProvider({
+    binding: readMetaConfiguredBinding(environment),
+    accessToken: required(environment, "META_ACCESS_TOKEN"),
+    appSecret: required(environment, "META_APP_SECRET"),
+    verifiedPageInstagramBinding: readMetaPageInstagramBindingAttestation(environment),
+  });
+}

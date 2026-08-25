@@ -19,9 +19,9 @@ services:
       PORT: "3000"
     init: true
     restart: unless-stopped
-    cpus: "1.50"
-    mem_limit: 2g
-    memswap_limit: 2g
+    cpus: "0.75"
+    mem_limit: 1536m
+    memswap_limit: 1536m
     mem_reservation: 512m
     read_only: true
     tmpfs:
@@ -67,9 +67,9 @@ services:
       app:
         condition: service_healthy
     restart: unless-stopped
-    cpus: "0.25"
-    mem_limit: 256m
-    memswap_limit: 256m
+    cpus: "0.15"
+    mem_limit: 192m
+    memswap_limit: 192m
     mem_reservation: 64m
     read_only: true
     tmpfs:

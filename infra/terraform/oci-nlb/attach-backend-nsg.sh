@@ -25,7 +25,7 @@ backup_file="${MARKETVALLEY_NSG_BACKUP_FILE:-}"
 [[ -d "$(dirname -- "${backup_file}")" ]] || fail "backup directory does not exist"
 
 vnic_json="$(oci network vnic get --vnic-id "${vnic_id}")"
-nsg_json="$(oci network nsg get --network-security-group-id "${backend_nsg_id}")"
+nsg_json="$(oci network nsg get --nsg-id "${backend_nsg_id}")"
 actual_private_ip="$(jq -r '.data."private-ip"' <<<"${vnic_json}")"
 subnet_id="$(jq -r '.data."subnet-id"' <<<"${vnic_json}")"
 nsg_vcn_id="$(jq -r '.data."vcn-id"' <<<"${nsg_json}")"

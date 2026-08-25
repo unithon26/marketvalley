@@ -83,7 +83,7 @@ variable "https_backend_port" {
   default     = 13443
 
   validation {
-    condition     = var.https_backend_port >= 1024 && var.https_backend_port <= 65535 && var.https_backend_port != var.http_backend_port
-    error_message = "https_backend_port must be a distinct port between 1024 and 65535."
+    condition     = var.https_backend_port >= 1024 && var.https_backend_port <= 65535
+    error_message = "https_backend_port must be between 1024 and 65535."
   }
 }

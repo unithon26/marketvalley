@@ -1,5 +1,23 @@
 # 작업 기록
 
+## 2026-08-26 — Oracle Compose 운영 기반 적용과 접근 복구
+
+- 목적: 기존 `ssumcp`의 Kubernetes와 분리된 NLB·전용 볼륨·rootless Docker 운영 기반을 실제 OCI에 적용하고 owner-only GitHub 배포 경로를 서버까지 연결한다.
+- 변경: Tailscale SSH로 기존 관리 경로를 확인한 뒤 `ubuntu`에 새 관리자 Ed25519 공개키를 추가하고 공개 IP 직접 접속을 검증했다. OCI Resource Manager 1.5 stack `marketvalley-oracle-compose`를 만들고 public NLB, NSG 2개와 규칙 6개, backend set·backend·listener 각 2개, `prevent_destroy` 50GiB Block Volume을 적용했다. 기존 VNIC의 NSG 목록을 mode 0600으로 백업한 뒤 backend NSG 하나만 append했다. 빈 비부팅 볼륨을 ext4로 만들고 `/opt/marketvalley`에 UUID mount했으며 전용 `marketvalley` 사용자, rootless Docker 29.7.2, 제한된 SSH deploy gateway를 설치했다. 4 OCPU·24GB와 3 OCPU·18GB 복구가 모두 capacity 부족으로 거절된 뒤 K3s 요청이 2 OCPU의 96%임을 확인해 Compose 전용 cgroup을 125% CPU·3GiB·swap 0·1024 task로 낮추고 실제 서버에 재적용했다. NLB IP를 해석하는 `marketvalley-152-67-213-96.sslip.io`와 GitHub deploy secret·variable을 연결하고 서버 환경파일에 Anthropic·Supabase·새 signal secret을 값 노출 없이 설치했다. 공식 URL용 Vercel 프로젝트 `marketvaley`를 만들고 Turnstile을 제외한 production 환경변수 17개를 등록했다.
+- 실패와 수정: maintenance stop 뒤 춘천 A1 capacity 부족으로 4 OCPU·24GB 시작이 거절돼 1·6으로 복구한 뒤 2·12까지 증설했다. Resource Manager 1.5의 교차 변수 validation 미지원은 resource precondition으로 옮겼다. A1이 paravirtualized 전송 중 암호화를 지원하지 않아 attachment만 실패한 뒤 해당 옵션을 끄고 OCI 저장 암호화는 유지했다. NSG 스크립트의 잘못된 OCI CLI 옵션 `--network-security-group-id`를 `--nsg-id`로 고쳤다. 17자 ext4 label이 16자로 잘려 bootstrap이 중단된 문제는 label 계약을 `marketvalley`로 수정하고 신규 빈 볼륨 label만 보정했다. 누락된 `production.env.example`을 bootstrap 묶음에 추가해 idempotent 재실행을 완료했다.
+- 검증: 첫 plan은 신규 17개와 기존 변경·삭제 0개였고, attachment 수정 plan은 기존 16개 `no-op`과 attachment 1개 `create`였다. 최종 NLB `ACTIVE`, 볼륨 `ATTACHED`, VNIC backend NSG 포함, 서버의 50GiB 비부팅 디스크·ext4 UUID mount, K3s node `Ready`, rootless Docker socket·data-root·자동 시작, deploy key 강제 명령 도달과 환경파일 owner `marketvalley`, mode 0600을 실제 확인했다. 서버 cgroup은 CPU `125000 100000`, memory `3221225472`, swap `0`으로 확인했다. Terraform fmt·init·validate와 NSG shell 구문, source·control repository의 resource 회귀 테스트와 Compose render를 통과했고 control CI run `32868215911`이 성공했다.
+- 전달: OCI Resource Manager가 Terraform state를 관리한다. 개인 배포 저장소에는 production SSH host·user·port·private key·known hosts와 production URL, source read token이 모두 등록됐다. 발표 저장소는 변경하지 않았다.
+- 인증 운영: Supabase Site URL을 공식 Vercel origin으로 바꾸고 local·Vercel·Oracle callback을 allow-list에 등록했다. Google Authorized JavaScript origin에도 local·Vercel·Oracle을 등록했다. Google client 상세 점검 중 기존 secret 원문이 접근성 정보에 포함된 것을 잠재 노출로 간주해 새 secret 생성 → Supabase provider 반영 성공 → 기존 secret 비활성화·삭제 순서로 무중단 회전하고 임시 버퍼를 정리했다.
+- 남은 일: Cloudflare CAPTCHA 뒤 Turnstile key를 만들고 GitHub Mobile sudo 승인 뒤 Vercel GitHub 비공개 저장소 권한을 연결한다. 실제 main SHA를 두 대상에 배포하고 production OAuth·Claude·예약·export·rollback과 재부팅 복구를 검증한다. Oracle 4·24 capacity는 별도로 재시도한다. Meta 자동화는 제외한다.
+
+## 2026-08-25 — Meta 최소 권한 계정 기반과 PAUSED 광고 초안 구현
+
+- 목적: 회사 소유 Meta 자산에서 내부 운영자만 랜딩·캐러셀 결과를 `PAUSED` 캠페인·광고 세트·크리에이티브·광고 초안으로 만들고, 활성화와 지출은 구조적으로 막는다.
+- 변경: Graph v26 server-only provider, App Secret Proof, Page·Instagram exact binding attestation, 서버 고정 계정·예산·일정·KR 타기팅, PNG 검증, 운영자 UUID allowlist, 원자 quota·lease·reconciliation ledger와 migration `202608250003`을 추가했다. UI는 회사 내부 운영자에게만 Meta 초안 생성을 노출하며 브라우저가 광고 계정·token·budget·status를 정하지 못한다. 실제 계정에는 Business Portfolio `Marketvalley`, Page `Marketvalley`, Instagram `marketvalley__`, 앱 `MarketValley Ads Publisher`, Employee System User `Marketvalley Publisher`를 연결하고 광고에 필요한 최소 자산 권한만 배정했다. App Secret Proof 요구 설정을 켜고, System User에는 앱 테스트 역할만 할당했다. `ads_management`·`ads_read`만 가진 60일 token을 발급했으며 값은 저장소·문서·채팅에 남기지 않았다.
+- 검증: 기존 구현 기준 lint·typecheck·단위 테스트 31파일 158개, production build와 Chromium E2E 20개가 통과했다. 최신 `main` 인프라를 병합한 뒤 새 Supabase Turnstile 필수 계약을 Meta 테스트 fixture에 반영했고, 최종 lint·typecheck·단위 테스트 39파일 207개, configured server-secret client bundle smoke, production build와 Chromium E2E 21개가 통과했다. Meta Business Settings에서 앱 역할·Page·Instagram·광고 계정 권한과 token scope를 다시 확인했고, API용 광고 계정 ID `1026341707121609`를 내부 자산 ID와 구분했다. token·App Secret 패턴은 저장소에 기록하지 않았다.
+- 전달: 구현 커밋 `7932348`을 `codex/meta-p1`에 push하고 PR `#4`를 열었다. 최초 Actions run `32856320241`은 코드 실행 전 `startup_failure`였으며, 원인은 브랜치의 이전 tag 기반 action이 저장소의 SHA pinning 정책에 걸린 것이었다. 최신 `main`의 SHA 고정 workflow와 인프라를 병합했고 Actions run `32859471623`에서 전체 quality job과 production runtime image smoke가 통과했다.
+- 남은 일: 60일 token은 늦어도 2026-10-19에 회전한다. 광고 계정의 KRW·Asia/Seoul과 Page–Instagram 쌍을 운영 API에서 다시 확인한 뒤, 명시적 production 변경 승인 아래 migration 적용, Oracle secret 등록, Graph 자산 조회, `PAUSED` 단일 종단·중복 방지·0원 지출을 검증한다. App Secret, 결제수단, `ACTIVE`, 실제 광고 객체는 아직 만들지 않았다.
+
 ## 2026-08-25 — 배포 계약 CI 직렬화·provider lock 복구
 
 - 목적: 운영 Compose 자원 상한과 OCI Terraform을 검사하는 source CI·owner-only 배포 workflow가 로컬과 Linux runner에서 같은 계약을 검증하게 한다.

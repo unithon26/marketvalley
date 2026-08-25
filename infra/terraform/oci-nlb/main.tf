@@ -39,7 +39,7 @@ resource "oci_core_volume_attachment" "marketvalley_data" {
   device                              = var.data_volume_device
   display_name                        = "marketvalley-data"
   instance_id                         = var.instance_id
-  is_pv_encryption_in_transit_enabled = true
+  is_pv_encryption_in_transit_enabled = false
   is_read_only                        = false
   is_shareable                        = false
   volume_id                           = oci_core_volume.marketvalley_data.id
@@ -106,6 +106,13 @@ resource "oci_network_load_balancer_network_load_balancer" "marketvalley" {
   is_private                     = false
   network_security_group_ids     = [oci_core_network_security_group.nlb.id]
   subnet_id                      = var.subnet_id
+
+  lifecycle {
+    precondition {
+      condition     = var.https_backend_port != var.http_backend_port
+      error_message = "https_backend_port must differ from http_backend_port."
+    }
+  }
 }
 
 resource "oci_network_load_balancer_backend_set" "http" {

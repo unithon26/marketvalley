@@ -42,10 +42,10 @@ for controller in cpu memory pids; do
   grep -qw "${controller}" "${user_cgroup}/cgroup.controllers" \
     || fail "${controller} is not delegated to the deploy user cgroup"
 done
-[[ "$(tr -d '[:space:]' <"${user_cgroup}/cpu.max")" == "225000100000" ]] \
-  || fail "deploy user aggregate CPU quota must be 225%"
-[[ "$(tr -d '[:space:]' <"${user_cgroup}/memory.max")" == "6442450944" ]] \
-  || fail "deploy user aggregate memory limit must be 6 GiB"
+[[ "$(tr -d '[:space:]' <"${user_cgroup}/cpu.max")" == "125000100000" ]] \
+  || fail "deploy user aggregate CPU quota must be 125%"
+[[ "$(tr -d '[:space:]' <"${user_cgroup}/memory.max")" == "3221225472" ]] \
+  || fail "deploy user aggregate memory limit must be 3 GiB"
 [[ "$(tr -d '[:space:]' <"${user_cgroup}/memory.swap.max")" == "0" ]] \
   || fail "deploy user aggregate memory swap must be disabled"
 [[ "$(tr -d '[:space:]' <"${user_cgroup}/pids.max")" == "1024" ]] \
