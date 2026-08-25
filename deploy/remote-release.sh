@@ -216,6 +216,23 @@ validate_production_environment() {
   local hash_secret=""
   local http_port=""
   local https_port=""
+  local meta_access_token=""
+  local meta_ad_account_id=""
+  local meta_ads_mode=""
+  local meta_allowed_destination_origin=""
+  local meta_app_secret=""
+  local meta_draft_daily_global_limit=""
+  local meta_draft_daily_owner_limit=""
+  local meta_draft_duration_hours=""
+  local meta_draft_lead_minutes=""
+  local meta_draft_lifetime_budget_minor=""
+  local meta_draft_operator_user_ids=""
+  local meta_instagram_actor_id=""
+  local meta_max_lifetime_budget_minor=""
+  local meta_operation_ledger_mode=""
+  local meta_page_id=""
+  local meta_verified_binding=""
+  local meta_verified_binding_at=""
   local publishable_key=""
   local repository_mode=""
   local reservation_campaign_minute_limit=""
@@ -250,6 +267,8 @@ validate_production_environment() {
   bind_address="$(read_environment_value MARKETVALLEY_BIND_ADDRESS)"
   http_port="$(read_environment_value MARKETVALLEY_HTTP_PORT)"
   https_port="$(read_environment_value MARKETVALLEY_HTTPS_PORT)"
+  meta_ads_mode="$(read_optional_environment_value META_ADS_MODE)"
+  meta_ads_mode="${meta_ads_mode:-disabled}"
 
   [[ "${site_address}" =~ ^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$ && "${site_address}" == *.* ]] \
     || fail "SITE_ADDRESS must be a plain production domain"
@@ -293,6 +312,57 @@ validate_production_environment() {
     || fail "RESERVATION_CAMPAIGN_TOTAL_LIMIT must be an integer between 1 and 1000000"
   (( 10#${reservation_campaign_minute_limit} <= 10#${reservation_global_minute_limit} )) \
     || fail "RESERVATION_CAMPAIGN_MINUTE_LIMIT must not exceed RESERVATION_GLOBAL_MINUTE_LIMIT"
+  [[ "${meta_ads_mode}" == "disabled" || "${meta_ads_mode}" == "live" ]] \
+    || fail "META_ADS_MODE must be disabled or live"
+  if [[ "${meta_ads_mode}" == "live" ]]; then
+    meta_operation_ledger_mode="$(read_environment_value META_OPERATION_LEDGER_MODE)"
+    meta_draft_operator_user_ids="$(read_environment_value META_DRAFT_OPERATOR_USER_IDS)"
+    meta_ad_account_id="$(read_environment_value META_AD_ACCOUNT_ID)"
+    meta_page_id="$(read_environment_value META_PAGE_ID)"
+    meta_instagram_actor_id="$(read_environment_value META_INSTAGRAM_ACTOR_ID)"
+    meta_verified_binding="$(read_environment_value META_VERIFIED_PAGE_INSTAGRAM_BINDING)"
+    meta_verified_binding_at="$(read_environment_value META_PAGE_INSTAGRAM_BINDING_VERIFIED_AT)"
+    meta_allowed_destination_origin="$(read_environment_value META_ALLOWED_DESTINATION_ORIGIN)"
+    meta_max_lifetime_budget_minor="$(read_environment_value META_MAX_LIFETIME_BUDGET_MINOR)"
+    meta_draft_lifetime_budget_minor="$(read_environment_value META_DRAFT_LIFETIME_BUDGET_MINOR)"
+    meta_draft_daily_owner_limit="$(read_environment_value META_DRAFT_DAILY_OWNER_LIMIT)"
+    meta_draft_daily_global_limit="$(read_environment_value META_DRAFT_DAILY_GLOBAL_LIMIT)"
+    meta_draft_lead_minutes="$(read_environment_value META_DRAFT_LEAD_MINUTES)"
+    meta_draft_duration_hours="$(read_environment_value META_DRAFT_DURATION_HOURS)"
+    meta_access_token="$(read_environment_value META_ACCESS_TOKEN)"
+    meta_app_secret="$(read_environment_value META_APP_SECRET)"
+
+    [[ "${meta_operation_ledger_mode}" == "supabase" ]] \
+      || fail "live Meta drafts require META_OPERATION_LEDGER_MODE=supabase"
+    [[ "${meta_draft_operator_user_ids}" =~ ^[0-9a-fA-F-]{36}(,[0-9a-fA-F-]{36}){0,19}$ ]] \
+      || fail "META_DRAFT_OPERATOR_USER_IDS must contain 1 to 20 comma-separated UUIDs"
+    [[ "${meta_ad_account_id}" =~ ^[0-9]{5,32}$ \
+      && "${meta_page_id}" =~ ^[0-9]{5,32}$ \
+      && "${meta_instagram_actor_id}" =~ ^[0-9]{5,32}$ ]] \
+      || fail "Meta account, Page, and Instagram IDs must contain digits only"
+    [[ "${meta_verified_binding}" == "${meta_page_id}:${meta_instagram_actor_id}" ]] \
+      || fail "META_VERIFIED_PAGE_INSTAGRAM_BINDING must match the configured Page and Instagram IDs"
+    [[ "${meta_verified_binding_at}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$ ]] \
+      || fail "META_PAGE_INSTAGRAM_BINDING_VERIFIED_AT must be a canonical UTC timestamp"
+    [[ "${meta_allowed_destination_origin}" =~ ^https://[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?(:[0-9]{1,5})?$ ]] \
+      || fail "META_ALLOWED_DESTINATION_ORIGIN must be an HTTPS origin"
+    is_bounded_integer "${meta_max_lifetime_budget_minor}" 100 100000000 \
+      || fail "META_MAX_LIFETIME_BUDGET_MINOR is invalid"
+    is_bounded_integer "${meta_draft_lifetime_budget_minor}" 100 "${meta_max_lifetime_budget_minor}" \
+      || fail "META_DRAFT_LIFETIME_BUDGET_MINOR must not exceed the Meta hard cap"
+    is_bounded_integer "${meta_draft_daily_owner_limit}" 1 20 \
+      || fail "META_DRAFT_DAILY_OWNER_LIMIT must be between 1 and 20"
+    is_bounded_integer "${meta_draft_daily_global_limit}" "${meta_draft_daily_owner_limit}" 1000 \
+      || fail "META_DRAFT_DAILY_GLOBAL_LIMIT must cover the owner limit and be at most 1000"
+    is_bounded_integer "${meta_draft_lead_minutes}" 5 1440 \
+      || fail "META_DRAFT_LEAD_MINUTES must be between 5 and 1440"
+    is_bounded_integer "${meta_draft_duration_hours}" 1 72 \
+      || fail "META_DRAFT_DURATION_HOURS must be between 1 and 72"
+    [[ -n "${meta_access_token}" && "${meta_access_token}" != replace-with-* ]] \
+      || fail "META_ACCESS_TOKEN must be a non-placeholder secret"
+    [[ "${meta_app_secret}" =~ ^[0-9a-fA-F]{32}$ ]] \
+      || fail "META_APP_SECRET must be a 32-character hexadecimal secret"
+  fi
   is_private_ipv4 "${bind_address}" \
     || fail "MARKETVALLEY_BIND_ADDRESS must be a private IPv4 address"
   [[ "${http_port}" =~ ^[1-9][0-9]{3,4}$ && "${http_port}" -ge 1024 && "${http_port}" -le 65535 ]] \

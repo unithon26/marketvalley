@@ -3,10 +3,10 @@
 ## 2026-08-26 — Meta PAUSED 초안 운영 수명과 확인 경로 보강
 
 - 목적: Meta 연결을 켠 배포가 고정 광고 일정 만료로 비활성화되지 않게 하고, Oracle·Vercel 어느 화면에서 생성해도 공식 공개 랜딩으로 연결하며 생성 결과를 Ads Manager에서 바로 확인한다.
-- 변경: 고정 `META_DRAFT_STARTS_AT`·`META_DRAFT_ENDS_AT` 대신 요청 시각 기준 10분 후부터 기본 24시간인 상대 일정을 사용한다. 서버 계산 일정만 durable operation 지문에서 제외해 기존 checkpoint와 중복 방지를 유지한다. destination은 요청 deployment가 아니라 `META_ALLOWED_DESTINATION_ORIGIN`으로 고정했다. 성공 응답은 비밀값 없이 Meta campaign·ad set·creative·ad ID와 광고계정 Ads Manager 링크를 반환하고 결과 화면에 확인 링크를 표시한다. 환경 예시, 운영 가이드와 ADR-0021을 같은 계약으로 갱신했다.
-- 검증: focused 단위 테스트 4파일 36개, `pnpm check`의 lint·typecheck·단위 테스트 41파일 223개, configured server-secret client bundle smoke, production build, Chromium E2E 22개, coverage, high audit, peer dependency와 diff 검사가 통과했다. 커버리지는 statements 85.34%, branches 77.99%, functions 92.51%, lines 88.49%다. 실제 Meta 객체, 운영 DB, Oracle 환경파일과 서버 상태는 변경하지 않았다.
-- 전달: 서버 인프라를 다루는 다른 세션과 충돌하지 않도록 `codex/meta-production-ready` 별도 브랜치에서 코드·테스트·문서만 준비했다. 운영 migration 적용, production 환경변수 등록·재시작, 실제 계정 `PAUSED` 쓰기와 main 병합은 수행하지 않았다.
-- 남은 일: 인프라 세션이 끝나면 최신 `main`을 통합하고 production 환경 템플릿·검증기에 Meta 설정을 추가한다. 이후 별도 승인된 운영 변경 창에서 migration `202608250003`, Keychain의 token·App Secret, 내부 운영자 UUID를 적용하고 읽기 preflight → `PAUSED` 1건 → 중복 요청 → Ads Manager 상태·지출 0원을 검증한다.
+- 변경: 고정 `META_DRAFT_STARTS_AT`·`META_DRAFT_ENDS_AT` 대신 요청 시각 기준 10분 후부터 기본 24시간인 상대 일정을 사용한다. 서버 계산 일정만 durable operation 지문에서 제외해 기존 checkpoint와 중복 방지를 유지한다. destination은 요청 deployment가 아니라 `META_ALLOWED_DESTINATION_ORIGIN`으로 고정했다. 성공 응답은 비밀값 없이 Meta campaign·ad set·creative·ad ID와 광고계정 Ads Manager 링크를 반환하고 결과 화면에 확인 링크를 표시한다. 기존 production 환경과의 호환성을 위해 누락된 `META_ADS_MODE`는 `disabled`로 처리하고, `live`일 때만 배포 스크립트가 원장·운영자·자산·예산·일정·secret을 fail-closed 검증한다. 환경 예시, 운영 가이드와 ADR-0021을 같은 계약으로 갱신했다.
+- 검증: focused 단위 테스트 4파일 36개, `pnpm check`의 lint·typecheck·단위 테스트 41파일 223개, configured server-secret client bundle smoke, production build, Chromium E2E 22개, coverage, high audit, peer dependency와 diff 검사가 통과했다. 커버리지는 statements 85.34%, branches 77.99%, functions 92.51%, lines 88.49%다. 배포 스크립트 구문과 diff도 확인했다. 실제 Meta 객체, 운영 DB, Oracle 환경파일과 서버 상태는 변경하지 않았다.
+- 전달: 서버 인프라를 다루는 다른 세션과 충돌하지 않도록 `codex/meta-production-ready` 별도 브랜치와 PR #6에서 준비했다. 운영 migration 적용, production 환경변수 등록·재시작, 실제 계정 `PAUSED` 쓰기와 main 병합은 수행하지 않았다.
+- 남은 일: 인프라 세션 종료 후 PR #6을 병합한다. 이후 별도 승인된 운영 변경 창에서 migration `202608250003`, Keychain의 token·App Secret, 내부 운영자 UUID를 적용하고 읽기 preflight → `PAUSED` 1건 → 중복 요청 → Ads Manager 상태·지출 0원을 검증한다.
 
 ## 2026-08-26 — Meta 최소 권한 token과 고정 Page 직접 검증
 
