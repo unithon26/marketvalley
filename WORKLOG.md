@@ -6,7 +6,7 @@
 - 원인: 실제 성공을 확인한 5,600바이트·42속성 평면 스키마 뒤 독립 리뷰에서 signal label 배열을 세 문자열 필드로 펼쳤고, 이 변경이 최종 스키마를 7,425바이트·44속성으로 다시 키워 Anthropic 문법 컴파일 제한을 넘었다. CI는 실제 유료 Anthropic 요청을 실행하지 않아 회귀를 발견하지 못했다.
 - 변경: signal label을 positive·neutral·negative 순서가 명시된 단일 배열로 되돌리고 prompt version을 `campaign-spec-v2-reservations-flat-v2`로 올렸다. 스키마 top-level 속성·중첩 객체·직렬화 크기 회귀 검사를 추가하고, Anthropic 문법 컴파일 오류를 일반 생성 실패가 아닌 `campaign_generation_schema_error`로 안전하게 구분했다. 상세 원인과 회귀 방지는 `TROUBLESHOOTING.md`에 반영했다.
 - 검증: focused 생성·prompt·route 테스트 3파일 18개, typecheck와 대상 lint가 통과했다. 최종 스키마는 5,600바이트·42속성·3객체이며 사용자가 실패한 마감한입 입력의 실제 Claude Haiku 4.5 호출이 약 31.0초에 성공해 `CampaignSpec v2`, hook 3개와 positive·neutral·negative option ID를 반환했다. 최종 `pnpm check`의 lint·typecheck·단위 테스트 26파일 114개, production build, configured server-secret client bundle smoke, Chromium E2E 17개, coverage, high audit, peer·diff 검사가 통과했다. 커버리지는 statements 83.58%, branches 76.19%, functions 90.13%, lines 87.93%다.
-- 전달: commit·push·CI는 이 기록 시점에 진행 중이며 제품 배포와 행사 제출은 수행하지 않았다.
+- 전달: 복구 커밋 `a84db62`를 비공개 `main`에 push했고 GitHub Actions run `32823730077`에서 install·lint·typecheck·단위 테스트 114개·server-secret bundle·production build·Chromium E2E 17개가 모두 통과했다. 제품 배포와 행사 제출은 수행하지 않았다.
 - 남은 일: 사용자가 로그인된 화면에서 같은 입력을 직접 재시도한다.
 
 ## 2026-08-25 — 광고 입력 단계의 브라우저 뒤로가기 복구
