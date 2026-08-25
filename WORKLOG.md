@@ -181,8 +181,18 @@
 ## 2026-08-25 — 무과금 개발 모드와 OpenAI 문구 생성 adapter 준비
 
 - 목적: 개발·발표 중 모델 과금을 없애면서, 사용자 입력에서 랜딩·캐러셀·게시 문구를 생성하는 OpenAI 경로를 실제 적용 직전 상태까지 준비한다.
-- 변경: `CAMPAIGN_GENERATOR_MODE`를 추가해 API 키가 있어도 기본 `fixture`만 선택하도록 고정했다. 비활성 `OpenAICampaignGenerator`는 Responses API Structured Outputs 한 번으로 기존 슬롯별 prompt를 실행하고, OpenAI 전용 배열 schema를 최종 `CampaignSpec`으로 재검증한다. 생성 메타데이터, 판단 기준, signal option 순서와 Figma 색상·시각 방향은 서버 값으로 덮어쓰며 timeout, 제한된 재시도, `store: false`, 비밀정보 없는 503을 적용했다. production E2E와 bundle smoke도 fixture를 강제하고 서버 키의 client bundle 비노출을 검사한다.
+- 변경: `CAMPAIGN_GENERATOR_MODE`를 추가해 API 키가 있어도 기본 `fixture`만 선택하도록 고정했다. 비활성 `OpenAICampaignGenerator`는 Responses API Structured Outputs 한 번으로 슬롯별 prompt를 실행하고, OpenAI 전용 배열 schema를 최종 `CampaignSpec`으로 재검증한다. 생성 메타데이터, legacy 판단·option 필드와 Figma 색상·시각 방향은 서버 값으로 덮어쓰며 timeout, 제한된 재시도, `store: false`, 비밀정보 없는 503을 적용했다. 작업 중 먼저 올라온 예약자명단 계약·화면 커밋 `cdfd232`를 병합하고 prompt version을 `campaign-spec-v2-reservations`로 올려 동의·수집 목적·구매 비보장 문구를 고정했으며 reference fixture와 입력 개인화 문구도 같은 계약으로 맞췄다. production E2E와 bundle smoke는 fixture를 강제하고 서버 키의 client bundle 비노출을 검사한다.
 - 결정: OpenAI API에는 무료 문구 생성 모델이 없으므로 개발·테스트·발표는 외부 호출 0회의 fixture를 사용한다. live 후보만 비용이 낮고 Structured Outputs를 지원하는 `gpt-4o-mini`로 바꾸며, `openai` 모드를 명시적으로 켠 뒤부터 과금된다는 경계를 ADR-0014에 기록했다. 이미지 모델도 개발·발표에서 비활성화한다.
-- 검증: focused lint·TypeScript와 AI·prompt·fixture 단위 테스트 24개, `pnpm check`의 lint·typecheck·단위 테스트 73개, configured production build와 server-secret client bundle smoke, production Chromium E2E 14개, `pnpm test:coverage`, `pnpm audit --audit-level high`, `pnpm peers check`, `git diff --check`가 통과했다. 커버리지는 statements 79.25%, branches 73.38%, functions 83.62%, lines 82.15%다. 실제 OpenAI API 요청은 수행하지 않아 호출과 과금은 0회다.
+- 검증: OpenAI와 예약자명단 통합 focused 단위 테스트 33개, `pnpm check`의 lint·typecheck·단위 테스트 72개, configured production build와 server-secret client bundle smoke, production Chromium E2E 14개, `pnpm test:coverage`, `pnpm audit --audit-level high`, `pnpm peers check`, `git diff --check`가 통과했다. 커버리지는 statements 79.29%, branches 73.02%, functions 84.02%, lines 82.32%다. 실제 OpenAI API 요청은 수행하지 않아 호출과 과금은 0회다.
 - 전달: 로컬 구현과 전체 검증 완료. 실제 OpenAI 모드 활성화, API 요청, 제품 배포와 행사 제출은 수행하지 않았다.
-- 남은 일: ADR-0013 예약자명단 계약이 코드에 반영되면 해당 `CampaignSpec`과 신뢰 문구로 adapter schema·prompt를 동기화하고, 회전한 키와 명시적 비용 승인 아래 대표 입력 3종·긴 한글·refusal 품질 eval을 통과한 뒤 `CAMPAIGN_GENERATOR_MODE=openai`로 전환한다.
+- 남은 일: 회전한 키와 명시적 비용 승인 아래 대표 입력 3종·긴 한글·refusal 품질 eval을 통과한 뒤에만 `CAMPAIGN_GENERATOR_MODE=openai`로 전환한다. `CampaignSpec.validation.signal`은 현재 Meta·캐러셀 CTA export 호환을 위해 남아 있으므로 예약자명단 UI와 Supabase 계약이 안정된 뒤 별도 호환 migration으로 제거한다.
+
+## 2026-08-25 — 예약자명단 전환과 OpenAI adapter 통합 및 E2E 복구
+
+- 목적: 개발자 A가 `main`에 올린 예약자명단 계약·화면과 재작성 계획을 로컬 OpenAI adapter에 통합하고, 익명 3지선다 계약에 남아 있던 E2E를 실제 예약 흐름으로 복구한다.
+- 변경: 원격 예약자명단 커밋 `cdfd232`와 계획 `e7d265c`를 각각 병합했다. `app/api/_lib/http.ts` 충돌은 삭제된 `InvalidSignalOptionError`만 제거하고 OpenAI 설정·생성 503 경계는 유지했다. prompt·reference fixture·예시 입력을 동의 기반 예약자명단 문구로 맞추고, E2E helper·API·종단·중복 이메일·빈 목록·375px 키보드·저장 실패·캠페인 격리·polling 시나리오를 `/api/reservations`와 예약자명단 리포트 기준으로 갱신했다. API cache 검증은 Next.js가 추가하는 private 지시를 허용하면서 `no-store`를 반드시 요구한다.
+- 실패와 해결: route rename 뒤 실행 중이던 Next.js가 남긴 `.next/dev/types`가 삭제된 `/api/signals`를 참조해 typecheck가 실패했다. 생성 캐시를 작업 공간 밖 임시 백업으로 옮긴 뒤 `next typegen`으로 다시 생성했다. 첫 E2E는 옛 신호 assertion 6건과 종료 연쇄 실패가 났고, 예약 폼·리포트 계약으로 재작성한 뒤 14개가 통과했다.
+- 영향 범위: 예약자명단·OpenAI 문구와 fixture, 제품·아키텍처 문서, `tests/e2e/demo-flow.spec.ts`, 단위 테스트와 팀 작업 기록
+- 검증: focused 단위 테스트 5파일 33개, `pnpm check`의 lint·typecheck·단위 테스트 14파일 72개, configured production auth/server-secret bundle smoke, production Chromium E2E 14개, coverage, high audit, peer dependency, diff 검사가 모두 통과했다. 커버리지는 statements 79.29%, branches 73.02%, functions 84.02%, lines 82.32%다.
+- 전달: 로컬 통합과 검증을 완료했다. 커밋·push·GitHub Actions 결과는 전달 후 갱신한다. 제품 배포와 행사 제출은 수행하지 않는다.
+- 남은 일: G3 Supabase migration·RLS·repository에서 예약 원문을 광고 소유자에게만 반환하고 production OAuth 소유권을 연결한다. 공개 배포 전 사진 사용권과 실제 production URL 설정도 확인한다.

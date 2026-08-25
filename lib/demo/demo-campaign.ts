@@ -30,23 +30,23 @@ export const demoCampaign = defineCampaign({
   validation: {
     customer: "마감 전 남은 메뉴를 이웃에게 알리고 싶은 동네 1인 카페 사장님",
     problem: "마감 전 남은 메뉴가 생길 때마다 메뉴 정보와 알림 이미지를 따로 만들어 이웃에게 알려야 한다.",
-    solution: "남은 메뉴를 한 번 입력하면 공개 랜딩, 캐러셀과 익명 당일 구매 의향 질문을 함께 만든다.",
-    expectedSignal: "동네 1인 카페 사장님이 마감 전 남은 메뉴 알림 방식에 사용 의향을 선택한다.",
-    invalidationEvidence: "응답 5개가 모여도 긍정 응답이 3개 미만이면 현재 문제와 메시지를 다시 검토한다.",
+    solution: "남은 메뉴를 한 번 입력하면 공개 랜딩, 캐러셀과 동의 기반 사전예약 폼을 함께 만든다.",
+    expectedSignal: "방문자가 이름·이메일 수집에 동의하고 마감 메뉴 사전예약을 제출한다.",
+    invalidationEvidence: "사전예약 안내 뒤에도 예약이 충분히 모이지 않으면 현재 문제와 메시지를 다시 검토한다.",
     assumptions: [
       "동네 1인 카페 사장님은 마감 전 남은 메뉴를 알리는 반복 업무를 부담으로 느낀다.",
-      "개인정보를 받지 않는 선택형 질문으로 초기 사용 의향을 확인할 수 있다.",
+      "동의 기반 예약자명단으로 초기 구매 의향을 확인할 수 있다.",
     ],
     signal: {
       type: "solution_interest",
-      ctaLabel: "마감한입 사용 의향 답하기",
-      question: "마감 전 남은 메뉴를 한 번 입력해 이웃에게 알리는 방식, 써볼 의향이 있나요?",
+      ctaLabel: "사전예약하기",
+      question: "마감한입 예약자명단에 이름과 이메일을 남길까요?",
       options: [
         { id: "positive", label: "네, 써보고 싶어요" },
         { id: "neutral", label: "조금 더 알아볼게요" },
         { id: "negative", label: "지금은 필요하지 않아요" },
       ],
-      successMessage: "응답이 기록됐어요. 다음 판단은 마감한입 운영자가 직접 선택합니다.",
+      successMessage: "예약이 접수됐어요. 다음 안내는 마감한입 운영자가 직접 전달합니다.",
     },
     decisionRule: {
       minimumResponses: 5,
@@ -71,7 +71,7 @@ export const demoCampaign = defineCampaign({
       "오늘 남은 메뉴를 이웃에게 바로",
       "알림 업무는 줄이고 메뉴에 집중하세요",
     ],
-    caption: "마감 전 남은 메뉴가 생겼을 때, 메뉴를 한 번 입력해 이웃에게 알릴 준비를 해보세요. 마감한입은 공개 랜딩과 게시 자료, 익명 당일 구매 의향 신호를 한 흐름으로 만듭니다.",
+    caption: "마감 전 남은 메뉴가 생겼을 때, 메뉴를 한 번 입력해 이웃에게 알릴 준비를 해보세요. 마감한입은 공개 랜딩과 게시 자료, 동의 기반 사전예약을 한 흐름으로 만듭니다.",
     hashtags: ["#마감한입", "#동네카페", "#1인카페", "#마감메뉴", "#오늘의메뉴"],
   },
   landing: {
@@ -88,12 +88,12 @@ export const demoCampaign = defineCampaign({
     benefits: [
       { title: "한 번의 메뉴 입력", body: "남은 메뉴를 입력하면 오늘의 알림에 필요한 내용을 한 번에 구성합니다." },
       { title: "같은 안내 메시지", body: "공개 랜딩과 캐러셀은 같은 메뉴 정보에서 바로 만들어집니다." },
-      { title: "당일 구매 의향", body: "익명 선택형 응답을 보고 다음 알림을 이어갈지 직접 판단합니다." },
+      { title: "당일 사전예약", body: "동의 후 접수된 예약자명단을 보고 다음 알림을 이어갈지 직접 판단합니다." },
     ],
     steps: [
       { title: "남은 메뉴를 입력합니다", body: "오늘 알리고 싶은 메뉴와 마감 시간을 짧게 적습니다." },
       { title: "알림을 준비합니다", body: "이웃에게 보여줄 공개 페이지와 게시 자료를 같은 정보로 만듭니다." },
-      { title: "의향을 보고 판단합니다", body: "익명 응답을 확인하고 다음 알림을 이어갈지 직접 선택합니다." },
+      { title: "예약을 보고 판단합니다", body: "예약자명단을 확인하고 다음 알림을 이어갈지 직접 선택합니다." },
     ],
     faq: [
       { question: "개인정보를 받나요?", answer: "네. 이름과 이메일을 동의 후에만 예약자명단에 저장합니다." },
@@ -111,14 +111,14 @@ export const demoCampaign = defineCampaign({
       headline: "메뉴 입력은 한 번이면 됩니다",
       body: "같은 메뉴 정보로 공개 페이지와 게시 자료를 함께 준비하세요.",
     },
-    solutionBody: "마감한입은 남은 메뉴를 공개 랜딩, 캐러셀, 익명 당일 구매 의향 질문으로 연결합니다.",
-    ctaBody: "마감 전 남은 메뉴 알림, 써볼 의향이 있나요?",
+    solutionBody: "마감한입은 남은 메뉴를 공개 랜딩, 캐러셀과 동의 기반 사전예약으로 연결합니다.",
+    ctaBody: "마감 전 남은 메뉴 알림이 필요하다면 사전예약에 참여해주세요.",
     visualPrompts: [
       "warm cream background, a small cafe closing sign and one remaining pastry card, dark green and coffee brown, no text",
       "solo cafe owner at closing time with scattered menu notes and a phone, warm editorial illustration, no text",
       "one simple cafe menu card branching into a public page and social carousel, warm minimal illustration, no text",
       "neighbor viewing a cafe's remaining menu on a phone, dark green and amber palette, no text",
-      "calm solo cafe owner reviewing three purchase-interest dots before closing, warm minimal editorial style, no text",
+      "calm solo cafe owner reviewing a consent-based reservation list before closing, warm minimal editorial style, no text",
     ],
   },
   safety: {
@@ -146,23 +146,23 @@ export const workshopVacancyCampaign = defineCampaign({
   validation: {
     customer: "예약 취소로 당일 빈자리가 생기는 동네 원데이 공방 운영자",
     problem: "갑자기 빈자리가 생길 때마다 수업 정보와 안내 이미지를 다시 만들어 여러 채널에 올려야 한다.",
-    solution: "취소 자리 정보를 한 번 입력하면 공개 안내, 캐러셀과 익명 참여 의향 질문을 함께 만든다.",
-    expectedSignal: "동네 공방 운영자가 취소 자리 알림 방식에 사용 의향을 선택한다.",
-    invalidationEvidence: "응답 5개가 모여도 긍정 응답이 3개 미만이면 취소 자리 알림 문제와 메시지를 다시 검토한다.",
+    solution: "취소 자리 정보를 한 번 입력하면 공개 안내, 캐러셀과 동의 기반 사전예약 폼을 함께 만든다.",
+    expectedSignal: "방문자가 이름·이메일 수집에 동의하고 취소 자리 사전예약을 제출한다.",
+    invalidationEvidence: "사전예약 안내 뒤에도 예약이 충분히 모이지 않으면 취소 자리 알림 문제와 메시지를 다시 검토한다.",
     assumptions: [
       "동네 공방 운영자는 갑작스러운 취소 자리를 알리는 반복 제작 업무를 부담으로 느낀다.",
-      "개인정보 없는 선택형 질문으로 운영자의 초기 사용 의향을 확인할 수 있다.",
+      "동의 기반 예약자명단으로 초기 참여 의향을 확인할 수 있다.",
     ],
     signal: {
       type: "solution_interest",
-      ctaLabel: "빈자리 알림 사용 의향 답하기",
-      question: "공방 취소 자리를 한 번 입력해 이웃에게 알리는 방식, 써볼 의향이 있나요?",
+      ctaLabel: "사전예약하기",
+      question: "동네공방 빈자리 예약자명단에 이름과 이메일을 남길까요?",
       options: [
         { id: "positive", label: "네, 써보고 싶어요" },
         { id: "neutral", label: "조금 더 알아볼게요" },
         { id: "negative", label: "지금은 필요하지 않아요" },
       ],
-      successMessage: "응답이 기록됐어요. 다음 판단은 공방 운영자가 직접 선택합니다.",
+      successMessage: "예약이 접수됐어요. 다음 안내는 공방 운영자가 직접 전달합니다.",
     },
     decisionRule: {
       minimumResponses: 5,
@@ -187,7 +187,7 @@ export const workshopVacancyCampaign = defineCampaign({
       "취소 자리 알림을 매번 다시 만들지 마세요",
       "수업 준비는 남기고 빈자리 알림은 줄이세요",
     ],
-    caption: "예약 취소로 빈자리가 생겼을 때 수업 정보와 시간을 한 번 입력해 이웃에게 알릴 준비를 해보세요. 공개 안내와 게시 자료, 익명 참여 의향 신호가 같은 흐름에서 만들어집니다.",
+    caption: "예약 취소로 빈자리가 생겼을 때 수업 정보와 시간을 한 번 입력해 이웃에게 알릴 준비를 해보세요. 공개 안내와 게시 자료, 동의 기반 사전예약이 같은 흐름에서 만들어집니다.",
     hashtags: ["#동네공방", "#원데이클래스", "#공방빈자리", "#취소자리", "#오늘의수업"],
   },
   landing: {
@@ -204,12 +204,12 @@ export const workshopVacancyCampaign = defineCampaign({
     benefits: [
       { title: "한 번의 빈자리 입력", body: "수업과 남은 자리 정보를 입력하면 알림 내용을 한 번에 구성합니다." },
       { title: "같은 수업 안내", body: "공개 랜딩과 캐러셀이 같은 수업 정보에서 바로 만들어집니다." },
-      { title: "익명 참여 의향", body: "선택형 응답을 보고 다음 알림을 이어갈지 직접 판단합니다." },
+      { title: "취소 자리 사전예약", body: "동의 후 접수된 예약자명단을 보고 다음 알림을 이어갈지 직접 판단합니다." },
     ],
     steps: [
       { title: "빈자리 정보를 입력합니다", body: "수업 종류, 시간과 남은 자리를 짧게 적습니다." },
       { title: "알림을 준비합니다", body: "공개 페이지와 게시 자료를 같은 정보로 만듭니다." },
-      { title: "의향을 보고 판단합니다", body: "익명 응답을 확인하고 다음 행동을 직접 선택합니다." },
+      { title: "예약을 보고 판단합니다", body: "예약자명단을 확인하고 다음 행동을 직접 선택합니다." },
     ],
     faq: [
       { question: "예약 정보를 받나요?", answer: "네. 이름과 이메일을 동의 후에만 예약자명단에 저장합니다." },
@@ -227,14 +227,14 @@ export const workshopVacancyCampaign = defineCampaign({
       headline: "빈자리 입력은 한 번이면 됩니다",
       body: "같은 수업 정보로 공개 페이지와 게시 자료를 함께 준비하세요.",
     },
-    solutionBody: "동네공방 빈자리는 취소 자리 정보를 공개 랜딩, 캐러셀, 익명 참여 의향 질문으로 연결합니다.",
-    ctaBody: "공방 취소 자리 알림 방식, 써볼 의향이 있나요?",
+    solutionBody: "동네공방 빈자리는 취소 자리 정보를 공개 랜딩, 캐러셀과 동의 기반 사전예약으로 연결합니다.",
+    ctaBody: "공방 취소 자리 안내가 필요하다면 사전예약에 참여해주세요.",
     visualPrompts: [
       "warm ivory background, one empty pottery workshop seat and clay tools, earthy brown and terracotta, no text",
       "small workshop owner updating several cancellation notices before class, warm editorial illustration, no text",
       "one workshop schedule card branching into a public page and social carousel, handcrafted minimal illustration, no text",
       "neighbor discovering an open workshop seat on a phone, earthy warm palette, no text",
-      "workshop owner reviewing three anonymous interest dots before class, calm editorial style, no text",
+      "workshop owner reviewing a consent-based reservation list before class, calm editorial style, no text",
     ],
   },
   safety: {
@@ -255,30 +255,30 @@ export const classInquiryCampaign = defineCampaign({
   },
   project: {
     name: "클래스 문의형",
-    oneLiner: "반복 수업 문의를 하나의 안내와 관심 신호로 연결하는 도구",
+    oneLiner: "반복 수업 문의를 하나의 안내와 예약자명단으로 연결하는 도구",
     category: "독립 강사 클래스 문의 안내",
     language: "ko",
   },
   validation: {
     customer: "반복 문의 때문에 수업 준비가 끊기는 독립 클래스 강사",
     problem: "일정, 준비물과 대상 수준을 반복해서 답하고 안내 게시물을 다시 만드는 동안 수업 준비가 끊긴다.",
-    solution: "수업 정보를 한 번 입력하면 공개 안내, 캐러셀과 익명 수강 의향 질문을 함께 만든다.",
-    expectedSignal: "독립 강사가 반복 문의 안내 방식에 사용 의향을 선택한다.",
-    invalidationEvidence: "응답 5개가 모여도 긍정 응답이 3개 미만이면 반복 문의 문제와 안내 메시지를 다시 검토한다.",
+    solution: "수업 정보를 한 번 입력하면 공개 안내, 캐러셀과 동의 기반 사전예약 폼을 함께 만든다.",
+    expectedSignal: "방문자가 이름·이메일 수집에 동의하고 수업 사전예약을 제출한다.",
+    invalidationEvidence: "사전예약 안내 뒤에도 예약이 충분히 모이지 않으면 반복 문의 문제와 안내 메시지를 다시 검토한다.",
     assumptions: [
       "독립 강사는 같은 수업 정보를 반복해서 답하는 일을 부담으로 느낀다.",
-      "개인정보 없는 선택형 질문으로 안내 방식의 초기 사용 의향을 확인할 수 있다.",
+      "동의 기반 예약자명단으로 초기 수강 의향을 확인할 수 있다.",
     ],
     signal: {
       type: "solution_interest",
-      ctaLabel: "문의 안내 사용 의향 답하기",
-      question: "수업 정보를 한 번 입력해 반복 문의 안내를 준비하는 방식, 써볼 의향이 있나요?",
+      ctaLabel: "사전예약하기",
+      question: "클래스 문의형 예약자명단에 이름과 이메일을 남길까요?",
       options: [
         { id: "positive", label: "네, 써보고 싶어요" },
         { id: "neutral", label: "조금 더 알아볼게요" },
         { id: "negative", label: "지금은 필요하지 않아요" },
       ],
-      successMessage: "응답이 기록됐어요. 다음 판단은 클래스 강사가 직접 선택합니다.",
+      successMessage: "예약이 접수됐어요. 다음 안내는 클래스 강사가 직접 전달합니다.",
     },
     decisionRule: {
       minimumResponses: 5,
@@ -303,7 +303,7 @@ export const classInquiryCampaign = defineCampaign({
       "수업 정보 한 번으로 안내를 정리하세요",
       "문의 정리는 줄이고 수업 준비를 남기세요",
     ],
-    caption: "일정, 준비물과 대상 수준을 반복해서 답하고 있다면 수업 정보를 한 번 입력해 안내를 준비해보세요. 공개 안내와 게시 자료, 익명 수강 의향 신호를 같은 흐름으로 연결합니다.",
+    caption: "일정, 준비물과 대상 수준을 반복해서 답하고 있다면 수업 정보를 한 번 입력해 안내를 준비해보세요. 공개 안내와 게시 자료, 동의 기반 사전예약을 같은 흐름으로 연결합니다.",
     hashtags: ["#독립강사", "#클래스운영", "#수업문의", "#원데이클래스", "#수업준비"],
   },
   landing: {
@@ -320,12 +320,12 @@ export const classInquiryCampaign = defineCampaign({
     benefits: [
       { title: "한 번의 수업 입력", body: "핵심 수업 정보를 입력하면 필요한 안내 내용을 한 번에 구성합니다." },
       { title: "같은 안내 메시지", body: "공개 랜딩과 캐러셀이 같은 수업 정보에서 바로 만들어집니다." },
-      { title: "익명 수강 의향", body: "선택형 응답을 보고 다음 안내를 이어갈지 직접 판단합니다." },
+      { title: "수업 사전예약", body: "동의 후 접수된 예약자명단을 보고 다음 안내를 이어갈지 직접 판단합니다." },
     ],
     steps: [
       { title: "수업 정보를 입력합니다", body: "일정, 준비물과 대상 수준을 짧게 적습니다." },
       { title: "안내를 준비합니다", body: "공개 페이지와 게시 자료를 같은 정보로 만듭니다." },
-      { title: "의향을 보고 판단합니다", body: "익명 응답을 확인하고 다음 행동을 직접 선택합니다." },
+      { title: "예약을 보고 판단합니다", body: "예약자명단을 확인하고 다음 행동을 직접 선택합니다." },
     ],
     faq: [
       { question: "연락처를 받나요?", answer: "네. 이름과 이메일을 동의 후에만 예약자명단에 저장합니다." },
@@ -343,14 +343,14 @@ export const classInquiryCampaign = defineCampaign({
       headline: "수업 입력은 한 번이면 됩니다",
       body: "같은 수업 정보로 공개 페이지와 게시 자료를 함께 준비하세요.",
     },
-    solutionBody: "클래스 문의형은 수업 정보를 공개 랜딩, 캐러셀, 익명 수강 의향 질문으로 연결합니다.",
-    ctaBody: "반복 수업 문의 안내 방식, 써볼 의향이 있나요?",
+    solutionBody: "클래스 문의형은 수업 정보를 공개 랜딩, 캐러셀과 동의 기반 사전예약으로 연결합니다.",
+    ctaBody: "수업 안내를 한 번 정리하는 방식이 필요하다면 사전예약에 참여해주세요.",
     visualPrompts: [
       "clean navy and sky blue background, one organized class information card, calm editorial illustration, no text",
       "independent instructor answering repeated phone questions beside class materials, minimal illustration, no text",
       "one class brief branching into a public page and social carousel, structured modern illustration, no text",
       "prospective student viewing clear class information on a phone, calm blue palette, no text",
-      "instructor reviewing three anonymous interest dots before planning the next class, minimal editorial style, no text",
+      "instructor reviewing a consent-based class reservation list before planning the next class, minimal editorial style, no text",
     ],
   },
   safety: {

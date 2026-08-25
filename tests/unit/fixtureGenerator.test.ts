@@ -82,7 +82,7 @@ describe("FixtureCampaignGenerator", () => {
     expect(spec.project.name).toBe("새 광고 초안");
     expect(spec.project.name).not.toContain("사용 의향");
     expect(spec.landing.benefits.map((benefit) => benefit.title)).toEqual([
-      "개인정보 없는 관심 신호",
+      "동의 기반 예약자명단",
       "관심 의향 한곳에 수집",
       "문제·솔루션 한 번 입력",
     ]);

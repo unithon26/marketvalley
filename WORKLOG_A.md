@@ -9,3 +9,12 @@
 - 검증: 문서 전용 변경이라 `pnpm check`는 실행하지 않음. `docs/superpowers/specs/2026-08-24-figma-alignment-and-dependency-split-design.md`를 대조해, 디자이너 원본 Figma 리포트 화면도 원래 노출수·CTR·예약률·이메일 리스트 구성이었고 어제 감사에서 개인정보 비수집 원칙 때문에 의도적으로 이탈했던 것임을 확인 — 이번 전환이 그 Figma 원안으로 되돌아가는 결정이라는 근거를 ADR-0013와 마이그레이션 설계 문서에 남김
 - 전달: 로컬 문서 변경만 완료. 커밋·push는 사용자 요청에 따라 이 기록과 함께 진행 예정
 - 남은 일: 개발자 B가 `docs/superpowers/specs/2026-08-25-reservation-list-migration-design.md` §1의 계약으로 `lib/contracts/repository.ts`·`lib/demo/fixtureRepository.ts` 스텁을 먼저 커밋해야 A-1(화면)이 시작 가능. `tests/e2e/demo-flow.spec.ts`는 새 예약자명단 흐름 기준으로 전면 재작성 필요
+
+## 2026-08-25 — E2E 테스트를 예약자명단 흐름으로 재작성
+
+- 목적: 계약·화면 전환 뒤 깨진 `tests/e2e/demo-flow.spec.ts`를 새 예약자명단 흐름 기준으로 재작성해 production E2E를 복구한다.
+- 변경: 3지선다 관련 helper·assertion을 예약 입력·동의·중복·명단 리포트 기준으로 교체하고, 무응답·긍정 기준 테스트를 예약자명단의 빈 상태와 실제 데이터 표시 테스트로 바꿨다. API, 375px 키보드, 저장 실패, 광고 격리와 polling도 `/api/reservations` 기준으로 갱신했다.
+- 영향 범위: `tests/e2e/demo-flow.spec.ts`
+- 검증: `pnpm check`의 lint·typecheck·단위 테스트 72개와 production Chromium E2E 14개가 통과했다.
+- 전달: 로컬 검증 완료. 실제 커밋·push 결과는 전달 후 root `WORKLOG.md`에 기록한다.
+- 남은 일: 없음

@@ -3,7 +3,7 @@ import {
   type IdeaInput,
 } from "@/lib/contracts/generator";
 
-export const CAMPAIGN_PROMPT_VERSION = "campaign-spec-v1";
+export const CAMPAIGN_PROMPT_VERSION = "campaign-spec-v2-reservations";
 
 type PromptSlotGroup = {
   id: string;
@@ -40,8 +40,8 @@ export const FIXED_CONTENT_OWNERSHIP: readonly ContentOwnershipGroup[] = [
     id: "trust-copy",
     owner: "figma_renderer",
     targets: [
-      "개인정보를 받지 않는다는 안내",
-      "응답이 구매·성과 보장이 아니라는 안내",
+      "이름·이메일을 동의 후 예약자명단 목적으로만 저장한다는 안내",
+      "예약이 구매·성과 보장이 아니라는 안내",
       "다음 행동은 사람이 판단한다는 안내",
       "실패·재시도·초기화 상태 문구",
     ],
@@ -57,7 +57,7 @@ export const FIXED_CONTENT_OWNERSHIP: readonly ContentOwnershipGroup[] = [
       "generation.generatedAt",
       "project.language",
       "validation.decisionRule",
-      "validation.signal.options[].id",
+      "validation.signal.options[].id (legacy export compatibility)",
       "캠페인 id·slug·공개 URL",
       "실제 응답 수·분포와 사람의 다음 판단",
     ],
@@ -81,7 +81,7 @@ export const AI_COPY_SLOT_GROUPS: readonly PromptSlotGroup[] = [
       "validation.invalidationEvidence",
       "validation.assumptions",
     ],
-    instruction: "사용자 입력에 근거해 고객·문제·해결을 분리한다. 추론한 내용은 assumptions에 넣는다. expectedSignal은 관찰 가능한 선택형 관심 신호로, invalidationEvidence는 현재 가설을 수정할 구체적 응답 조건으로 쓴다.",
+    instruction: "사용자 입력에 근거해 고객·문제·해결을 분리한다. 추론한 내용은 assumptions에 넣는다. expectedSignal은 이름·이메일 수집 동의 뒤 기록되는 실제 예약 한 건으로, invalidationEvidence는 예약이 충분히 모이지 않을 때 현재 가설을 수정할 구체적 조건으로 쓴다.",
   },
   {
     id: "validation-signal",
@@ -92,7 +92,7 @@ export const AI_COPY_SLOT_GROUPS: readonly PromptSlotGroup[] = [
       "validation.signal.options[positive|neutral|negative].label",
       "validation.signal.successMessage",
     ],
-    instruction: "연락처·예약·결제를 요구하지 않는 질문 하나를 만든다. 서버가 고정한 positive·neutral·negative ID에 강요 없이 서로 명확히 구분되는 label을 쓰고, CTA는 답하면 무엇이 기록되는지 드러내는 행동형 문구로 쓴다.",
+    instruction: "ctaLabel은 ‘사전예약하기’처럼 이름·이메일과 동의를 제출하면 예약자명단에 기록된다는 점이 분명한 행동형 문구로 쓴다. question과 successMessage는 구매·결제·좌석 확정을 약속하지 않고 운영자가 다음 안내를 직접 전달한다고 설명한다. options는 현재 export 호환을 위한 legacy 필드이므로 서버가 고정한 positive·neutral·negative ID와 중립적인 고유 label을 유지하되 공개 폼 선택지로 안내하지 않는다.",
   },
   {
     id: "value-proposition",
@@ -107,7 +107,7 @@ export const AI_COPY_SLOT_GROUPS: readonly PromptSlotGroup[] = [
   {
     id: "social-caption",
     outputPaths: ["messaging.caption"],
-    instruction: "문제 장면 → 제안 방식 → 핵심 특징 → 개인정보 없는 관심 응답 순서의 게시 문구를 쓴다. 랜딩과 같은 고객·문제·CTA를 유지하고 후기나 검증 완료를 암시하지 않는다.",
+    instruction: "문제 장면 → 제안 방식 → 핵심 특징 → 동의 기반 사전예약 순서의 게시 문구를 쓴다. 이름·이메일의 수집 목적을 과장 없이 알리고 랜딩과 같은 고객·문제·CTA를 유지하며 후기나 검증 완료를 암시하지 않는다.",
   },
   {
     id: "hashtags",
@@ -136,12 +136,12 @@ export const AI_COPY_SLOT_GROUPS: readonly PromptSlotGroup[] = [
   {
     id: "landing-steps",
     outputPaths: ["landing.steps[0..2].title", "landing.steps[0..2].body"],
-    instruction: "사용자가 실제로 보는 입력 → 광고 공개 → 관심 신호와 사람의 판단 세 단계로 쓴다. 내부 모델명·API·구현 설명은 노출하지 않는다.",
+    instruction: "사용자가 실제로 보는 입력 → 광고 공개 → 동의 기반 예약자명단과 사람의 판단 세 단계로 쓴다. 내부 모델명·API·구현 설명은 노출하지 않는다.",
   },
   {
     id: "landing-faq",
     outputPaths: ["landing.faq[0..2].question", "landing.faq[0..2].answer"],
-    instruction: "구매 전 가장 먼저 생길 질문 세 개를 고른다. 입력에 없는 가격·효능·정책은 만들어내지 말고, 알 수 없는 내용은 확인 필요로 표현한다. 개인정보 미수집과 관심 신호의 한계는 제품 정책에 맞춘다.",
+    instruction: "구매 전 가장 먼저 생길 질문 세 개를 고른다. 입력에 없는 가격·효능·정책은 만들어내지 말고, 알 수 없는 내용은 확인 필요로 표현한다. 이름·이메일은 명시적 동의 후 예약자명단 확인 목적으로만 저장되고 예약이 구매나 성과를 보장하지 않는다는 정책을 포함한다.",
   },
   {
     id: "carousel-hook",
@@ -166,7 +166,7 @@ export const AI_COPY_SLOT_GROUPS: readonly PromptSlotGroup[] = [
   {
     id: "carousel-cta",
     outputPaths: ["carousel.ctaBody"],
-    instruction: "5장은 validation.signal.question으로 자연스럽게 이어지는 참여 이유를 쓴다. 연락처 제공, 구매, 예약 또는 성과를 약속하지 않는다.",
+    instruction: "5장은 동의 기반 사전예약 CTA로 자연스럽게 이어지는 참여 이유를 쓴다. 이름·이메일 제출 목적을 숨기지 않고 구매, 좌석 확정 또는 성과를 약속하지 않는다.",
   },
   {
     id: "visual-prompts",
@@ -192,7 +192,7 @@ const GLOBAL_GENERATION_RULES = [
   "project, validation, messaging, landing과 carousel은 같은 고객·문제·상품명·핵심 특징·CTA를 공유한다. 채널별로 새 가설을 만들지 않는다.",
   "모든 문자열과 배열 길이는 CampaignSpec JSON Schema 한도를 지킨다. 글자를 잘라 맞추지 말고 처음부터 짧고 자연스럽게 작성한다.",
   "Figma 고정 레이아웃과 renderer 문구는 출력하지 않는다. 허용된 텍스트 슬롯과 선택자만 채운다.",
-  "schemaVersion, generation, project.language, brand 색상·시각 방향, validation.decisionRule과 signal option ID는 서버가 최종 덮어쓴다. 스키마가 요구하면 제공된 기본값을 그대로 반환하고 임의로 바꾸지 않는다.",
+  "schemaVersion, generation, project.language, brand 색상·시각 방향, validation.decisionRule과 legacy signal option ID는 서버가 최종 덮어쓴다. 스키마가 요구하면 제공된 기본값을 그대로 반환하고 임의로 바꾸지 않는다.",
 ] as const;
 
 function formatPromptSection(group: PromptSlotGroup): string {

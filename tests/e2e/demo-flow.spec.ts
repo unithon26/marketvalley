@@ -12,16 +12,8 @@ function captureRuntimeErrors(page: Page, runtimeErrors: string[]) {
   });
 }
 
-function responseMetric(page: Page) {
-  return page.locator(".metric-grid article").filter({ hasText: "선택형 응답" }).locator("strong");
-}
-
-function positiveRateMetric(page: Page) {
-  return page.locator(".metric-grid article").filter({ hasText: "긍정 신호율" }).locator("strong");
-}
-
-function remainingDecisionMetric(page: Page) {
-  return page.locator(".metric-grid article").filter({ hasText: "기준 충족 최소 추가" }).locator("strong");
+function reservationCountMetric(page: Page) {
+  return page.locator(".metric-grid article").filter({ hasText: "예약자 수" }).locator("strong");
 }
 
 async function downloadBytes(download: Download): Promise<Buffer> {
@@ -47,7 +39,7 @@ async function expectCarouselEntries(zip: JSZip): Promise<void> {
 
 async function expectApiError(response: APIResponse, status: number, code: string): Promise<void> {
   expect(response.status()).toBe(status);
-  expect(response.headers()["cache-control"]).toBe("no-store");
+  expect(response.headers()["cache-control"]).toContain("no-store");
   await expect(response.json()).resolves.toMatchObject({ error: { code } });
 }
 
@@ -111,10 +103,11 @@ test("Supabase 미설정 GNB는 인증 요청 없이 준비 상태를 표시한�
   expect(authRequests).toEqual([]);
 });
 
-test("fixture 생성부터 산출물, 응답, 판단, 초기화까지 실제 API 경계로 이어진다", async ({ context, page, request }) => {
+test("fixture 생성부터 산출물, 예약, 판단, 초기화까지 실제 API 경계로 이어진다", async ({ context, page, request }) => {
   const runtimeErrors: string[] = [];
   captureRuntimeErrors(page, runtimeErrors);
   await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: "http://127.0.0.1:3100" });
+  const visitorEmail = "e2e-flow@example.com";
 
   await page.goto("/");
   await page.evaluate(() => window.localStorage.clear());
@@ -135,9 +128,7 @@ test("fixture 생성부터 산출물, 응답, 판단, 초기화까지 실제 API
 
   await expect(page).toHaveURL(new RegExp(`/campaigns/${campaignId}$`));
   await expect(page.locator("body")).not.toContainText(/캠페인|CampaignSpec/u);
-  await expect(responseMetric(page)).toHaveText("4건");
-  await expect(page.getByText("긍정 2 / 전체 4", { exact: true })).toBeVisible();
-  await expect(page.getByText("표본 수 부족", { exact: true })).toBeVisible();
+  await expect(reservationCountMetric(page)).toHaveText("4명");
 
   const campaignResponse = await request.get(`/api/campaigns?id=${campaignId}`);
   expect(campaignResponse.ok()).toBe(true);
@@ -146,7 +137,7 @@ test("fixture 생성부터 산출물, 응답, 판단, 초기화까지 실제 API
   expect(campaign.spec.landing.benefits.map((benefit: { title: string }) => benefit.title)).toEqual([
     "남은 메뉴 한 번 입력",
     "공개 페이지와 게시 카드 동시 생성",
-    "개인정보 없는 구매 의향 수집",
+    "동의 기반 예약자명단",
   ]);
   await expect(page.locator(".carousel-card-1")).toHaveAttribute(
     "data-carousel-cover-template",
@@ -187,7 +178,7 @@ test("fixture 생성부터 산출물, 응답, 판단, 초기화까지 실제 API
   const metaText = await metaZip.file("meta-ready.txt")!.async("string");
   expect(metaText).toContain("[Meta 게시 준비 — 실제 게시 아님]");
   expect(metaText).toContain("상품명: 마감한입");
-  expect(metaText).toContain("핵심 특징: 남은 메뉴 한 번 입력 · 공개 페이지와 게시 카드 동시 생성 · 개인정보 없는 구매 의향 수집");
+  expect(metaText).toContain("핵심 특징: 남은 메뉴 한 번 입력 · 공개 페이지와 게시 카드 동시 생성 · 동의 기반 예약자명단");
   expect(metaText).toContain(`Destination URL: ${new URL(page.url()).origin}/p/${campaign.slug}`);
   expect(metaText).toContain(`Media files: ${carouselFileNames.join(", ")}`);
   expect(metaText).toContain(campaign.spec.brand.visualDirection);
@@ -206,23 +197,27 @@ test("fixture 생성부터 산출물, 응답, 판단, 초기화까지 실제 API
   );
   await expect(landingPage.locator(".public-landing")).toHaveAttribute("data-product-name", "마감한입");
   await expect(landingPage.getByText("#남은 메뉴 한 번 입력", { exact: true })).toBeVisible();
-  await landingPage.getByRole("button", { name: "네, 써보고 싶어요" }).click();
-  await landingPage.getByRole("button", { name: "익명으로 응답하기" }).click();
-  await expect(landingPage.getByRole("heading", { name: "응답이 기록됐어요" })).toBeVisible();
+  await landingPage.getByRole("textbox", { name: "이름" }).fill("예약테스트");
+  await landingPage.getByRole("textbox", { name: "이메일" }).fill(visitorEmail);
+  await landingPage.getByRole("checkbox", { name: "이름과 이메일 수집에 동의합니다" }).check();
+  await landingPage.getByRole("button", { name: "사전예약하기" }).click();
+  await expect(landingPage.getByRole("heading", { name: "예약이 접수됐어요" })).toBeVisible();
 
   await page.bringToFront();
-  await expect(responseMetric(page)).toHaveText("5건");
-  await expect(page.getByText("긍정 3 / 전체 5", { exact: true })).toBeVisible();
-  await expect(page.getByText("기준 도달", { exact: true })).toBeVisible();
+  await expect(reservationCountMetric(page)).toHaveText("5명");
+  await expect(page.locator(".reservation-table tbody tr")).toHaveCount(5);
+  await expect(page.locator(".reservation-table tbody tr").first()).toContainText("예약테스트");
 
   await landingPage.bringToFront();
   await landingPage.reload();
-  await landingPage.getByRole("button", { name: "네, 써보고 싶어요" }).click();
-  await landingPage.getByRole("button", { name: "익명으로 응답하기" }).click();
-  await expect(landingPage.getByRole("heading", { name: "이미 참여했어요" })).toBeVisible();
+  await landingPage.getByRole("textbox", { name: "이름" }).fill("중복테스트");
+  await landingPage.getByRole("textbox", { name: "이메일" }).fill(visitorEmail.toUpperCase());
+  await landingPage.getByRole("checkbox", { name: "이름과 이메일 수집에 동의합니다" }).check();
+  await landingPage.getByRole("button", { name: "사전예약하기" }).click();
+  await expect(landingPage.getByRole("heading", { name: "이미 예약했어요" })).toBeVisible();
 
   await page.bringToFront();
-  await expect(responseMetric(page)).toHaveText("5건");
+  await expect(reservationCountMetric(page)).toHaveText("5명");
   await page.getByRole("button", { name: /계속 검증/ }).click();
   await expect(page.getByRole("status")).toHaveText("다음 행동을 저장했어요.");
   await page.reload();
@@ -230,18 +225,19 @@ test("fixture 생성부터 산출물, 응답, 판단, 초기화까지 실제 API
 
   await page.getByRole("button", { name: "데모 데이터 초기화" }).click();
   await expect(page.getByRole("status")).toHaveText("발표용 응답과 판단을 초기화했어요.");
-  await expect(responseMetric(page)).toHaveText("4건");
-  await expect(page.getByText("표본 수 부족", { exact: true })).toBeVisible();
+  await expect(reservationCountMetric(page)).toHaveText("4명");
   await expect(page.locator(".decision-grid button.selected")).toHaveCount(0);
   await page.reload();
-  await expect(responseMetric(page)).toHaveText("4건");
+  await expect(reservationCountMetric(page)).toHaveText("4명");
   await expect(page.locator(".decision-grid button.selected")).toHaveCount(0);
 
   await landingPage.bringToFront();
   await landingPage.reload();
-  await landingPage.getByRole("button", { name: "네, 써보고 싶어요" }).click();
-  await landingPage.getByRole("button", { name: "익명으로 응답하기" }).click();
-  await expect(landingPage.getByRole("heading", { name: "응답이 기록됐어요" })).toBeVisible();
+  await landingPage.getByRole("textbox", { name: "이름" }).fill("초기화테스트");
+  await landingPage.getByRole("textbox", { name: "이메일" }).fill(visitorEmail);
+  await landingPage.getByRole("checkbox", { name: "이름과 이메일 수집에 동의합니다" }).check();
+  await landingPage.getByRole("button", { name: "사전예약하기" }).click();
+  await expect(landingPage.getByRole("heading", { name: "예약이 접수됐어요" })).toBeVisible();
 
   expect(runtimeErrors.filter((message) => !message.includes("status of 409 (Conflict)"))).toEqual([]);
   expect(runtimeErrors.filter((message) => message.includes("status of 409 (Conflict)"))).toHaveLength(1);
@@ -249,7 +245,7 @@ test("fixture 생성부터 산출물, 응답, 판단, 초기화까지 실제 API
 
 test("입력한 상품명과 특징이 랜딩과 카드뉴스에 자동으로 이어진다", async ({ page, request }) => {
   const background = "예약 취소가 생길 때마다 동네 공방 빈자리 안내를 여러 채널에 다시 만들어 올리는 일이 반복됩니다.";
-  const solution = "서비스 이름은 ‘공방온’입니다. 핵심 특징은 빈자리 한 번 입력, 이웃 대상 공개 페이지, 개인정보 없는 참여 의향 수집입니다. 공방 운영자의 안내 광고를 자동으로 만듭니다.";
+  const solution = "서비스 이름은 ‘공방온’입니다. 핵심 특징은 빈자리 한 번 입력, 이웃 대상 공개 페이지, 동의 기반 예약자명단입니다. 공방 운영자의 안내 광고를 자동으로 만듭니다.";
 
   await page.goto("/new");
   await page.getByRole("textbox", { name: "제품 배경" }).fill(background);
@@ -270,7 +266,7 @@ test("입력한 상품명과 특징이 랜딩과 카드뉴스에 자동으로 �
   expect(campaign.spec.landing.benefits.map((benefit: { title: string }) => benefit.title)).toEqual([
     "빈자리 한 번 입력",
     "이웃 대상 공개 페이지",
-    "개인정보 없는 참여 의향 수집",
+    "동의 기반 예약자명단",
   ]);
 
   await expect(page.locator(".carousel-card-1")).toHaveAttribute("data-product-name", "공방온");
@@ -295,12 +291,12 @@ test("입력한 상품명과 특징이 랜딩과 카드뉴스에 자동으로 �
   const metaZip = await JSZip.loadAsync(await downloadBytes(metaDownload));
   const metaText = await metaZip.file("meta-ready.txt")!.async("string");
   expect(metaText).toContain("상품명: 공방온");
-  expect(metaText).toContain("핵심 특징: 빈자리 한 번 입력 · 이웃 대상 공개 페이지 · 개인정보 없는 참여 의향 수집");
+  expect(metaText).toContain("핵심 특징: 빈자리 한 번 입력 · 이웃 대상 공개 페이지 · 동의 기반 예약자명단");
 
   await page.goto(`/p/${campaign.slug}`);
   await expect(page.locator(".public-landing")).toHaveAttribute("data-product-name", "공방온");
   await expect(page.getByText("공방온", { exact: true }).first()).toBeVisible();
-  for (const feature of ["빈자리 한 번 입력", "이웃 대상 공개 페이지", "개인정보 없는 참여 의향 수집"]) {
+  for (const feature of ["빈자리 한 번 입력", "이웃 대상 공개 페이지", "동의 기반 예약자명단"]) {
     await expect(page.getByText(feature, { exact: true }).first()).toBeVisible();
   }
   await expectNoHorizontalOverflow(page);
@@ -326,11 +322,11 @@ test("API가 잘못된 입력, 크기 제한, 소유권과 없는 리소스를 �
   await expectApiError(await request.patch("/api/campaigns", {
     data: { campaignId: "demo", draftId: "wrong-draft", nextAction: "continue" },
   }), 403, "draft_mismatch");
-  await expectApiError(await request.post("/api/signals", {
-    data: { campaignId: "missing", visitorId: "visitor-api-boundary", optionId: "positive" },
+  await expectApiError(await request.post("/api/reservations", {
+    data: { campaignId: "missing", name: "테스트", email: "api-boundary@example.com", consent: true },
   }), 404, "campaign_not_found");
-  await expectApiError(await request.post("/api/signals", {
-    data: { campaignId: "demo", visitorId: "visitor-api-boundary", optionId: "unsupported" },
+  await expectApiError(await request.post("/api/reservations", {
+    data: { campaignId: "demo", name: "테스트", email: "not-an-email", consent: true },
   }), 400, "invalid_request");
 
   expect((await request.put("/api/generate", { data: {} })).status()).toBe(405);
@@ -339,8 +335,8 @@ test("API가 잘못된 입력, 크기 제한, 소유권과 없는 리소스를 �
   expect((await request.get("/p/missing")).status()).toBe(404);
 });
 
-test("무응답과 긍정 기준 부족 상태를 숫자로 왜곡하지 않는다", async ({ page }) => {
-  let state: "empty" | "positive-gap" = "empty";
+test("예약자명단이 비어있거나 채워진 상태를 실제 데이터로만 표시한다", async ({ page }) => {
+  let state: "empty" | "populated" = "empty";
   await page.route("**/api/campaigns*", async (route) => {
     if (route.request().method() !== "GET") {
       await route.continue();
@@ -349,41 +345,28 @@ test("무응답과 긍정 기준 부족 상태를 숫자로 왜곡하지 않는�
     const response = await route.fetch();
     const body = await response.json();
     const summary = state === "empty"
-      ? {
-          positive: 0,
-          neutral: 0,
-          negative: 0,
-          total: 0,
-          positiveRate: null,
-          decisionStatus: "no_responses",
-          isRuleMet: false,
-          remainingResponses: 5,
-          remainingPositiveResponses: 3,
-        }
+      ? { total: 0, recent: [] }
       : {
-          positive: 2,
-          neutral: 2,
-          negative: 1,
-          total: 5,
-          positiveRate: 0.4,
-          decisionStatus: "threshold_not_met",
-          isRuleMet: false,
-          remainingResponses: 0,
-          remainingPositiveResponses: 1,
+          total: 3,
+          recent: [
+            { id: "r-3", name: "박세번째", email: "third@example.com", reservedAt: "2026-08-25T09:20:00.000Z" },
+            { id: "r-2", name: "이두번째", email: "second@example.com", reservedAt: "2026-08-25T09:10:00.000Z" },
+            { id: "r-1", name: "김첫번째", email: "first@example.com", reservedAt: "2026-08-25T09:00:00.000Z" },
+          ],
         };
     await route.fulfill({ response, json: { ...body, summary } });
   });
 
   await page.goto("/campaigns/demo");
-  await expect(positiveRateMetric(page)).toHaveText("—");
-  await expect(page.getByText("응답 없음", { exact: true })).toBeVisible();
-  await expect(remainingDecisionMetric(page)).toHaveText("5건");
+  await expect(reservationCountMetric(page)).toHaveText("0명");
+  await expect(page.getByText("아직 예약이 없어요.", { exact: true })).toBeVisible();
 
-  state = "positive-gap";
+  state = "populated";
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await expect(positiveRateMetric(page)).toHaveText("40%");
-  await expect(page.getByText("가설 재검토", { exact: true })).toBeVisible();
-  await expect(remainingDecisionMetric(page)).toHaveText("1건");
+  await expect(reservationCountMetric(page)).toHaveText("3명");
+  await expect(page.locator(".reservation-table tbody tr")).toHaveCount(3);
+  await expect(page.locator(".reservation-table tbody tr").first()).toContainText("박세번째");
+  await expect(page.locator(".reservation-table tbody tr").first()).toContainText("th****@example.com");
 });
 
 test("375px과 키보드에서 필터, 생성, 공개 응답과 사람 판단을 조작할 수 있다", async ({ page }) => {
@@ -414,15 +397,17 @@ test("375px과 키보드에서 필터, 생성, 공개 응답과 사람 판단을
   await page.keyboard.press("Enter");
   await expect(continueButton).toHaveAttribute("aria-pressed", "true");
 
-  await page.goto("/p/demo#signal");
+  await page.goto("/p/demo#reserve");
   await expectNoHorizontalOverflow(page);
-  const positiveOption = page.getByRole("button", { name: "네, 써보고 싶어요" });
-  await positiveOption.focus();
+  await page.getByRole("textbox", { name: "이름" }).fill("키보드테스트");
+  await page.getByRole("textbox", { name: "이메일" }).fill("keyboard-375@example.com");
+  const consentCheckbox = page.getByRole("checkbox", { name: "이름과 이메일 수집에 동의합니다" });
+  await consentCheckbox.focus();
   await page.keyboard.press("Space");
-  await expect(positiveOption).toHaveAttribute("aria-pressed", "true");
-  await page.getByRole("button", { name: "익명으로 응답하기" }).focus();
+  await expect(consentCheckbox).toBeChecked();
+  await page.getByRole("button", { name: "사전예약하기" }).focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("heading", { name: "응답이 기록됐어요" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "예약이 접수됐어요" })).toBeVisible();
   expect(runtimeErrors).toEqual([]);
 });
 
@@ -585,9 +570,9 @@ test("Figma 표지 3종과 랜딩 도입부 7종만 결정적으로 렌더링한
   }
 });
 
-test("공개 응답 저장 실패를 성공으로 표시하지 않고 재시도한다", async ({ page }) => {
+test("공개 예약 저장 실패를 성공으로 표시하지 않고 재시도한다", async ({ page }) => {
   await page.goto("/p/demo");
-  await page.route("**/api/signals", async (route) => {
+  await page.route("**/api/reservations", async (route) => {
     await route.fulfill({
       status: 500,
       contentType: "application/json",
@@ -595,21 +580,23 @@ test("공개 응답 저장 실패를 성공으로 표시하지 않고 재시도�
     });
   });
 
-  await page.getByRole("button", { name: "네, 써보고 싶어요" }).click();
-  await page.getByRole("button", { name: "익명으로 응답하기" }).click();
-  await expect(page.locator(".signal-error")).toHaveText("응답을 저장하지 못했어요. 잠시 후 다시 시도해주세요.");
+  await page.getByRole("textbox", { name: "이름" }).fill("재시도테스트");
+  await page.getByRole("textbox", { name: "이메일" }).fill("retry-failure@example.com");
+  await page.getByRole("checkbox", { name: "이름과 이메일 수집에 동의합니다" }).check();
+  await page.getByRole("button", { name: "사전예약하기" }).click();
+  await expect(page.locator(".signal-error")).toHaveText("예약을 저장하지 못했어요. 잠시 후 다시 시도해주세요.");
   expect(await computedContrastRatio(page, ".signal-error")).toBeGreaterThanOrEqual(4.5);
-  await expect(page.getByRole("heading", { name: "응답이 기록됐어요" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "익명으로 응답하기" })).toBeEnabled();
+  await expect(page.getByRole("heading", { name: "예약이 접수됐어요" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "사전예약하기" })).toBeEnabled();
 
-  await page.unroute("**/api/signals");
-  await page.getByRole("button", { name: "익명으로 응답하기" }).click();
-  await expect(page.getByRole("heading", { name: "응답이 기록됐어요" })).toBeVisible();
+  await page.unroute("**/api/reservations");
+  await page.getByRole("button", { name: "사전예약하기" }).click();
+  await expect(page.getByRole("heading", { name: "예약이 접수됐어요" })).toBeVisible();
 });
 
 test("리포트 조회, 저장과 초기화 실패를 성공으로 표시하지 않는다", async ({ page }) => {
   await page.goto("/campaigns/demo");
-  await expect(responseMetric(page)).toHaveText("4건");
+  await expect(reservationCountMetric(page)).toHaveText("4명");
 
   await page.route("**/api/campaigns*", async (route) => {
     if (route.request().method() === "PATCH") {
@@ -713,9 +700,11 @@ test("새 광고를 게시해도 이미 열린 공개 랜딩의 상태가 섞이
   expect(second.id).not.toBe(first.id);
   expect(second.slug).not.toBe(first.slug);
 
-  await page.getByRole("button", { name: "네, 써보고 싶어요" }).click();
-  await page.getByRole("button", { name: "익명으로 응답하기" }).click();
-  await expect(page.getByRole("heading", { name: "응답이 기록됐어요" })).toBeVisible();
+  await page.getByRole("textbox", { name: "이름" }).fill("격리테스트");
+  await page.getByRole("textbox", { name: "이메일" }).fill("isolation@example.com");
+  await page.getByRole("checkbox", { name: "이름과 이메일 수집에 동의합니다" }).check();
+  await page.getByRole("button", { name: "사전예약하기" }).click();
+  await expect(page.getByRole("heading", { name: "예약이 접수됐어요" })).toBeVisible();
 
   const firstReport = await request.get(`/api/campaigns?id=${first.id}`).then((response) => response.json());
   const secondReport = await request.get(`/api/campaigns?id=${second.id}`).then((response) => response.json());
@@ -725,7 +714,7 @@ test("새 광고를 게시해도 이미 열린 공개 랜딩의 상태가 섞이
 
 test("늦게 도착한 polling 응답이 저장한 판단을 되돌리지 않는다", async ({ page }) => {
   await page.goto("/campaigns/demo");
-  await expect(responseMetric(page)).toHaveText("4건");
+  await expect(reservationCountMetric(page)).toHaveText("4명");
 
   let releaseDelayedResponse!: () => void;
   let markRequestStarted!: () => void;
@@ -784,6 +773,6 @@ test("2초보다 느린 polling 응답도 겹치지 않고 화면에 반영한�
   });
 
   await page.goto("/campaigns/demo");
-  await expect(responseMetric(page)).toHaveText("9건", { timeout: 6_000 });
+  await expect(reservationCountMetric(page)).toHaveText("9명", { timeout: 6_000 });
   expect(maxInFlight).toBe(1);
 });

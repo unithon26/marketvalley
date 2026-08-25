@@ -8,10 +8,10 @@ Google OAuth 서버 계약과 local Google provider·redirect·Site URL·공개 
 
 완료 조건:
 
-- server-only repository가 캠페인 snapshot, 익명 선택형 응답, 집계와 사람의 다음 행동을 저장한다.
+- server-only repository가 캠페인 snapshot, 동의 기반 예약자명단과 사람의 다음 행동을 저장한다.
 - 게시 후 실제 slug가 발급되고 시크릿 창이나 다른 기기에서 `/p/[slug]`를 열 수 있다.
-- 같은 브라우저의 중복 응답은 익명 client id hash와 DB unique constraint로 막는다.
-- 요청이 보낸 signal 분류를 신뢰하지 않고 공개 snapshot의 선택지에서 서버가 파생한다.
+- 같은 캠페인에 같은 이메일이 중복 예약되지 않도록 서버 HMAC email hash와 DB unique constraint로 막는다.
+- 원문 이메일은 소유자 조회에만 사용하고 목록 화면에는 마스킹해 표시한다.
 - service role key는 브라우저 번들, URL과 로그에 나타나지 않는다.
 
 권장 순서:
@@ -20,7 +20,7 @@ Google OAuth 서버 계약과 local Google provider·redirect·Site URL·공개 
 2. server repository 단위 테스트
 3. publish/read route에 검증된 사용자 소유권 연결
 4. production URL·Vercel 환경변수와 배포 도메인의 실제 OAuth 검증
-5. signal/aggregate/next-action route 연결
+5. reservation/summary/next-action route 연결
 6. 시크릿 창, 다른 계정과 새로고침 수동 검증
 
 ## 2. OpenAI

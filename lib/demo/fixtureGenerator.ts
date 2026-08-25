@@ -41,8 +41,8 @@ const featurePatterns: ReadonlyArray<{
   },
   {
     pattern: /개인정보|익명/,
-    title: "개인정보 없는 관심 신호",
-    body: "이름이나 연락처 없이 선택형 응답만 받아 초기 관심 신호를 확인합니다.",
+    title: "동의 기반 예약자명단",
+    body: "이름과 이메일은 동의를 받은 뒤 예약자명단 확인 목적으로만 저장합니다.",
   },
   {
     pattern: /구매\s*의향|수강\s*의향|참여\s*의향|사용\s*의향|관심\s*(?:응답|신호)/,
@@ -66,8 +66,8 @@ const genericFeatureFallbacks: readonly DerivedFeature[] = [
     body: "상품명과 특징을 같은 내용의 공개 페이지와 게시 카드뉴스에 함께 반영합니다.",
   },
   {
-    title: "개인정보 없는 관심 신호",
-    body: "연락처 없이 선택형 응답만 받아 초기 고객의 관심을 확인합니다.",
+    title: "동의 기반 예약자명단",
+    body: "이름과 이메일을 동의 후 받아 초기 예약 의향을 한곳에서 확인합니다.",
   },
 ];
 
@@ -170,7 +170,7 @@ function deriveOneLiner(solution: string, productName: string, features: readonl
 function applyNeutralSemanticScaffold(spec: CampaignSpec, problem: string): void {
   spec.project.category = "초기 아이디어 시장검증";
   spec.validation.customer = "입력한 문제를 반복해서 겪는 초기 고객";
-  spec.validation.invalidationEvidence = "응답 5개가 모여도 긍정 응답이 3개 미만이면 현재 문제와 제안 메시지를 다시 검토한다.";
+  spec.validation.invalidationEvidence = "사전예약 안내 뒤에도 예약이 충분히 모이지 않으면 현재 문제와 제안 메시지를 다시 검토한다.";
   spec.landing.painPoints = [
     { title: "문제를 다시 설명합니다", body: limit(problem, 90) },
     { title: "채널마다 다시 만듭니다", body: "같은 아이디어를 랜딩과 게시 카드에 맞춰 반복해서 쓰고 조판해야 합니다." },
@@ -179,11 +179,11 @@ function applyNeutralSemanticScaffold(spec: CampaignSpec, problem: string): void
   spec.landing.steps = [
     { title: "배경과 솔루션을 적습니다", body: "검증하려는 문제와 상품명, 핵심 특징을 한 번 입력합니다." },
     { title: "광고를 구성합니다", body: "같은 정보로 공개 랜딩과 카드뉴스, 게시 문구를 만듭니다." },
-    { title: "관심 신호를 확인합니다", body: "개인정보 없는 선택형 응답을 보고 사람이 다음 행동을 판단합니다." },
+    { title: "예약자명단을 확인합니다", body: "동의 후 접수된 이름과 이메일을 보고 사람이 다음 행동을 판단합니다." },
   ];
   spec.landing.faq = [
-    { question: "개인정보를 받나요?", answer: "아니요. 이 광고는 선택형 관심 응답만 기록합니다." },
-    { question: "제품 효과가 보장되나요?", answer: "아니요. 응답은 초기 관심 신호일 뿐 구매나 성과를 보장하지 않습니다." },
+    { question: "어떤 정보를 받나요?", answer: "이름과 이메일을 명시적 동의 후 예약자명단 확인 목적으로만 저장합니다." },
+    { question: "예약하면 구매가 확정되나요?", answer: "아니요. 사전예약은 초기 의향을 남기는 절차이며 구매나 성과를 보장하지 않습니다." },
     { question: "광고가 자동으로 게시되나요?", answer: "아니요. 게시 자료만 준비하며 공개와 운영 판단은 사람이 합니다." },
   ];
   spec.carousel.problem.headline = "반복되는 일을 확인합니다";
@@ -261,14 +261,14 @@ function personalizeCampaign(input: IdeaInput, match: TemplateMatch): CampaignSp
   spec.project.oneLiner = oneLiner;
   spec.validation.problem = problem;
   spec.validation.solution = solution;
-  spec.validation.expectedSignal = limit(`${spec.validation.customer}이 ${productName}의 사용 의향을 선택한다.`, 240);
+  spec.validation.expectedSignal = limit(`${spec.validation.customer}이 정보 수집에 동의하고 ${productName} 사전예약을 제출한다.`, 240);
   spec.validation.assumptions = [
     limit(`입력한 배경의 반복 문제가 ${spec.validation.customer}에게 실제로 존재한다.`, 240),
     limit(`${featureSummary} 특징이 초기 고객의 관심을 끌 수 있다.`, 240),
   ];
-  spec.validation.signal.ctaLabel = limit(`${productName} 사용 의향 답하기`, 40);
-  spec.validation.signal.question = limit(`${productName}이 제안하는 방식, 실제로 써볼 의향이 있나요?`, 180);
-  spec.validation.signal.successMessage = limit(`응답이 기록됐어요. 다음 판단은 ${productName} 운영자가 직접 선택합니다.`, 160);
+  spec.validation.signal.ctaLabel = "사전예약하기";
+  spec.validation.signal.question = limit(`${productName} 예약자명단에 이름과 이메일을 남길까요?`, 180);
+  spec.validation.signal.successMessage = limit(`예약이 접수됐어요. 다음 안내는 ${productName} 운영자가 직접 전달합니다.`, 160);
 
   spec.messaging.valueProposition = limit(`${features[0].title}, ${productName}으로 한 번에`, 40);
   spec.messaging.hooks = [
@@ -276,7 +276,7 @@ function personalizeCampaign(input: IdeaInput, match: TemplateMatch): CampaignSp
     limit(`${features[0].title}부터 ${features[1].title}까지`, 70),
     limit(`${features[2].title}, 다음 판단만 남기세요`, 70),
   ];
-  spec.messaging.caption = limit(`${problem} ${productName}은 ${solution} 핵심 특징은 ${featureSummary}입니다. 개인정보 없이 초기 관심 신호만 확인합니다.`, 1_200);
+  spec.messaging.caption = limit(`${problem} ${productName}은 ${solution} 핵심 특징은 ${featureSummary}입니다. 이름과 이메일은 동의 후 예약자명단 확인 목적으로만 저장합니다.`, 1_200);
   spec.messaging.hashtags = Array.from(new Set([
     projectHashtag,
     ...featureHashtags,
@@ -301,13 +301,13 @@ function personalizeCampaign(input: IdeaInput, match: TemplateMatch): CampaignSp
     body: limit(`${features[1].title}과 ${features[2].title}을 같은 입력에서 함께 준비합니다.`, 90),
   };
   spec.carousel.solutionBody = limit(`${productName}의 핵심 특징 ${featureSummary}을 공개 랜딩과 게시 카드에 일관되게 반영합니다.`, 180);
-  spec.carousel.ctaBody = limit(`${productName}이 제안하는 방식에 관심이 있다면 개인정보 없이 의향을 알려주세요.`, 180);
+  spec.carousel.ctaBody = limit(`${productName}이 제안하는 방식에 관심이 있다면 동의 후 이름과 이메일을 남겨 사전예약에 참여해주세요.`, 180);
   spec.carousel.visualPrompts = [
     limit(`${productName}과 ${features[0].title}을 중심으로 한 ${spec.templates.carouselCover} 표지 조판, 추가 문구 없음`, 300),
     limit(`입력한 반복 문제를 상징하는 단순한 장면, ${spec.brand.visualDirection} 추가 문구 없음`, 300),
     limit(`${features[0].title}과 ${features[1].title}을 하나의 흐름으로 연결한 장면, 추가 문구 없음`, 300),
     limit(`${productName}의 ${features[2].title}을 보여주는 단순한 장면, 추가 문구 없음`, 300),
-    limit(`익명 관심 신호를 확인하고 사람이 다음 행동을 판단하는 장면, 추가 문구 없음`, 300),
+    limit(`동의 기반 예약자명단을 확인하고 사람이 다음 행동을 판단하는 장면, 추가 문구 없음`, 300),
   ];
   spec.safety.claimsToReview = [
     limit(`${productName}의 효과와 실제 구매·수강·참여 전환은 추가 검증이 필요합니다.`, 240),

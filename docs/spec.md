@@ -315,8 +315,8 @@ Zod에서 배열 길이와 문자열 최대 길이를 제한한다. 한국어 �
 | `landing.benefits[].title` | 특징 키워드와 가치 3개 | 3·4장 Insight·Solution 문구 |
 | `messaging.valueProposition` | 상품 메인 아웃풋 슬롯 | 1·4장 핵심 문구 |
 | `messaging.hooks[0]` | SEO 설명 보조 | 1장 Hook headline |
-| `validation.signal.ctaLabel` | Hero·마지막 CTA 버튼 | 5장 CTA headline |
-| `validation.signal.question` | CTA 응답 모달 | 5장 CTA body |
+| `validation.signal.ctaLabel` | 예약 폼 고정 CTA의 export 호환 문구 | 5장 CTA headline |
+| `carousel.ctaBody` | 예약 폼 참여 이유 보조 | 5장 CTA body |
 
 `Meta 게시 준비`도 별도 문구 상태를 만들지 않는다. 기본 문구는 `messaging.caption`, headline은 `messaging.hooks[0]`, CTA는 `validation.signal.ctaLabel`, 대상 고객 가설은 `validation.customer`, destination은 게시 결과에서 만든 절대 공개 URL을 사용한다. ZIP에는 이 정보를 담은 `meta-ready.txt`와 캐러셀 PNG 5장을 함께 넣는다.
 
@@ -395,14 +395,14 @@ tests/e2e/
 ### API 경계
 
 - `POST /api/generate`: 2단계 입력을 검증하고 `{ spec: CampaignSpec }`을 반환한다. 성공 시 클라이언트가 `crypto.randomUUID()`로 `draftId`를 만들고 바로 게시 요청을 보낸다.
-- `POST /api/campaigns`: `{ draftId, spec }`을 다시 검증해 공개 snapshot으로 저장한다. 같은 `draftId`와 동일한 spec의 재요청은 중복 캠페인을 만들지 않고 기존 결과를 반환한다. 이미 게시된 `draftId`에 다른 spec이 오면 충돌로 처리한다. 성공하면 게시 campaign, 공개 URL과 초기 응답 집계를 반환한다.
-- `POST /api/signals`: `{ campaignId, visitorId, optionId }`를 받아 공개 snapshot에서 `signalType`을 읽고, 방문자 식별자를 서버에서 해시한 뒤 익명 응답 한 건을 기록한다. 클라이언트가 보낸 신호 유형은 신뢰하지 않는다.
+- `POST /api/campaigns`: `{ draftId, spec }`을 다시 검증해 공개 snapshot으로 저장한다. 같은 `draftId`와 동일한 spec의 재요청은 중복 캠페인을 만들지 않고 기존 결과를 반환한다. 이미 게시된 `draftId`에 다른 spec이 오면 충돌로 처리한다. 성공하면 게시 campaign, 공개 URL과 초기 예약자명단을 반환한다.
+- `POST /api/reservations`: `{ campaignId, name, email, consent, utm? }`를 검증해 동의된 예약 한 건을 기록한다. fixture는 `(campaignId, email)` hash, live는 서버 HMAC email hash와 DB unique constraint로 중복을 막는다.
 - `PATCH /api/campaigns`: `{ campaignId, draftId, nextAction }`을 받아 소유 draft가 맞을 때만 사람의 선택 `continue`, `revise`, `pause`를 저장한다.
-- `GET /api/campaigns?id=...`: 공개된 spec과 선택지별 응답 집계를 반환한다.
-- `POST /api/campaigns/reset`: `{ campaignId, draftId }` 소유권을 검증한 뒤 발표용 추가 응답과 다음 판단을 seed 상태로 되돌린다.
+- `GET /api/campaigns?id=...`: 공개된 spec과 예약자 수·최근 예약자명단을 반환한다.
+- `POST /api/campaigns/reset`: `{ campaignId, draftId }` 소유권을 검증한 뒤 발표용 추가 예약과 다음 판단을 seed 상태로 되돌린다.
 - `DELETE /api/campaigns`: `{ campaignId, draftId }` 소유권을 검증해 캠페인을 삭제한다. 본문 없는 요청은 기존 `/campaigns/demo` 발표 초기화와 E2E 호환에만 사용한다.
 
-모든 route handler에서 입력 크기와 Zod 스키마를 검사한다. `POST /api/signals`는 신호 유형을 실제 공개 snapshot의 `validation.signal.type`에서 파생하고, 요청의 선택지가 snapshot의 `validation.signal.options`에 있는지 서버에서 다시 확인한다. DB unique 충돌은 서버 오류가 아니라 `alreadyResponded` 결과로 변환한다. OpenAI 키와 Supabase 서버 키는 클라이언트 번들에 포함하지 않는다.
+모든 route handler에서 입력 크기와 Zod 스키마를 검사한다. `POST /api/reservations`는 동의가 없는 제출을 거절하고 같은 캠페인의 같은 이메일 중복을 `alreadyReserved` 결과로 변환한다. 원문 이메일은 소유자 조회에만 사용하고 목록 화면에는 마스킹한다. OpenAI 키와 Supabase 서버 키는 클라이언트 번들에 포함하지 않는다.
 
 ### 데이터베이스
 
@@ -586,25 +586,25 @@ OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 �
 
 | 개발자 A | 개발자 B |
 | --- | --- |
-| 공개 랜딩 표현 컴포넌트, 응답 모달, 결과 화면, `Meta 게시 준비` ZIP·복사 기능, PNG/ZIP | fixture 기반 게시·slug·응답·집계·다음 판단 adapter와 API 형태 고정 |
+| 공개 랜딩 예약 폼, 결과 화면, `Meta 게시 준비` ZIP·복사 기능, PNG/ZIP | fixture 기반 게시·slug·예약·명단·다음 판단 adapter와 API 형태 고정 |
 
-- 완료 게이트 G2: 외부 API와 실제 계정 없이 `/ → /new 2단계 입력 → 생성·게시 → /campaigns/[id] → /p/[slug] → 응답 → 결과 → 사람의 판단 → PNG/ZIP`이 끝까지 작동한다.
+- 완료 게이트 G2: 외부 API와 실제 계정 없이 `/ → /new 2단계 입력 → 생성·게시 → /campaigns/[id] → /p/[slug] → 예약 → 결과 → 사람의 판단 → PNG/ZIP`이 끝까지 작동한다.
 - 실제 OpenAI 없이도 완성된 흐름을 Vercel 검증 배포에 올리고 디자이너 1차 QA를 받는다.
 - G2가 끝나기 전에는 Meta OAuth나 광고 객체 생성을 시작하지 않는다.
 
-### 3단계: Supabase 공개·응답 연결
+### 3단계: Supabase 공개·예약 연결
 
 | 개발자 A | 개발자 B |
 | --- | --- |
-| 내부 API 연결, 게시·중복·실패 상태, 실제 slug 표시와 결과 갱신 | migration, server-only repository, 캠페인 게시·조회, 익명 신호·집계·다음 판단 API |
+| 내부 API 연결, 게시·중복·실패 상태, 실제 slug 표시와 결과 갱신 | migration, server-only repository, 캠페인 게시·조회, 예약자명단·다음 판단 API |
 
-- 완료 게이트 G3: 게시 후 실제 `/p/[slug]`가 발급되고 시크릿 창의 응답 한 건이 `/campaigns/[id]`에 반영되며 새로고침 뒤 다음 행동이 유지된다.
+- 완료 게이트 G3: 게시 후 실제 `/p/[slug]`가 발급되고 시크릿 창의 예약 한 건이 `/campaigns/[id]`에 반영되며 새로고침 뒤 다음 행동이 유지된다.
 
 ### 4단계: OpenAI adapter 연결
 
 | 개발자 A | 개발자 B |
 | --- | --- |
-| 생성 중·재시도·검토 경고·데모 결과 전환 UI | Responses API Structured Outputs, Zod 재검증, 한 번 재시도, prompt version과 fixture fallback |
+| 생성 중·재시도·검토 경고 UI | Responses API Structured Outputs, Zod 재검증, 제한된 재시도, prompt version과 명시적 fixture 모드 |
 
 - 완료 게이트 G4: 실제 입력 3종이 유효한 `CampaignSpec`을 만들고, 네트워크·스키마 실패 시 입력을 잃지 않은 채 데모 흐름으로 전환된다.
 - AI 연결을 위해 렌더러나 화면별 상태 계약을 바꾸지 않는다. 문제가 생기면 adapter 경계를 먼저 수정한다.
@@ -640,7 +640,7 @@ OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 �
 
 - 375px 모바일과 발표 노트북 해상도
 - 한글 줄바꿈, 5장 PNG 1080×1350, 캐러셀·Meta ZIP 파일명과 내부 항목
-- 시크릿 창에서 공개 URL, 선택형 응답, 판단 화면
+- 시크릿 창에서 공개 URL, 동의 기반 사전예약, 예약자명단과 판단 화면
 - 새로고침 후 초안 복구
 - API 키가 브라우저, 로그, 저장소에 나타나지 않음
 - OpenAI·DB를 각각 끈 상태에서 실패 안내와 데모 fallback
@@ -654,8 +654,8 @@ OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 �
 2. 20초: 기존 도구와 수작업 단계를 한 화면에 보여준다.
 3. 30초: 배경과 솔루션을 2단계로 입력하고 캠페인 생성을 시작한다.
 4. 45초: 진행 화면 뒤 실제 공개 URL과 캐러셀 ZIP이 한 번에 만들어지는 것을 보여준다.
-5. 35초: 공개 랜딩을 다른 창 또는 휴대폰으로 열어 선택형 관심 질문에 실제로 응답한다.
-6. 20초: 결과 화면에서 응답 증가와 사전 기준을 확인한 뒤, 사람이 `계속 검증`을 선택하고 PNG ZIP을 내려받는다.
+5. 35초: 공개 랜딩을 다른 창 또는 휴대폰으로 열어 동의 후 사전예약을 제출한다.
+6. 20초: 결과 화면에서 예약자명단 증가를 확인한 뒤, 사람이 `계속 검증`을 선택하고 PNG ZIP을 내려받는다.
 7. 10초: “콘텐츠를 만든 것이 아니라, 고객을 만나기 전까지의 제작 업무를 없앴다”로 닫는다.
 
 발표에서 시장 검증 완료, 매출 증가, 전환 개선을 주장하지 않는다. 실제로 보여준 공개·선택형 응답·다운로드와 구현 후 측정한 수동 단계만 말한다.

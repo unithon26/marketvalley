@@ -18,7 +18,7 @@ describe("campaign prompts", () => {
     expect(fixedTargets).toContain("validation.decisionRule");
     expect(fixedTargets).toContain("brand.primaryColor");
     expect(fixedTargets).toContain("project.language");
-    expect(fixedTargets).toContain("validation.signal.options[].id");
+    expect(fixedTargets).toContain("validation.signal.options[].id (legacy export compatibility)");
     expect(aiPaths).toContain("messaging.hooks[0]");
     expect(aiPaths).toContain("landing.faq[0..2].answer");
     expect(aiPaths).toContain("carousel.ctaBody");
@@ -38,6 +38,9 @@ describe("campaign prompts", () => {
     expect(prompt).toContain("Structured Outputs의 CampaignSpec JSON만 반환한다");
     expect(prompt).toContain("validation.decisionRule");
     expect(prompt).toContain("서버가 최종 덮어쓴다");
+    expect(prompt).toContain("동의 기반 사전예약");
+    expect(prompt).toContain("이름·이메일");
+    expect(prompt).not.toContain("개인정보 미수집");
   });
 
   it("후킹 문구 3개에 서로 다른 역할과 과장 금지 규칙을 준다", () => {
@@ -61,6 +64,6 @@ describe("campaign prompts", () => {
   });
 
   it("배포 뒤 결과 추적에 사용할 안정된 prompt version을 제공한다", () => {
-    expect(CAMPAIGN_PROMPT_VERSION).toBe("campaign-spec-v1");
+    expect(CAMPAIGN_PROMPT_VERSION).toBe("campaign-spec-v2-reservations");
   });
 });

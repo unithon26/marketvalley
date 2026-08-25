@@ -134,7 +134,7 @@ describe("OpenAICampaignGenerator", () => {
     expect(request.input[0].content).toContain("시장검증 광고 카피 생성기");
     expect(request.input[1].content).toContain(JSON.stringify(idea.background));
     expect(result.generation).toEqual({
-      promptVersion: "campaign-spec-v1",
+      promptVersion: "campaign-spec-v2-reservations",
       model: "gpt-4o-mini",
       generatedAt: "2026-08-25T12:34:56.000Z",
     });

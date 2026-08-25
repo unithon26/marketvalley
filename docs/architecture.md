@@ -24,12 +24,12 @@ CampaignSpec (Zod 검증, 단일 진실 공급원)
 CampaignRepository ── mock: Node.js 프로세스 메모리
                      live: Supabase server repository
    ├─ publish / getById / getBySlug
-   ├─ recordSignal / getSignalSummary
+   ├─ recordReservation / getReservationSummary
    ├─ saveNextAction / delete
    └─ LandingRenderer / CarouselRenderer / Meta 게시 준비 ZIP
 ```
 
-브라우저에는 캠페인별 중복 응답을 확인하기 위한 무작위 `visitorId`와 자신이 만든 캠페인의 draft 소유 토큰만 `localStorage`에 둔다. 응답 값과 사람의 다음 행동은 서버 저장소가 소유한다.
+브라우저에는 자신이 만든 캠페인의 draft 소유 토큰만 `localStorage`에 둔다. 공개 랜딩의 이름·이메일·동의와 UTM은 예약 제출 요청으로 서버에 보내고, 예약자명단과 사람의 다음 행동은 서버 저장소가 소유한다.
 
 ## 상태 원칙
 
@@ -40,7 +40,7 @@ CampaignRepository ── mock: Node.js 프로세스 메모리
 - 공개 랜딩의 title·description과 랜딩·캐러셀 색상은 같은 snapshot의 SEO·brand 필드에서 파생한다.
 - 카드뉴스 표지와 랜딩 도입부는 같은 snapshot의 `templates` 필드에서 선택하며, tone이나 화면별 조건으로 암묵적으로 추론하지 않는다.
 - mock 데이터는 화면에서 `데모 데이터`로 식별한다.
-- P0의 선택형 응답에는 이름, 이메일, 전화번호, IP와 원문 user-agent를 저장하지 않는다.
+- P0 예약은 명시적 동의 뒤 이름과 이메일만 저장한다. IP와 원문 user-agent는 저장하지 않고, 목록 화면의 이메일은 마스킹한다.
 - 저장·응답·판단·초기화 실패를 성공으로 표시하지 않으며 사용자가 재시도할 수 있다.
 - 동일 입력의 게시 재시도는 같은 draft ID와 생성 결과를 재사용한다.
 
@@ -48,7 +48,7 @@ CampaignRepository ── mock: Node.js 프로세스 메모리
 
 Figma renderer는 랜딩·캐러셀의 레이아웃, 타이포·색상 조합, 섹션 순서와 제품의 상태·개인정보·사람 판단 안내를 고정한다. AI는 새 HTML이나 레이아웃을 만들지 않고 허용된 템플릿 ID만 선택한다. 선택된 ID의 실제 색상과 시각 방향은 서버가 Figma 토큰으로 매핑한다.
 
-AI가 채우는 문구는 상품 요약, 검증 가설, 관심 질문, 가치제안, 후킹 3종, 게시 문구, 랜딩 각 섹션과 캐러셀 각 장이다. `lib/ai/campaignPrompts.ts`가 각 슬롯의 목적·길이·금지사항을 따로 정의한 뒤 하나의 developer prompt로 조합한다. 사용자 입력은 명령이 아닌 별도 JSON 자료로 전달한다. 전체 `CampaignSpec`은 한 번의 Responses API Structured Outputs 호출로 생성해 랜딩·캐러셀·Meta 문구의 고객·문제·특징·CTA가 어긋나지 않게 한다. OpenAI strict schema가 tuple을 지원하지 않는 경계는 같은 길이의 배열 출력 스키마로 변환한 뒤 기존 Zod 계약으로 재검증한다.
+AI가 채우는 문구는 상품 요약, 검증 가설, 동의 기반 사전예약 CTA, 가치제안, 후킹 3종, 게시 문구, 랜딩 각 섹션과 캐러셀 각 장이다. `lib/ai/campaignPrompts.ts`가 각 슬롯의 목적·길이·금지사항을 따로 정의한 뒤 하나의 developer prompt로 조합한다. 사용자 입력은 명령이 아닌 별도 JSON 자료로 전달한다. 전체 `CampaignSpec`은 한 번의 Responses API Structured Outputs 호출로 생성해 랜딩·캐러셀·Meta 문구의 고객·문제·특징·CTA가 어긋나지 않게 한다. OpenAI strict schema가 tuple을 지원하지 않는 경계는 같은 길이의 배열 출력 스키마로 변환한 뒤 기존 Zod 계약으로 재검증한다.
 
 `schemaVersion`, `generation`, Figma 색상, `validation.decisionRule`, id·slug·공개 URL과 실제 응답은 서버 소유다. 모델 결과를 Zod로 검증한 뒤 서버 값으로 덮어쓰며, 생성 프롬프트의 변경은 `promptVersion`으로 추적한다.
 
