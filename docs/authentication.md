@@ -16,9 +16,9 @@ marketvalley 로그인은 Google 토큰을 애플리케이션이 직접 교환�
 | 로그인 화면 | `GET /login?next=/new` |
 | 인증 오류 | `GET /auth/error?code=...` → `/login?next=/new&error=...` |
 
-`next`는 같은 앱의 화면 경로만 허용한다. 외부 URL, `/auth/*`, `/api/*`, 역슬래시와 제어문자가 포함된 값은 `/`로 바꾼다. 이동 경로는 PKCE flow ID별 10분짜리 HttpOnly 쿠키에 저장하고 callback URL 자체는 고정한다. `/new`는 제품 환경에서 서버가 세션을 먼저 확인하고 비로그인 사용자를 확정 Figma 로그인 화면으로 보낸다. GNB는 session API의 `authenticated`와 최소 사용자 정보만 사용한다. 로그아웃은 링크가 아니라 POST form 또는 same-origin fetch로 호출해야 한다.
+`next`는 같은 앱의 화면 경로만 허용한다. 외부 URL, `/auth/*`, `/api/*`, 역슬래시와 제어문자가 포함된 값은 `/`로 바꾼다. 이동 경로는 PKCE flow ID별 10분짜리 HttpOnly 쿠키에 저장하고 callback URL 자체는 고정한다. 제품 환경의 광고 생성 CTA는 session API로 상태를 확인해 비로그인 사용자에게 Next.js parallel·intercepting route의 로그인 모달을 연다. `/login` 직접 접근과 새로고침은 전용 화면을 유지하고 `/new`는 서버가 세션을 다시 확인하므로 client 분기만 권한 경계로 신뢰하지 않는다. GNB는 session API의 `authenticated`와 최소 사용자 정보만 사용한다. 로그아웃은 링크가 아니라 POST form 또는 same-origin fetch로 호출해야 한다.
 
-확정 `market valley` SVG 로고와 전용 로그인 카드가 적용돼 있다. `lib/client/use-auth-session.ts`가 GNB 상태와 API 계약을 소유하고 `components/auth-controls.tsx`는 표현만 소유한다. Supabase가 미설정된 발표 모드에서는 session API를 반복 호출하지 않고 `로그인 준비 중`을 표시한다.
+확정 `market valley` SVG 로고와 공용 로그인 카드가 전용 화면과 모달에 적용돼 있다. `lib/client/use-auth-session.ts`가 GNB·광고 진입 상태와 API 계약을 소유하고 표현 컴포넌트는 이를 재사용한다. Supabase가 미설정된 발표 모드에서는 광고 진입도 session API를 호출하지 않고 기존 fixture `/new` 경로를 유지한다.
 
 서버에서 소유권을 확인하는 데이터 작업은 `requireVerifiedIdentity()`로 서명 검증된 JWT의 `sub`를 사용한다. session API는 Supabase Auth 서버의 `getUser()`로 최신 사용자를 다시 확인한다. 쿠키에서 읽은 `getSession()` 사용자 객체를 권한 판단에 사용하지 않는다.
 

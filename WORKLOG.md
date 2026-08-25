@@ -1,5 +1,13 @@
 # 작업 기록
 
+## 2026-08-25 — 광고 진입 로그인 모달과 fixture 인증 분리
+
+- 목적: 광고 생성을 시작할 때 별도 페이지로 맥락을 잃지 않고 Figma 로그인 카드를 보여주되 직접 `/new` 접근의 서버 인증 경계를 유지한다.
+- 변경: Next.js parallel·intercepting route로 `/login?next=/new` soft navigation을 현재 화면 위 모달로 렌더링하고, 직접 접근·새로고침은 기존 전용 로그인 화면을 유지했다. 홈·GNB·리포트의 광고 생성 진입을 공용 세션 확인 링크로 통합하고 공용 로그인 카드와 닫기·Escape 동작을 적용했다. Supabase 미설정 fixture에서는 session API를 호출하지 않고 기존 `/new` 경로를 유지해 불필요한 503을 제거했다. 선택과 권한 경계는 ADR-0018과 인증 문서에 반영했다.
+- 검증: `pnpm check`의 lint·typecheck·단위 테스트 25파일 112개, production build, configured server-secret client bundle smoke, Chromium E2E 16개, coverage, high audit, peer·diff 검사가 통과했다. fixture 종단에서 session API 503이 runtime 오류로 남는 회귀를 재현한 뒤 설정 없는 진입에서 인증 요청 자체를 생략해 같은 종단 테스트 통과를 확인했다.
+- 전달: 기능 커밋 `14e238e`를 비공개 `main`에 push했고 GitHub Actions run `32822709767`에서 install·lint·typecheck·단위 테스트 112개·server-secret bundle·production build·Chromium E2E 16개가 모두 통과했다. 제품 배포와 행사 제출은 수행하지 않았다.
+- 남은 일: 없음.
+
 ## 2026-08-25 — Anthropic 문구 생성 503 복구
 
 - 목적: 로그인 뒤 `/api/generate`가 503을 반환해 실제 AI 광고 생성이 중단되는 문제를 재현하고 복구한다.
