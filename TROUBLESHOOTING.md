@@ -19,11 +19,11 @@ BuildKit image digest는 고정돼 있었지만 daemon flag는 이전 전역 이
 
 ### 해결과 회귀 방지
 
-source와 개인 배포 control-plane의 root-owned release script를 같은 OCI worker flag로 바꾸고, legacy `--max-parallelism`이 다시 들어오면 실패하는 회귀 테스트를 추가했다. pin된 image 자체에서 새 flag parse를 확인했고 양쪽 shell syntax, source trust-boundary 테스트 4개와 control-plane 테스트 4개를 통과했다. 서버에는 control-plane CI가 성공한 정확한 script만 checksum을 대조해 설치하고 실패한 builder를 제거한 뒤 배포를 재시도한다.
+source와 개인 배포 control-plane의 root-owned release script를 같은 OCI worker flag로 바꾸고, legacy `--max-parallelism`이 다시 들어오면 실패하는 회귀 테스트를 추가했다. pin된 image 자체에서 새 flag parse를 확인했고 양쪽 shell syntax, source trust-boundary 테스트 4개와 control-plane 테스트 4개를 통과했다. control-plane CI run `32874809786`이 성공한 정확한 script만 checksum을 대조해 서버에 설치하고 실패한 builder를 제거했다. 재배포에서 builder가 running으로 유지되고 ARM64 image build, 앱 healthy 전환과 현재 release 연결까지 완료됐다.
 
 ### 남은 위험과 예상 질문
 
-새 control-plane CI, 서버 script 교체, 실제 ARM64 build와 외부 health가 모두 성공하기 전까지 해결 완료로 기록하지 않는다. 면접에서는 image digest pin만으로 CLI 계약까지 고정되지 않는 이유, daemon 재시작과 앱 장애를 어떻게 분리했는지, 왜 병렬 제한을 제거하지 않았는지 설명할 수 있다.
+NLB backend는 별도 host UFW 규칙 누락으로 처음에는 외부 health가 실패했다. NLB private IP `10.0.0.62`만 Compose의 사설 고포트에 허용한 뒤 공개 HTTPS health가 source `cfc1b79`와 모든 dependency ready를 반환했다. BuildKit 장애는 해결 완료이며, 면접에서는 image digest pin만으로 CLI 계약까지 고정되지 않는 이유, daemon 재시작과 앱 장애를 어떻게 분리했는지, 왜 병렬 제한을 제거하지 않았는지 설명할 수 있다.
 
 ## 2026-08-26 — Vercel Ready 배포가 모든 경로에서 404를 반환함
 
@@ -44,11 +44,11 @@ Vercel 프로젝트를 Git 연결 전에 CLI로 만들면서 framework가 `Other
 
 ### 해결과 회귀 방지
 
-루트 `vercel.json`에 공식 schema와 `"framework": "nextjs"`를 명시한다. Vercel Authentication은 사용자용 production 서비스에 맞게 해제하되 Protected Sourcemaps는 유지한다. 후속 배포에서는 project preset, build route, 공식 alias의 `/api/health` 200과 source version을 모두 확인하기 전 성공으로 기록하지 않는다.
+루트 `vercel.json`에 공식 schema와 `"framework": "nextjs"`를 명시하고, standalone 출력은 Oracle image build에만 적용하도록 Vercel build와 분리했다. health version은 Vercel이 제공하는 Git commit SHA도 읽게 했다. Vercel Authentication은 사용자용 production 서비스에 맞게 해제하되 Protected Sourcemaps는 유지했다. 후속 deployment `dpl_EUx2T8GAc5Ba39hwUQUJntjAdgD2`는 Ready가 됐고 공식 alias의 `/api/health`가 200과 source `cfc1b79`, 모든 dependency ready를 반환했다.
 
 ### 남은 위험과 예상 질문
 
-후속 Git 배포와 실제 HTTP 종단 검증 전까지 해결 완료가 아니다. 면접에서는 build 성공과 runtime 배포 성공을 왜 분리해서 검증해야 하는지, access protection 302와 platform 404를 어떤 증거로 분리했는지 설명할 수 있다.
+이 장애는 해결 완료다. 면접에서는 build 성공과 runtime 배포 성공을 왜 분리해서 검증해야 하는지, access protection 302와 platform 404를 어떤 증거로 분리했는지 설명할 수 있다.
 
 ## 2026-08-26 — Google OAuth client secret 운영 점검 중 노출 가능성 차단
 
