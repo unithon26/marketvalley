@@ -1,13 +1,13 @@
 # 작업 기록
 
-## 2026-08-25 — Compose 자원 상한 CI 타입 불일치 복구
+## 2026-08-25 — 배포 계약 CI 직렬화·provider lock 복구
 
-- 목적: 운영 Compose의 CPU·메모리·사설 port 상한을 검사하는 source CI와 owner-only 배포 workflow가 실제 렌더 형식을 정확히 검증하게 한다.
-- 원인: Compose JSON은 CPU를 숫자로, `mem_limit`·`memswap_limit`을 바이트 문자열로 직렬화했지만 `jq`가 메모리를 JSON 숫자와 직접 비교해 실제 상한이 올바른데도 `false`를 반환했다.
-- 변경: 두 workflow 모두 메모리 네 필드를 `tonumber`로 정규화한 뒤 exact byte를 비교하고, 같은 표현을 source·control-plane 회귀 테스트에 고정했다. CPU·host IP·port·protocol exact 비교는 유지했다.
-- 검증: 실패한 GitHub Actions run `32857239964`에서 앱 lint·typecheck·164개 단위 테스트·production build·21개 E2E까지 성공하고 Compose 단계만 실패했음을 확인했다. Compose 5.5로 같은 JSON 타입과 실패를 재현한 뒤 수정된 `jq` 조건, source focused 테스트와 deploy Node 테스트가 통과했다.
-- 전달: source와 `ghdtjdwn/marketvalley-deploy` 수정에 포함했다. 새 GitHub Actions run의 Terraform·image smoke 통과를 확인해야 한다.
-- 남은 일: 두 저장소 CI 통과를 확인한다.
+- 목적: 운영 Compose 자원 상한과 OCI Terraform을 검사하는 source CI·owner-only 배포 workflow가 로컬과 Linux runner에서 같은 계약을 검증하게 한다.
+- 원인: Compose JSON은 CPU를 숫자로, `mem_limit`·`memswap_limit`을 바이트 문자열로 직렬화했지만 `jq`가 메모리를 JSON 숫자와 직접 비교했다. 이를 고친 다음 run에서는 OCI provider lockfile에 macOS ARM 해시만 있어 Linux AMD64 package가 checksum 검증을 통과하지 못했다.
+- 변경: 두 workflow 모두 메모리 네 필드를 `tonumber`로 정규화한 뒤 exact byte를 비교하고 같은 표현을 source·control-plane 회귀 테스트에 고정했다. OCI 8.27.0 버전은 유지하면서 `darwin_arm64`와 `linux_amd64`의 서명된 provider checksum을 lockfile에 함께 기록했다. CPU·host IP·port·protocol exact 비교는 유지했다.
+- 검증: run `32857239964`에서 앱 gate 뒤 Compose 타입 실패를, run `32857963223`에서 Compose 통과 뒤 Linux provider checksum 실패를 확인했다. Compose 5.5로 같은 JSON 타입과 수정 조건을 재현했고 source focused·deploy Node 테스트, Terraform readonly init·validate가 통과했다. 배포 저장소 CI `32857894954`도 통과했다.
+- 전달: source와 `ghdtjdwn/marketvalley-deploy` 수정에 포함했다. source 새 GitHub Actions run의 Terraform·image smoke 통과를 확인해야 한다.
+- 남은 일: source CI 통과를 확인한다.
 
 ## 2026-08-25 — Figma 제품 메인과 생성 랜딩 레퍼런스 경계 복구
 
@@ -23,8 +23,8 @@
 - 목적: 형식만 맞는 광고 문구가 입력에 없는 운영 조건을 만들어내는 문제와 공개 예약 endpoint의 bot·폭주·capacity 경쟁 조건을 production 전에 막는다.
 - 변경: 최종 prompt를 `campaign-spec-v2-reservations-flat-v9`로 강화하고 검증 중단 문장, 숫자·성과 주장, 가격·할인·환불·구체 채널, hashtag와 FAQ를 서버에서 입력 근거에 맞게 정규화하거나 fail-closed 처리한다. 운영 기본 모델은 Sonnet 4.6, temperature 0, timeout 90초, 재시도 0회로 바꿨다. Supabase 예약은 canonical HTTPS Origin과 Turnstile exact action·hostname을 확인하고, migration `202608250002`의 global→campaign 잠금 RPC가 분당·전체 capacity·중복·insert를 원자적으로 처리한다. 잘못된 UUID와 누락 token은 외부 검증 전에 400, 거절된 token은 403, verifier·DB 장애는 503, quota는 `Retry-After`가 있는 429로 구분했다. 만료된 widget은 reset하고 script 오류에는 사용자 재시도 경로를 제공한다.
 - 검증: 실제 Sonnet Structured Outputs의 주입·공방 빈자리·마감 음식 대표 입력 3종이 각각 약 52.0초·55.8초·56.8초에 완료됐고 공개 금지 세부사항, hashtag, 주입 격리, 숫자 근거와 사람 판단 hook 자동 조건을 모두 통과했다. 독립 검토에서 발견한 standalone signal 재진입, 60자 hashtag 경계, Turnstile unsupported callback과 safety metadata 혼합 근거를 보완했다. 최종 `pnpm check`의 lint·typecheck·단위 테스트 34파일 164개, configured server-secret bundle, production build, Chromium E2E 21개, archive extractor 4개, coverage와 high audit가 통과했다. 커버리지는 statements 85.11%, branches 77.26%, functions 91.41%, lines 89.01%다.
-- 전달: source 변경을 이 작업 단위의 메인 커밋에 포함했다. migration `202608250002`는 운영 Supabase에 아직 적용하지 않았다. Anthropic 월 지출 상한 $15와 $10 알림, 자동 충전 중지는 별도 운영 설정으로 완료했다.
-- 남은 일: migration을 적용해 실제 Postgres compile·RLS·권한과 병렬 quota·capacity를 검증한다. production hostname에서 실제 Turnstile site key·secret 조합, widget 만료·재시도와 예약 종단을 확인한다.
+- 전달: source 변경을 메인에 push하고 migration `202608250002`를 연결된 운영 Supabase에 적용했다. 원격 migration 이력 일치와 DB lint 오류 0건을 확인하고, 합성 사용자 A/B로 anon·authenticated RPC 차단, 소유자 RLS, 중복·capacity, 캠페인 8개 병렬 요청과 두 캠페인 전역 병렬 quota를 실제 검증했다. 검증 캠페인·예약·quota row·Auth 사용자는 모두 0건으로 정리했다. Anthropic 월 지출 상한 $15와 $10 알림, 자동 충전 중지도 별도 운영 설정으로 완료했다.
+- 남은 일: production hostname에서 실제 Turnstile site key·secret 조합, widget 만료·재시도와 예약 종단을 확인한다.
 
 ## 2026-08-25 — 기존 Oracle VM의 Kubernetes 밖 Compose 배포 자동화
 
