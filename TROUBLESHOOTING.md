@@ -1,5 +1,30 @@
 # Troubleshooting
 
+## 2026-08-26 — Vercel Ready 배포가 모든 경로에서 404를 반환함
+
+### 맥락과 영향
+
+`main`의 첫 Vercel Git production 배포는 install과 `next build`를 성공하고 Ready가 됐지만 공식 URL과 고유 deployment URL의 `/`, `/api/health`가 모두 Vercel `NOT_FOUND` 404를 반환했다. 공개 전 발견돼 사용자 데이터나 예약 요청은 유실되지 않았다.
+
+### 재현과 증거
+
+- deployment `dpl_5Hq9aMnKwdTJmxvJhV1ZDJfX1Rhd`는 source `b46ff14`를 clone하고 Next.js 16 route 20개와 Proxy를 정상 생성했다.
+- `vercel project inspect marketvaley`는 Root Directory `.`이지만 Framework Preset을 `Other`, Output Directory를 `public` 또는 `.`로 표시했다.
+- 배포 결과의 Builds는 `.` 하나와 0ms로 기록됐고 HTTP 응답에는 앱 헤더 대신 `x-vercel-error: NOT_FOUND`가 있었다.
+- 처음에는 Standard Protection이 deployment URL을 Vercel SSO로 보내 별도 장애처럼 보였으나 보호를 해제한 뒤에도 404가 같아 접근 제어와 산출물 인식 문제를 분리했다.
+
+### 원인과 대안
+
+Vercel 프로젝트를 Git 연결 전에 CLI로 만들면서 framework가 `Other`로 고정됐다. 패키지 설치와 `next build` 성공만으로는 이미 저장된 framework preset이 Next.js로 바뀌지 않아 함수와 route가 production 산출물로 배포되지 않았다. Dashboard에서만 preset을 바꾸면 재생성 시 같은 문제가 반복될 수 있어 저장소 계약으로 고정한다.
+
+### 해결과 회귀 방지
+
+루트 `vercel.json`에 공식 schema와 `"framework": "nextjs"`를 명시한다. Vercel Authentication은 사용자용 production 서비스에 맞게 해제하되 Protected Sourcemaps는 유지한다. 후속 배포에서는 project preset, build route, 공식 alias의 `/api/health` 200과 source version을 모두 확인하기 전 성공으로 기록하지 않는다.
+
+### 남은 위험과 예상 질문
+
+후속 Git 배포와 실제 HTTP 종단 검증 전까지 해결 완료가 아니다. 면접에서는 build 성공과 runtime 배포 성공을 왜 분리해서 검증해야 하는지, access protection 302와 platform 404를 어떤 증거로 분리했는지 설명할 수 있다.
+
 ## 2026-08-26 — Google OAuth client secret 운영 점검 중 노출 가능성 차단
 
 ### 맥락과 영향
