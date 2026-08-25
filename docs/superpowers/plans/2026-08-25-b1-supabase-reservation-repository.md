@@ -16,7 +16,7 @@
 
 - **진짜 소스 오브 트루스는 `lib/contracts/repository.ts`의 TypeScript 타입이다.** `docs/spec.md`의 "데이터베이스" 섹션은 이 플랜의 Task 1에서 고치기 전까지 `signals`/`signal_type`이라는 옛 이름으로 드리프트돼 있다 — 그 이름을 따라가지 않는다.
 - `ReservationRecord`는 `{ id: string; name: string; email: string; utm?: ReservationUtm; reservedAt: string }`이고 `signal_type` 같은 필드는 없다.
-- 기본값은 항상 `fixture`다. `CAMPAIGN_REPOSITORY_MODE=supabase`로 명시적으로 바꾸기 전까지 Supabase에 어떤 쓰기·읽기도 하지 않는다 (ADR-0014와 같은 이유 — 실수로 실제 프로젝트에 개발용 테스트 데이터가 쌓이는 것을 막는다).
+- 기본값은 항상 `fixture`다. `CAMPAIGN_REPOSITORY_MODE=supabase`로 명시적으로 바꾸기 전까지 Supabase에 어떤 쓰기·읽기도 하지 않는다 (ADR-0014와 같은 이유 — 실수로 실제 프로젝트에 개발용 테스트 데이터가 쌓이는 것을 막는다). B가 `docs/decisions/0015-use-openai-copy-generation-by-default.md`로 **생성기**(`CAMPAIGN_GENERATOR_MODE`) 기본값은 이미 `openai`로 바꿨지만, 그건 이번 플랜과 별개 결정이다 — repository는 계속 fixture가 기본이다. 문구 생성 API 실패는 재시도하면 그만이지만, 실제 DB에 잘못 쓴 데이터는 되돌리기 어렵기 때문에 위험 수준이 다르다.
 - live 모드에서 이메일 dedupe는 서버 전용 `SIGNAL_HASH_SECRET`으로 만든 HMAC-SHA256 `email_hash`와 DB `unique` 제약으로 한다 (평문 이메일 자체에 unique를 걸지 않는다 — `docs/spec.md:439` 기존 결정).
 - **실제 DB에 가짜 seed 예약자를 넣지 않는다.** fixture 모드의 "데모 데이터 초기화"는 seed 4건으로 되돌리지만, live 모드의 `reset`은 그냥 해당 캠페인의 예약을 전부 비운다 — 실제 고객 캠페인에 허위 데이터를 심는 건 `docs/validation.md`의 "측정값 진실성" 원칙과 충돌한다.
 - `SUPABASE_SERVICE_ROLE_KEY`는 브라우저 번들과 `lib/supabase/server.ts`(사용자 세션 client) 어디에도 노출하지 않는다. 이 플랜에서 만드는 client는 `app/api/**/route.ts` 같은 서버 전용 코드에서만 import한다.
@@ -860,7 +860,7 @@ git commit -m "feat: repository 선택을 CAMPAIGN_REPOSITORY_MODE 기준으로 
 
 **Files:**
 - Modify: `.env.example`
-- Create: `docs/decisions/0015-gate-supabase-repository-behind-explicit-mode.md`
+- Create: `docs/decisions/0016-gate-supabase-repository-behind-explicit-mode.md`
 
 - [ ] **Step 1: `.env.example`에 새 변수 추가**
 
@@ -885,7 +885,7 @@ SUPABASE_SERVICE_ROLE_KEY=
 - [ ] **Step 2: ADR 작성** (ADR-0014와 같은 톤·구조)
 
 ```markdown
-# ADR-0015: Supabase repository도 명시적 모드 전환 뒤에만 사용한다
+# ADR-0016: Supabase repository도 명시적 모드 전환 뒤에만 사용한다
 
 상태: 채택
 
@@ -920,8 +920,8 @@ SUPABASE_SERVICE_ROLE_KEY=
 - [ ] **Step 3: 커밋**
 
 ```bash
-git add .env.example docs/decisions/0015-gate-supabase-repository-behind-explicit-mode.md
-git commit -m "docs: Supabase repository 모드 게이팅을 ADR-0015로 기록"
+git add .env.example docs/decisions/0016-gate-supabase-repository-behind-explicit-mode.md
+git commit -m "docs: Supabase repository 모드 게이팅을 ADR-0016로 기록"
 ```
 
 ---
@@ -959,8 +959,8 @@ git push origin main
 ## 2026-08-25 — B-1: Supabase CampaignRepository 어댑터 구현
 
 - 목적: fixture 서버 메모리를 대체할 실제 Supabase 어댑터를 만들어 다중 기기 데모·실제 예약자 저장을 가능하게 한다
-- 변경: campaigns·campaign_reservations 테이블 마이그레이션, 서버 전용 service-role client, CAMPAIGN_REPOSITORY_MODE 모드 게이팅(ADR-0015), SupabaseCampaignRepository 전체 CampaignRepository 구현. docs/spec.md의 드리프트된 DB 스키마 문서를 실제 코드 계약과 재정렬
-- 영향 범위: supabase/migrations/, lib/supabase/serviceClient.ts, lib/supabase/campaignRepository.ts, lib/demo/repositoryConfig.ts, lib/demo/repository.ts, .env.example, docs/decisions/0015-*.md, docs/spec.md
+- 변경: campaigns·campaign_reservations 테이블 마이그레이션, 서버 전용 service-role client, CAMPAIGN_REPOSITORY_MODE 모드 게이팅(ADR-0016), SupabaseCampaignRepository 전체 CampaignRepository 구현. docs/spec.md의 드리프트된 DB 스키마 문서를 실제 코드 계약과 재정렬
+- 영향 범위: supabase/migrations/, lib/supabase/serviceClient.ts, lib/supabase/campaignRepository.ts, lib/demo/repositoryConfig.ts, lib/demo/repository.ts, .env.example, docs/decisions/0016-*.md, docs/spec.md
 - 결정: 기본값은 계속 fixture. live 모드의 reset은 가짜 seed를 넣지 않고 그냥 비운다
 - 검증: pnpm check(lint·typecheck·단위 테스트·build) 통과, fixture 기본 경로는 변경 없음
 - 전달: [실제 커밋 해시로 채운다]
