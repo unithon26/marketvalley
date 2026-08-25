@@ -9,6 +9,7 @@ const result = spawnSync("pnpm", ["exec", "next", "build"], {
     CAMPAIGN_REPOSITORY_MODE: "fixture",
     ANTHROPIC_API_KEY: "bundle-test-anthropic-secret",
     SUPABASE_SECRET_KEY: "bundle-test-supabase-secret",
+    SUPABASE_SERVICE_ROLE_KEY: "bundle-test-supabase-legacy-service-role",
     SIGNAL_HASH_SECRET: "bundle-test-hmac-secret-32-bytes-minimum",
     NEXT_PUBLIC_SITE_URL: "http://localhost:3000",
     NEXT_PUBLIC_SUPABASE_URL: "https://project.supabase.co",
@@ -22,7 +23,10 @@ if (result.status !== 0) process.exit(result.status ?? 1);
 
 const dashboardHtml = readFileSync(".next/server/app/dashboard.html", "utf8");
 
-if (!dashboardHtml.includes("로그인 상태 확인 중") || dashboardHtml.includes("로그인 준비 중")) {
+if (
+  !dashboardHtml.includes("로그인 상태 확인 중")
+  || dashboardHtml.includes("로그인 준비 중")
+) {
   throw new Error("Next.js client bundle이 설정된 인증 GNB 초기 상태를 렌더링하지 않았습니다.");
 }
 
@@ -35,6 +39,7 @@ if (
   clientChunkText.includes("bundle-test-anthropic-secret")
   || clientChunkText.includes("ANTHROPIC_API_KEY")
   || clientChunkText.includes("bundle-test-supabase-secret")
+  || clientChunkText.includes("bundle-test-supabase-legacy-service-role")
   || clientChunkText.includes("bundle-test-hmac-secret-32-bytes-minimum")
 ) {
   throw new Error("서버 전용 Anthropic 또는 Supabase 설정이 client bundle에 포함됐습니다.");

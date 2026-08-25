@@ -310,3 +310,11 @@
 - 검증: `pnpm check`의 lint·typecheck·단위 테스트 26파일 115개, configured server-secret client bundle smoke, production Chromium E2E 20개, coverage, high audit, peer dependency, diff 검사가 모두 통과했다. 커버리지는 statements 83.58%, branches 76.19%, functions 90.13%, lines 87.93%다. 로컬 브라우저에서 실제 카드 5장, 4:5 비율, 모바일 230px 카드 스크롤과 첫 장·마지막 장 표시를 직접 확인했다.
 - 전달: 기능 변경과 작업 기록을 비공개 `unithon26/marketvalley`의 `main`에 전달한다. 제품 배포와 행사 제출은 수행하지 않는다.
 - 남은 일: 이 작업 범위의 제품 변경은 없다. 표지 `32`·`34`를 실제 사용한다면 기존 사진 사용권 확인은 계속 필요하다.
+
+## 2026-08-25 — 서비스 랜딩 CI 복구와 공개 주장 경계 보정
+
+- 목적: 개발자 A가 교체한 서비스 랜딩을 기존 인증·배포 안전성 검사와 통합하고, 아직 계측하거나 제공하지 않는 성과를 공개 화면이 주장하지 않게 한다.
+- 변경: 인증 GNB가 `/dashboard`로 이동한 구조에 맞춰 configured production bundle smoke의 HTML 검사 대상과 전체 E2E의 이동·진입·필터 경로를 바꿨다. 새·legacy Supabase server key 모두 client bundle 비노출 sentinel로 고정했다. 새 랜딩의 가상 노출·CTR·업계 평균·예약자 이메일, `시장성 우수`, 실제 Meta 집행·가격·효능 문구를 제거하고, 사라지는 반복 업무·동의 기반 예약자명단·`계측 연결 전`·사람의 다음 판단으로 같은 레이아웃을 채웠다. 루트 E2E에 필수 안전 문구와 허위 성과 비노출 경계를 추가했다.
+- 실패와 해결: `main` push `9d6c4d5`의 GitHub Actions run `32827728636`은 이전 `/` HTML에서 인증 초기 상태를 찾다가 실패했다. 인증 검사를 삭제하지 않고 실제 경계인 `/dashboard` build artifact를 검사하도록 수정했으며 자세한 원인은 `TROUBLESHOOTING.md`에 기록했다.
+- 검증: focused `pnpm test:auth-bundle`, `pnpm check`의 lint·typecheck·단위 테스트 26파일 115개, 루트 랜딩 production Chromium E2E 1개가 통과했다. 첫 전체 production E2E는 이전 route를 참조한 3개가 실패하고 18개가 통과해 테스트 경로를 보정했다. 최종 configured bundle smoke, production build, Chromium E2E 21개, coverage, high audit, peer dependency와 diff 검사가 모두 통과했다. 커버리지는 statements 83.58%, branches 76.19%, functions 90.13%, lines 87.93%다.
+- 전달과 남은 일: 변경은 로컬 작업 트리에 있다. `main` push와 GitHub Actions 성공을 확인한 뒤 해당 커밋을 별도 발표 저장소의 무자격증명 fixture snapshot으로 고정한다.

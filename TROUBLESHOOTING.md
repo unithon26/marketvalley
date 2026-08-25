@@ -1,5 +1,46 @@
 # Troubleshooting
 
+## 2026-08-25 — 루트 랜딩 교체 뒤 인증 bundle smoke가 이전 route를 검사함
+
+### 맥락과 실제 영향
+
+서비스 소개 랜딩을 `/`에 두고 인증 GNB가 있는 프로젝트 화면을 `/dashboard`로 옮긴 뒤에도,
+configured production build는 공개 Supabase 설정을 client bundle에 포함하고 서버 비밀값을 포함하지
+않아야 했다. `main` push의 lint, typecheck와 단위 테스트는 통과했지만 GitHub Actions run
+`32827728636`은 `pnpm test:auth-bundle`에서 실패해 build와 E2E가 실행되지 않았다. 배포 전 CI에서
+발견돼 사용자 영향은 없다.
+
+### 재현·증거·근본 원인
+
+1. 공개 Supabase dummy 설정과 서버 전용 sentinel을 주입해 production build를 만든다.
+2. smoke script는 정적 `/` HTML에서 `로그인 상태 확인 중`을 찾는다.
+3. 새 `/`에는 인증 GNB가 없고 같은 컴포넌트는 `/dashboard`로 이동했으므로 검사가 실패한다.
+4. 서버 전용 sentinel의 client chunk 비노출 검사는 실행 전까지 정상 유지됐다.
+5. smoke 수정 뒤 전체 E2E를 실행하면 세 시나리오가 이전 `/`의 프로젝트 GNB·`새 광고` 링크·필터를
+   계속 찾아 실패했다. 새 랜딩 focused E2E만 실행한 기존 검증으로는 이 경로 의존성을 발견하지 못했다.
+
+제품 회귀가 아니라 검증 대상 route가 화면 이동을 따라가지 못한 것이 원인이다. 인증 검사를
+삭제하거나 새 랜딩에 불필요한 GNB를 되돌리는 대신, smoke가 실제 인증 경계인
+`.next/server/app/dashboard.html`을 검사하도록 변경했다.
+
+전체 E2E의 이탈 목적지는 `/dashboard`로, 루트 제품 진입은 새 랜딩 CTA로, 프로젝트 필터 검증은
+`/dashboard` 직접 진입으로 맞췄다. legacy Supabase service-role key도 별도 sentinel로 추가해 새 secret
+key와 같은 client bundle 비노출 경계를 적용했다.
+
+### 검증·회귀 방지·남은 위험
+
+focused `pnpm test:auth-bundle`과 전체 품질 게이트, 새 `main` CI에서 configured 인증 초기 상태와
+Anthropic·Supabase·HMAC 서버 secret 비노출을 다시 확인한다. 앞으로 인증 UI route가 바뀌면 화면
+E2E뿐 아니라 이 build artifact 검사 대상도 함께 갱신해야 한다. production domain의 실제 OAuth는
+배포 설정 뒤 별도로 검증한다.
+
+### 면접 질문과 답변 근거
+
+- 왜 smoke를 제거하지 않았나? client/server 환경변수 경계는 단위 테스트만으로 확인할 수 없고 실제
+  production bundle 산출물을 검사해야 하기 때문이다.
+- 왜 `/`에 GNB를 다시 넣지 않았나? 인증 경계는 제품 dashboard에 있고 서비스 소개 랜딩의 구조를
+  검증 코드에 맞추면 제품 설계를 뒤집게 되기 때문이다.
+
 ## 2026-08-25 — Anthropic 전체 스키마가 문법 복잡도 제한으로 생성 요청을 거절함
 
 ### 맥락과 기대 동작

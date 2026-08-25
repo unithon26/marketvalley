@@ -79,7 +79,7 @@
 .cardNumber { display: inline-flex; width: 46px; height: 46px; align-items: center; justify-content: center; margin-bottom: 19px; border-radius: 12px; background: color-mix(in oklch, var(--mv-primary) 10%, transparent); color: var(--mv-primary); font-size: 19px; font-weight: 800; }
 .problemCard h3, .stepCard h3 { margin: 0 0 14px; font-size: 20px; line-height: 1.4; letter-spacing: -0.015em; }
 .problemCard h3 span:last-child br, .stepCard h3 span:last-child br { display: none; }
-.problemCard blockquote { margin: 0; padding: 14px 16px; border-radius: 10px; background: var(--mv-muted); color: var(--mv-muted-fg); font-size: 14px; line-height: 1.65; }
+.problemCard > p { margin: 0; padding: 14px 16px; border-radius: 10px; background: var(--mv-muted); color: var(--mv-muted-fg); font-size: 14px; line-height: 1.65; }
 .stepCard > span { display: block; margin-bottom: 16px; color: var(--mv-primary); font-size: 13px; font-weight: 800; letter-spacing: 0.06em; }
 .stepCard p { margin: 0; color: var(--mv-muted-fg); font-size: 15px; line-height: 1.72; }
 .promiseList { justify-content: center; margin-top: 44px; color: var(--mv-fg); font-size: 15px; font-weight: 650; }
@@ -104,6 +104,7 @@
 .metricCard > div:first-child > span { font-size: 15px; font-weight: 700; }
 .metricCard > div:first-child > strong { color: var(--mv-primary); font-size: 26px; line-height: 1; }
 .metricCard > div:first-child small { margin-left: 2px; font-size: 14px; }
+.metricCard > p { margin: auto 0 0; color: var(--mv-muted-fg); font-size: 14px; line-height: 1.7; }
 .metricCard > svg { width: 100%; margin-top: auto; }
 .metricCard rect { fill: var(--mv-primary); opacity: 0.84; }
 .benchmark { display: flex; flex-direction: column; gap: 13px; margin-top: auto; padding-top: 26px; }

@@ -105,9 +105,13 @@ test("Supabase 미설정 GNB는 인증 요청 없이 준비 상태를 표시한�
 
 test("서비스 루트는 시장 검증 랜딩과 제품 진입 CTA를 보여준다", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /아이디어가 돈이 되는지/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /반복 제작을 지웁니다/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /내 아이디어 검증하기/ }).first()).toHaveAttribute("href", "/new");
-  await expect(page.getByRole("heading", { name: /이런 리포트를 받습니다/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /실제 반응은 이렇게만 보여줍니다/ })).toBeVisible();
+  await expect(page.getByText("Meta 자동 집행 없음")).toBeVisible();
+  await expect(page.getByText("계측 연결 전")).toBeVisible();
+  await expect(page.getByText("이메일 마스킹")).toBeVisible();
+  await expect(page.locator("body")).not.toContainText(/시장성 우수|4,312|업계 평균|광고 집행|29만원|하루만에/u);
   await expectNoHorizontalOverflow(page);
 });
 
@@ -254,7 +258,7 @@ test("fixture 생성부터 산출물, 예약, 판단, 초기화까지 실제 API
   captureRuntimeErrors(page, runtimeErrors);
   const visitorEmail = "e2e-flow@example.com";
 
-  await page.goto("/dashboard");
+  await page.goto("/");
   await context.grantPermissions(
     ["clipboard-read", "clipboard-write"],
     { origin: new URL(page.url()).origin },
@@ -262,7 +266,7 @@ test("fixture 생성부터 산출물, 예약, 판단, 초기화까지 실제 API
   await page.evaluate(() => window.localStorage.clear());
 
   await expect(page.locator("body")).not.toContainText(/캠페인|CampaignSpec/u);
-  await page.getByRole("link", { name: "새 광고" }).click();
+  await page.getByRole("link", { name: /내 아이디어 검증하기/ }).first().click();
   await page.getByRole("button", { name: "예시 불러오기" }).click();
   await page.getByRole("button", { name: "다음" }).click();
   await page.getByRole("button", { name: /광고 만들기/ }).click();
