@@ -21,7 +21,7 @@ export default function HomePage() {
 
   return (
     <div className="app-shell">
-      <SiteHeader />
+      <SiteHeader compact />
       <main className="dashboard page-container">
         <div className="dashboard-heading">
           <div><span className="eyebrow">MARKET VALIDATION WORKSPACE</span><h1>전체 프로젝트</h1><p>아이디어에서 첫 시장 반응까지, 반복 제작 없이 한 흐름으로 관리하세요.</p></div>

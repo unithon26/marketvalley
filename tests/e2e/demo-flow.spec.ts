@@ -113,7 +113,8 @@ test("서비스 루트는 Figma 메인 프로젝트 화면과 제품 플로우�
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "전체 프로젝트" })).toBeVisible();
   await expect(page.getByText("마켓밸리 데모", { exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "프로젝트" })).toHaveAttribute("href", "/");
+  await expect(page.locator(".site-header")).toHaveClass(/site-header-compact/);
+  await expect(page.getByRole("navigation", { name: "주요 메뉴" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "새 광고" })).toHaveAttribute("href", "/new");
   await expect(page.getByRole("link", { name: /마감한입/ })).toHaveAttribute("href", "/campaigns/demo");
   await expect(page.locator("main")).not.toContainText(/THE PROBLEM|THE METHOD|START VALIDATION/u);
