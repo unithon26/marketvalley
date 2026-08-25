@@ -131,11 +131,9 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
 
   const canContinue = step === 1 ? background.trim().length >= 20 : solution.trim().length >= 20;
   const usesLiveAI = generatorStatus.mode !== "fixture";
-  const generatorNotice = usesLiveAI
-    ? generatorStatus.ready
-      ? null
-      : "AI 문구 생성 · 회전된 API 키 설정 필요"
-    : "안전 데모 · AI 호출 없음";
+  const generatorNotice = usesLiveAI && !generatorStatus.ready
+    ? "AI 문구 생성 · 회전된 API 키 설정 필요"
+    : null;
 
   function loadExample() {
     setBackground(example.background);
