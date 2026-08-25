@@ -6,14 +6,15 @@ const longEnough = "발표용 입력 검증을 통과하기 위한 스무 글자
 
 describe("FixtureCampaignGenerator", () => {
   it.each([
-    ["마감 뒤 남은 메뉴와 폐기를 줄이려는 카페 사장님입니다.", "마감한입"],
-    ["예약 취소로 생긴 동네 공방 빈자리를 알리고 싶습니다.", "동네공방 빈자리"],
-    ["독립 강사가 매번 반복 문의에 답하느라 수업 준비를 못합니다.", "클래스 문의형"],
-  ])("키워드에 맞는 reference template을 선택한다", async (background, projectName) => {
+    ["마감 뒤 남은 메뉴와 폐기를 줄이려는 카페 사장님입니다.", "마감한입", "cover-31", "intro-1"],
+    ["예약 취소로 생긴 동네 공방 빈자리를 알리고 싶습니다.", "동네공방 빈자리", "cover-32", "intro-6"],
+    ["독립 강사가 매번 반복 문의에 답하느라 수업 준비를 못합니다.", "클래스 문의형", "cover-34", "intro-7"],
+  ])("키워드에 맞는 reference template과 디자인을 선택한다", async (background, projectName, carouselCover, landingIntro) => {
     const generator = new FixtureCampaignGenerator();
     const spec = await generator.generate({ background: `${background} ${longEnough}`, solution: longEnough });
 
     expect(spec.project.name).toBe(projectName);
+    expect(spec.templates).toEqual({ carouselCover, landingIntro });
   });
 
   it("키워드가 없으면 발표 기본 template을 사용한다", () => {

@@ -70,12 +70,14 @@ Figma 발표 흐름은 별도 가설 승인 화면을 두지 않는다. `/new`�
 
 고정 섹션:
 
-1. Hero와 CTA
+1. Figma 고정 도입부 템플릿과 Hero CTA
 2. 고객의 문제 3개
 3. 제안 가치 3개
 4. 작동 방식 3단계
 5. FAQ 3개
 6. 마지막 CTA
+
+`CampaignSpec.templates.landingIntro`가 Figma의 고정 도입부 `intro-1`부터 `intro-7` 중 하나를 선택한다. 선택된 레이아웃만 달라지고 이후 섹션, CTA 질문과 응답 계약은 모두 같은 렌더러를 재사용한다. 자유 배치나 임의 HTML 생성은 하지 않는다.
 
 CTA를 누르면 `CampaignSpec.validation.signal`의 질문과 세 선택지를 보여준다. 제출된 답은 긍정·중립·부정 중 하나의 익명 `signal_response`로 기록한다. P0에서는 이메일, 이름, 전화번호 등 개인정보를 받지 않는다.
 
@@ -95,6 +97,8 @@ CTA를 누르면 `CampaignSpec.validation.signal`의 질문과 세 선택지를 
 3. Insight
 4. Solution
 5. CTA
+
+첫 번째 Hook 장은 `CampaignSpec.templates.carouselCover`에 따라 Figma 표지 `cover-31`, `cover-32`, `cover-34` 중 하나를 사용한다. 나머지 네 장은 같은 5장 메시지 흐름 안에서 결정적으로 조판한다.
 
 AI는 문구와 선택적 배경 이미지 프롬프트만 만든다. 모든 텍스트는 디자이너가 정의한 React/CSS 템플릿으로 조판한다.
 
@@ -197,7 +201,7 @@ P1 때문에 P0 통합이나 발표 준비가 1시간 이상 밀리면 즉시 P1
 
 ```ts
 type CampaignSpec = {
-  schemaVersion: "1";
+  schemaVersion: "2";
   generation: {
     promptVersion: string;
     model: string;
@@ -234,6 +238,10 @@ type CampaignSpec = {
     primaryColor: string;
     accentColor: string;
     visualDirection: string;
+  };
+  templates: {
+    carouselCover: "cover-31" | "cover-32" | "cover-34";
+    landingIntro: "intro-1" | "intro-2" | "intro-3" | "intro-4" | "intro-5" | "intro-6" | "intro-7";
   };
   messaging: {
     valueProposition: string;
@@ -486,14 +494,14 @@ OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 �
 
 1. 30분 안에 제품명 후보 3개와 한 문장 톤 제안
 2. 90분 안에 색, 타이포, 여백, radius를 포함한 토큰 확정
-3. 랜딩페이지 한 템플릿과 캐러셀 5장 레이아웃 확정
+3. 랜딩 도입부 고정안 7종과 카드뉴스 표지 3종, 캐러셀 5장 레이아웃 확정
 4. 개발자가 바로 옮길 수 있는 실제 문구 길이의 Figma 프레임 제공
 5. 생성 중, 빈 상태, 오류, 사실 확인 경고 상태 디자인
 6. 구현 화면을 2회 QA하고 우선순위별 수정 목록 전달
 7. `before/after` 업무 흐름, 제품 데모, 사람이 되찾은 판단을 중심으로 발표 자료 제작
 8. 데모용 샘플 캠페인의 시각 자산과 백업 영상 구성
 
-디자인은 한 가지 강한 방향만 구현한다. 테마 선택기나 자유 편집기는 만들지 않는다.
+디자인은 전달된 고정 템플릿만 구현한다. 테마 선택기나 자유 편집기는 만들지 않는다.
 
 그 외 팀원이 있다면 실제 사용자 인터뷰, 현재 업무 단계 측정, 발표 스토리, 비즈니스 모델과 현장 규정 확인을 맡긴다. 개발자와 디자이너가 이를 동시에 떠안지 않는다.
 

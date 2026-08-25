@@ -129,6 +129,10 @@ test("fixture 생성부터 산출물, 응답, 판단, 초기화까지 실제 API
   const campaignResponse = await request.get(`/api/campaigns?id=${campaignId}`);
   expect(campaignResponse.ok()).toBe(true);
   const campaign = await campaignResponse.json();
+  await expect(page.locator(".carousel-card-1")).toHaveAttribute(
+    "data-carousel-cover-template",
+    campaign.spec.templates.carouselCover,
+  );
   const copyCases = [
     { cardLabel: "게시 문구", noticeLabel: "게시 문구", value: campaign.spec.messaging.caption },
     { cardLabel: "후킹 문구 3개", noticeLabel: "후킹 문구", value: campaign.spec.messaging.hooks.join("\n") },
@@ -164,6 +168,8 @@ test("fixture 생성부터 산출물, 응답, 판단, 초기화까지 실제 API
   expect(metaText).toContain(`Destination URL: ${new URL(page.url()).origin}/p/${campaign.slug}`);
   expect(metaText).toContain(`Media files: ${carouselFileNames.join(", ")}`);
   expect(metaText).toContain(campaign.spec.brand.visualDirection);
+  expect(metaText).toContain(`Carousel cover template: ${campaign.spec.templates.carouselCover}`);
+  expect(metaText).toContain(`Landing intro template: ${campaign.spec.templates.landingIntro}`);
 
   const [landingPage] = await Promise.all([
     context.waitForEvent("page"),
@@ -171,6 +177,10 @@ test("fixture 생성부터 산출물, 응답, 판단, 초기화까지 실제 API
   ]);
   captureRuntimeErrors(landingPage, runtimeErrors);
   await landingPage.waitForLoadState("domcontentloaded");
+  await expect(landingPage.locator(".public-landing")).toHaveAttribute(
+    "data-landing-template",
+    campaign.spec.templates.landingIntro,
+  );
   await landingPage.getByRole("button", { name: "네, 써보고 싶어요" }).click();
   await landingPage.getByRole("button", { name: "익명으로 응답하기" }).click();
   await expect(landingPage.getByRole("heading", { name: "응답이 기록됐어요" })).toBeVisible();
@@ -349,6 +359,10 @@ test("각 reference fixture가 고유 slug, SEO와 브랜드 테마를 유지한
     expect((await request.get(`/p/${campaign.id}`)).status()).toBe(404);
     await page.goto(`/p/${campaign.slug}`);
     await expect(page).toHaveTitle(campaign.spec.landing.seoTitle);
+    await expect(page.locator(".public-landing")).toHaveAttribute(
+      "data-landing-template",
+      campaign.spec.templates.landingIntro,
+    );
     const theme = await page.locator(".public-landing").evaluate((element) => {
       const style = getComputedStyle(element);
       return {
@@ -378,6 +392,106 @@ test("각 reference fixture가 고유 slug, SEO와 브랜드 테마를 유지한
   }
 
   expect(campaigns.map((campaign) => campaign.spec.project.name)).toEqual(["동네공방 빈자리", "클래스 문의형"]);
+  expect(campaigns.map((campaign) => campaign.spec.templates)).toEqual([
+    { carouselCover: "cover-32", landingIntro: "intro-6" },
+    { carouselCover: "cover-34", landingIntro: "intro-7" },
+  ]);
+});
+
+test("Figma 표지 3종과 랜딩 도입부 7종만 결정적으로 렌더링한다", async ({ page, request }) => {
+  const generateResponse = await request.post("/api/generate", {
+    data: {
+      background: "마감 뒤 남은 메뉴와 게시물을 매번 다시 만드는 카페 운영자의 반복 업무를 줄이려 합니다.",
+      solution: "남은 메뉴를 한 번 입력해 공개 안내와 게시 자료, 익명 관심 신호를 함께 준비합니다.",
+    },
+  });
+  expect(generateResponse.ok()).toBe(true);
+  const { spec: baseSpec } = await generateResponse.json();
+  const landingTemplates = ["intro-1", "intro-2", "intro-3", "intro-4", "intro-5", "intro-6", "intro-7"] as const;
+  const coverTemplates = ["cover-31", "cover-32", "cover-34"] as const;
+  const exportedCovers = new Set<string>();
+
+  for (const [index, landingIntro] of landingTemplates.entries()) {
+    const carouselCover = coverTemplates[index % coverTemplates.length];
+    const spec = structuredClone(baseSpec);
+    spec.templates = { carouselCover, landingIntro };
+    const publishResponse = await request.post("/api/campaigns", {
+      data: { draftId: crypto.randomUUID(), spec },
+    });
+    expect(publishResponse.ok()).toBe(true);
+    const campaign = await publishResponse.json();
+
+    await page.goto(`/campaigns/${campaign.id}`);
+    await expect(page.locator(".carousel-card-1")).toHaveAttribute(
+      "data-carousel-cover-template",
+      carouselCover,
+    );
+    if (!exportedCovers.has(carouselCover)) {
+      const [download] = await Promise.all([
+        page.waitForEvent("download"),
+        page.getByRole("button", { name: "캐러셀 ZIP 다운로드" }).click(),
+      ]);
+      const zip = await JSZip.loadAsync(await downloadBytes(download));
+      const coverBytes = await zip.file("01-hook.png")!.async("uint8array");
+      expect(pngDimensions(coverBytes)).toEqual({ width: 1080, height: 1350 });
+      expect(coverBytes.byteLength).toBeGreaterThan(carouselCover === "cover-31" ? 10_000 : 100_000);
+      exportedCovers.add(carouselCover);
+    }
+
+    await page.goto(`/p/${campaign.slug}`);
+    await expect(page.locator(".public-landing")).toHaveAttribute(
+      "data-landing-template",
+      landingIntro,
+    );
+    await expect(page.locator(".landing-intro-frame h1")).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+  }
+
+  for (const assetPath of ["/figma-templates/cover-32.jpg", "/figma-templates/cover-34.jpg"]) {
+    const assetResponse = await request.get(assetPath);
+    expect(assetResponse.ok()).toBe(true);
+    expect(assetResponse.headers()["content-type"]).toContain("image/jpeg");
+  }
+
+  for (const carouselCover of coverTemplates) {
+    const boundarySpec = structuredClone(baseSpec);
+    boundarySpec.project.name = "가".repeat(80);
+    boundarySpec.project.oneLiner = "나".repeat(120);
+    boundarySpec.messaging.hooks[0] = "다".repeat(70);
+    boundarySpec.carousel.hookBody = "라".repeat(180);
+    boundarySpec.templates = { carouselCover, landingIntro: "intro-2" };
+    const publishResponse = await request.post("/api/campaigns", {
+      data: { draftId: crypto.randomUUID(), spec: boundarySpec },
+    });
+    expect(publishResponse.ok()).toBe(true);
+    const campaign = await publishResponse.json();
+
+    await page.goto(`/campaigns/${campaign.id}`);
+    const coverBounds = await page.locator(".carousel-card-1").evaluate((element) => {
+      const root = element.getBoundingClientRect();
+      const body = element.querySelector<HTMLElement>(".carousel-cover-copy p")!.getBoundingClientRect();
+      return {
+        clientHeight: element.clientHeight,
+        scrollHeight: element.scrollHeight,
+        copyBottom: body.bottom - root.top,
+      };
+    });
+    if (carouselCover === "cover-31") {
+      expect(coverBounds.scrollHeight).toBeLessThanOrEqual(coverBounds.clientHeight);
+    }
+    expect(coverBounds.copyBottom, carouselCover).toBeLessThanOrEqual(coverBounds.clientHeight);
+
+    if (carouselCover === "cover-31") {
+      await page.goto(`/p/${campaign.slug}`);
+      const introBounds = await page.locator(".landing-intro-frame").evaluate((element) => {
+        const heading = element.querySelector("h1")!.getBoundingClientRect();
+        const art = element.querySelector(".intro-full-art")!.getBoundingClientRect();
+        return { headingBottom: heading.bottom, artTop: art.top };
+      });
+      expect(introBounds.headingBottom).toBeLessThanOrEqual(introBounds.artTop);
+      await expectNoHorizontalOverflow(page);
+    }
+  }
 });
 
 test("공개 응답 저장 실패를 성공으로 표시하지 않고 재시도한다", async ({ page }) => {

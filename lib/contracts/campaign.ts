@@ -14,8 +14,24 @@ export const carouselContentSchema = z.object({
   body: shortText(90),
 }).strict();
 
+export const carouselCoverTemplateSchema = z.enum([
+  "cover-31",
+  "cover-32",
+  "cover-34",
+]);
+
+export const landingIntroTemplateSchema = z.enum([
+  "intro-1",
+  "intro-2",
+  "intro-3",
+  "intro-4",
+  "intro-5",
+  "intro-6",
+  "intro-7",
+]);
+
 export const campaignSpecSchema = z.object({
-  schemaVersion: z.literal("1"),
+  schemaVersion: z.literal("2"),
   generation: z.object({
     promptVersion: shortText(80),
     model: shortText(100),
@@ -64,6 +80,10 @@ export const campaignSpecSchema = z.object({
     primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "6자리 HEX 색상이어야 합니다."),
     accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "6자리 HEX 색상이어야 합니다."),
     visualDirection: shortText(240),
+  }).strict(),
+  templates: z.object({
+    carouselCover: carouselCoverTemplateSchema,
+    landingIntro: landingIntroTemplateSchema,
   }).strict(),
   messaging: z.object({
     valueProposition: shortText(40),
@@ -120,6 +140,8 @@ export type CampaignSpec = z.infer<typeof campaignSpecSchema>;
 export type SignalOption = z.infer<typeof signalOptionSchema>;
 export type SignalOptionId = z.infer<typeof signalOptionIdSchema>;
 export type CarouselContent = z.infer<typeof carouselContentSchema>;
+export type CarouselCoverTemplate = z.infer<typeof carouselCoverTemplateSchema>;
+export type LandingIntroTemplate = z.infer<typeof landingIntroTemplateSchema>;
 
 export const nextActionSchema = z.enum(["continue", "revise", "pause"]);
 export type NextAction = z.infer<typeof nextActionSchema>;

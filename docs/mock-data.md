@@ -15,6 +15,14 @@
 
 fixture 원본과 reference template 3종은 `lib/demo/demo-campaign.ts`에서 관리한다. `lib/demo/demoCampaign.ts`는 기존 import를 위한 하위 호환 shim이다. 화면별로 문구를 복사하지 않고 랜딩, 캐러셀, 게시 문구와 신호 질문이 모두 같은 `CampaignSpec`을 읽는다.
 
+각 fixture는 Figma 산출물 템플릿 선택도 함께 고정한다.
+
+- `마감한입`: `cover-31`, `intro-1`
+- `동네공방 빈자리`: `cover-32`, `intro-6`
+- `클래스 문의형`: `cover-34`, `intro-7`
+
+템플릿 ID는 `CampaignSpec.templates`에 저장되며 브랜드 tone에서 추론하지 않는다. OpenAI adapter를 연결할 때도 지원 목록 밖의 ID는 Zod 검증에서 거절한다.
+
 ## 수정 절차
 
 1. `demoIdeaInput`의 아이디어, 고객, 신호 유형과 톤을 수정한다.

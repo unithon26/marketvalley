@@ -6,13 +6,13 @@ import { FixtureCampaignRepository } from "@/lib/demo/fixtureRepository";
  * 뒤에는 초기 상태로 돌아가며, 실제 다중 기기 저장은 다음 Supabase adapter가 담당한다.
  */
 const fixtureGlobal = globalThis as typeof globalThis & {
-  __marketvalleyFixtureCampaignRepositoryV3?: FixtureCampaignRepository;
+  __marketvalleyFixtureCampaignRepositoryV4?: FixtureCampaignRepository;
 };
 
 export const fixtureCampaignRepository =
-  fixtureGlobal.__marketvalleyFixtureCampaignRepositoryV3
+  fixtureGlobal.__marketvalleyFixtureCampaignRepositoryV4
   ?? new FixtureCampaignRepository();
 
-fixtureGlobal.__marketvalleyFixtureCampaignRepositoryV3 = fixtureCampaignRepository;
+fixtureGlobal.__marketvalleyFixtureCampaignRepositoryV4 = fixtureCampaignRepository;
 
 export const campaignRepository: CampaignRepository = fixtureCampaignRepository;

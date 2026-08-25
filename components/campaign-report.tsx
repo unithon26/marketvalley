@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import JSZip from "jszip";
 import { CheckIcon, CopyIcon, DownloadIcon, ExternalIcon } from "@/components/icons";
-import { CarouselCard, carouselFileNames } from "@/components/renderers/carousel-card";
+import { CarouselCard, carouselCoverAssets, carouselFileNames } from "@/components/renderers/carousel-card";
 import type { CampaignSpec, NextAction } from "@/lib/contracts/campaign";
 import type { CampaignResponse } from "@/lib/contracts/api";
 import type { SignalSummary } from "@/lib/contracts/repository";
@@ -112,6 +112,16 @@ export function CampaignReport({
   }
 
   async function renderCards() {
+    await document.fonts.ready;
+    const coverAsset = carouselCoverAssets[spec.templates.carouselCover];
+    if (coverAsset) {
+      await new Promise<void>((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error("carousel_cover_asset_failed"));
+        image.src = coverAsset;
+      });
+    }
     return Promise.all(cardRefs.current.map(async (node, index) => {
       if (!node) throw new Error(`${index + 1}번 카드 렌더러가 없습니다.`);
       return toPng(node, { width: 1080, height: 1350, pixelRatio: 1, cacheBust: false });
@@ -148,6 +158,8 @@ export function CampaignReport({
       `Destination URL: ${destinationUrl}`,
       `Hashtags: ${spec.messaging.hashtags.join(" ")}`,
       `Visual direction: ${spec.brand.visualDirection}`,
+      `Carousel cover template: ${spec.templates.carouselCover}`,
+      `Landing intro template: ${spec.templates.landingIntro}`,
       `Media files: ${carouselFileNames.join(", ")}`,
     ].join("\n\n");
     try {

@@ -15,7 +15,7 @@ function defineCampaign(spec: CampaignSpec): CampaignSpec {
 }
 
 export const demoCampaign = defineCampaign({
-  schemaVersion: "1",
+  schemaVersion: "2",
   generation: {
     promptVersion: "demo-fixture-v2-closing-discount",
     model: "deterministic-demo-fixture",
@@ -59,6 +59,10 @@ export const demoCampaign = defineCampaign({
     primaryColor: "#214A3D",
     accentColor: "#E5A94A",
     visualDirection: "짙은 초록과 크림색 바탕에 따뜻한 커피빛 질감, 작은 메뉴 카드와 둥근 라벨을 사용합니다.",
+  },
+  templates: {
+    carouselCover: "cover-31",
+    landingIntro: "intro-1",
   },
   messaging: {
     valueProposition: "마감 전 남은 메뉴, 이웃에게 바로 알리세요.",
@@ -127,7 +131,7 @@ export const demoCampaign = defineCampaign({
 });
 
 export const workshopVacancyCampaign = defineCampaign({
-  schemaVersion: "1",
+  schemaVersion: "2",
   generation: {
     promptVersion: "demo-fixture-v2-workshop-vacancy",
     model: "deterministic-demo-fixture",
@@ -171,6 +175,10 @@ export const workshopVacancyCampaign = defineCampaign({
     primaryColor: "#5A3E36",
     accentColor: "#D58C5B",
     visualDirection: "따뜻한 흙빛과 아이보리 바탕에 손으로 만든 질감, 작은 공예 도구와 둥근 예약 카드를 사용합니다.",
+  },
+  templates: {
+    carouselCover: "cover-32",
+    landingIntro: "intro-6",
   },
   messaging: {
     valueProposition: "갑자기 생긴 공방 빈자리, 한 번에 알리세요.",
@@ -239,7 +247,7 @@ export const workshopVacancyCampaign = defineCampaign({
 });
 
 export const classInquiryCampaign = defineCampaign({
-  schemaVersion: "1",
+  schemaVersion: "2",
   generation: {
     promptVersion: "demo-fixture-v2-class-inquiry",
     model: "deterministic-demo-fixture",
@@ -283,6 +291,10 @@ export const classInquiryCampaign = defineCampaign({
     primaryColor: "#263B5A",
     accentColor: "#6EA6D9",
     visualDirection: "차분한 남색과 밝은 하늘색 바탕에 정돈된 수업 카드, 체크 표시와 넉넉한 여백을 사용합니다.",
+  },
+  templates: {
+    carouselCover: "cover-34",
+    landingIntro: "intro-7",
   },
   messaging: {
     valueProposition: "반복 문의 답변은 맡기고 수업 준비에 집중하세요.",

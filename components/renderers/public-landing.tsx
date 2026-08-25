@@ -13,6 +13,116 @@ function isSignalResponse(value: unknown): value is { alreadyResponded: boolean 
     && typeof value.alreadyResponded === "boolean";
 }
 
+function IntroAction({ spec }: { spec: CampaignSpec }) {
+  return (
+    <div className="landing-hero-copy landing-intro-action">
+      <p>{spec.landing.hero.supportingText}</p>
+      <a href="#signal" className="landing-primary-button">{spec.validation.signal.ctaLabel}</a>
+      <small>연락처 없이 10초 만에 답할 수 있어요.</small>
+    </div>
+  );
+}
+
+function LandingIntro({ spec }: { spec: CampaignSpec }) {
+  const template = spec.templates.landingIntro;
+  const hashtags = spec.messaging.hashtags.slice(0, 3);
+
+  if (template === "intro-1") {
+    return (
+      <section className="landing-intro landing-intro-1">
+        <div className="landing-intro-frame">
+          <h1>{spec.messaging.hooks[0]}</h1>
+          <div className="intro-problem-stack">
+            {spec.landing.painPoints.map((item) => <article key={item.title}><strong>{item.title}</strong><p>{item.body}</p></article>)}
+          </div>
+          <div className="intro-hashtags">{hashtags.map((hashtag) => <span key={hashtag}>{hashtag}</span>)}</div>
+        </div>
+        <IntroAction spec={spec} />
+      </section>
+    );
+  }
+
+  if (template === "intro-2") {
+    return (
+      <section className="landing-intro landing-intro-2">
+        <div className="landing-intro-frame">
+          <span className="intro-eyebrow">{spec.landing.hero.eyebrow}</span>
+          <h1>{spec.project.name}</h1>
+          <div className="intro-full-art" aria-hidden="true"><i /><i /><i /></div>
+        </div>
+        <IntroAction spec={spec} />
+      </section>
+    );
+  }
+
+  if (template === "intro-3") {
+    return (
+      <section className="landing-intro landing-intro-3">
+        <div className="landing-intro-frame">
+          <span className="intro-eyebrow">{spec.project.category}</span>
+          <h1>{spec.messaging.hooks[0]}</h1>
+          <div className="intro-issue-list">
+            {spec.landing.painPoints.map((item, index) => <article key={item.title}><div><strong>{item.title}</strong><p>{item.body}</p></div><span>0{index + 1}</span></article>)}
+          </div>
+        </div>
+        <IntroAction spec={spec} />
+      </section>
+    );
+  }
+
+  if (template === "intro-4") {
+    return (
+      <section className="landing-intro landing-intro-4">
+        <div className="landing-intro-frame">
+          <span className="intro-eyebrow">{spec.landing.hero.eyebrow}</span>
+          <h1><mark>{spec.project.name}</mark></h1>
+          <div className="intro-window-art" aria-hidden="true"><i /><i /><i /></div>
+        </div>
+        <IntroAction spec={spec} />
+      </section>
+    );
+  }
+
+  if (template === "intro-5") {
+    return (
+      <section className="landing-intro landing-intro-5">
+        <div className="landing-intro-frame">
+          <span className="intro-rule-label">{spec.landing.hero.eyebrow}</span>
+          <h1><span>{spec.messaging.valueProposition}</span>{spec.project.name}</h1>
+          <div className="intro-signal-seal"><b>10초</b><span>익명 신호</span></div>
+        </div>
+        <IntroAction spec={spec} />
+      </section>
+    );
+  }
+
+  if (template === "intro-6") {
+    return (
+      <section className="landing-intro landing-intro-6">
+        <div className="landing-intro-frame">
+          <span className="intro-eyebrow">{spec.landing.hero.eyebrow}</span>
+          <h1>{spec.project.name}</h1>
+          <i className="intro-divider" aria-hidden="true" />
+          <div className="intro-square-art" aria-hidden="true"><span>{spec.project.name}</span><i /><i /></div>
+          <div className="intro-hashtags">{hashtags.map((hashtag) => <span key={hashtag}>{hashtag}</span>)}</div>
+        </div>
+        <IntroAction spec={spec} />
+      </section>
+    );
+  }
+
+  return (
+    <section className="landing-intro landing-intro-7">
+      <div className="landing-intro-frame">
+        <span className="intro-rule-label">{spec.project.category}</span>
+        <h1>{spec.project.name}</h1>
+        <p className="intro-bottom-copy">{spec.project.oneLiner}<br />{spec.messaging.valueProposition}</p>
+      </div>
+      <IntroAction spec={spec} />
+    </section>
+  );
+}
+
 export function PublicLanding({ spec, campaignId }: { spec: CampaignSpec; campaignId: string }) {
   const [selected, setSelected] = useState<SignalOptionId | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -50,27 +160,19 @@ export function PublicLanding({ spec, campaignId }: { spec: CampaignSpec; campai
   }
 
   return (
-    <div className="public-landing" style={campaignThemeStyle(spec.brand)} data-brand-tone={spec.brand.tone}>
+    <div
+      className="public-landing"
+      style={campaignThemeStyle(spec.brand)}
+      data-brand-tone={spec.brand.tone}
+      data-landing-template={spec.templates.landingIntro}
+    >
       <header className="landing-header">
         <a className="landing-brand" href="#top"><span>{spec.project.name}</span></a>
         <a className="landing-nav-cta" href="#signal">{spec.validation.signal.ctaLabel}</a>
       </header>
 
       <main id="top">
-        <section className="landing-hero">
-          <div className="landing-hero-copy">
-            <span className="landing-kicker">{spec.landing.hero.eyebrow}</span>
-            <h1>{spec.messaging.valueProposition}</h1>
-            <p>{spec.landing.hero.supportingText}</p>
-            <a href="#signal" className="landing-primary-button">{spec.validation.signal.ctaLabel}</a>
-            <small>연락처 없이 10초 만에 답할 수 있어요.</small>
-          </div>
-          <div className="landing-hero-art" aria-hidden="true">
-            <div className="menu-card one"><span>시장검증 캠페인</span><strong>{spec.project.name}</strong><b>공개 준비</b></div>
-            <div className="menu-card two"><span>익명 관심 신호</span><strong>{spec.validation.signal.options[0].label}</strong><b>개인정보 없음</b></div>
-            <div className="hero-curve" />
-          </div>
-        </section>
+        <LandingIntro spec={spec} />
 
         <section className="landing-problem landing-section">
           <span className="landing-kicker">REPEATED ROUTINE</span>

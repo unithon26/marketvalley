@@ -36,6 +36,17 @@ describe("CampaignSpec contract", () => {
     expect(() => campaignSpecSchema.parse(invalidSpec)).toThrow();
   });
 
+  it("requires an implemented Figma cover and landing intro template", () => {
+    expect(() => campaignSpecSchema.parse({
+      ...demoCampaign,
+      templates: { ...demoCampaign.templates, carouselCover: "cover-99" },
+    })).toThrow();
+    expect(() => campaignSpecSchema.parse({
+      ...demoCampaign,
+      templates: { ...demoCampaign.templates, landingIntro: "intro-8" },
+    })).toThrow();
+  });
+
   it("rejects duplicate renderer keys and channel copy", () => {
     const duplicateFaq = structuredClone(demoCampaign);
     duplicateFaq.landing.faq[1].question = duplicateFaq.landing.faq[0].question;
