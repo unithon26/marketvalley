@@ -1,6 +1,6 @@
 # ADR-0014: 개발 문구 생성은 무과금 fixture로 유지하고 OpenAI를 명시적으로 활성화한다
 
-상태: 채택
+상태: ADR-0015로 부분 대체
 
 기준일: 2026-08-25
 
@@ -40,6 +40,8 @@
 ## 결과
 
 현재 제품 화면과 `/api/generate`는 fixture 결과를 유지한다. OpenAI adapter, strict schema 변환, 서버 소유 필드 정규화와 오류 경계는 구현돼 있으며, 실제 적용은 서버 환경의 `CAMPAIGN_GENERATOR_MODE=openai` 전환과 대표 입력 품질 검증 이후에만 수행한다. 이번 작업에서는 실제 OpenAI 요청을 보내지 않는다.
+
+2026-08-25 사용자 결정으로 제품 기본 생성 경로와 화면 표시는 ADR-0015의 `openai` 우선 정책으로 대체했다. 이 문서의 명시적 fixture fallback, 비용 통제, 실패를 fixture 성공으로 위장하지 않는 원칙은 유지한다.
 
 ## 근거
 

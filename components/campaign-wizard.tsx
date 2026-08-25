@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRightIcon } from "@/components/icons";
+import type { CampaignGeneratorStatus } from "@/lib/ai/generatorConfig";
 import { campaignSpecSchema, type CampaignSpec } from "@/lib/contracts/campaign";
 import { saveCampaignDraftId } from "@/lib/client/demo-store";
 
@@ -27,7 +28,44 @@ function publishedCampaignId(value: unknown): string {
   return value.id;
 }
 
-export function CampaignWizard() {
+type CampaignWizardProps = {
+  generatorStatus: CampaignGeneratorStatus;
+};
+
+function generationErrorMessage(code: string | null): string {
+  if (code === "authentication_required") {
+    return "AI 문구 생성을 위해 먼저 Google로 로그인해주세요.";
+  }
+  if (code === "generation_rate_limited") {
+    return "AI 문구 생성 요청이 많아요. 잠시 후 다시 시도해주세요.";
+  }
+  if (code === "campaign_generator_not_configured" || code === "auth_not_configured") {
+    return "AI 문구 생성 설정을 확인해주세요.";
+  }
+  return "광고 생성에 실패했어요. 다시 시도해주세요.";
+}
+
+async function responseErrorCode(response: Response): Promise<string | null> {
+  try {
+    const body: unknown = await response.json();
+    if (
+      typeof body === "object"
+      && body !== null
+      && "error" in body
+      && typeof body.error === "object"
+      && body.error !== null
+      && "code" in body.error
+      && typeof body.error.code === "string"
+    ) {
+      return body.error.code;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [background, setBackground] = useState("");
@@ -37,6 +75,12 @@ export function CampaignWizard() {
   const publishAttemptRef = useRef<PublishAttempt | null>(null);
 
   const canContinue = step === 1 ? background.trim().length >= 20 : solution.trim().length >= 20;
+  const usesOpenAI = generatorStatus.mode === "openai";
+  const generatorNotice = usesOpenAI
+    ? generatorStatus.ready
+      ? "AI가 랜딩·카드뉴스 문구를 생성해요"
+      : "AI 문구 생성 · 회전된 API 키 설정 필요"
+    : "안전 데모 · AI 호출 없음";
 
   function loadExample() {
     setBackground(example.background);
@@ -73,7 +117,9 @@ export function CampaignWizard() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(input),
         });
-        if (!generateResponse.ok) throw new Error("generate_failed");
+        if (!generateResponse.ok) {
+          throw new Error(await responseErrorCode(generateResponse) ?? "generate_failed");
+        }
         const generated: unknown = await generateResponse.json();
         if (typeof generated !== "object" || generated === null || !("spec" in generated)) {
           throw new Error("generate_response_invalid");
@@ -92,8 +138,8 @@ export function CampaignWizard() {
       saveCampaignDraftId(campaignId, attempt.draftId);
 
       router.push(`/campaigns/${campaignId}/progress`);
-    } catch {
-      setError("광고 생성에 실패했어요. 다시 시도해주세요.");
+    } catch (caught) {
+      setError(generationErrorMessage(caught instanceof Error ? caught.message : null));
     } finally {
       setSubmitting(false);
     }
@@ -103,7 +149,9 @@ export function CampaignWizard() {
     <main className="wizard-page page-container">
       <div className="wizard-topline">
         <button type="button" className="text-button" onClick={loadExample}>예시 불러오기</button>
-        <span className="mock-notice"><i /> 외부 API 없는 발표용 목데이터</span>
+        <span className="mock-notice" role="status">
+          <i /> {generatorNotice}
+        </span>
       </div>
 
       <section className="wizard-panel">
@@ -128,8 +176,19 @@ export function CampaignWizard() {
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="wizard-actions">
           {step === 2 && <button className="button button-secondary" type="button" onClick={() => setStep(1)}>이전</button>}
-          <button className="button button-primary" type="button" onClick={next} disabled={submitting}>
-            {step === 1 ? <>다음 <ArrowRightIcon size={17} /></> : submitting ? "만드는 중..." : <>광고 만들기 <ArrowRightIcon size={17} /></>}
+          <button
+            className="button button-primary"
+            type="button"
+            onClick={next}
+            disabled={submitting || (step === 2 && !generatorStatus.ready)}
+          >
+            {step === 1
+              ? <>다음 <ArrowRightIcon size={17} /></>
+              : !generatorStatus.ready
+                ? "AI 설정 필요"
+                : submitting
+                  ? usesOpenAI ? "AI 문구 만드는 중..." : "광고 만드는 중..."
+                  : <>광고 만들기 <ArrowRightIcon size={17} /></>}
           </button>
         </div>
       </section>

@@ -1,10 +1,10 @@
 # marketvalley 해커톤 MVP 스펙
 
-상태: 기능 구현 기준 v0.6, fixture API 종단 구현 완료
+상태: 기능 구현 기준 v0.7, OpenAI 문구 생성 제품 경로와 fixture fallback 구현 완료
 마지막 갱신: 2026-08-25
 목표: 별도 랜딩 저장소의 시각 요소와 디자인 담당자의 메인 웹사이트 디자인을 반영해 2026 UNITHON 발표용 종단 흐름을 구현한다. 구조와 기능은 이 스펙을 따른다.
 
-현재 저장소에는 Figma 디자인을 반영한 화면, 검증된 fixture, 결정적 렌더러와 테스트가 있다. OpenAI·Supabase API와 실제 Meta 계정은 연결하지 않았으며 live 연동의 완료 기준은 이 문서를 따른다.
+현재 저장소에는 Figma 디자인을 반영한 화면, OpenAI 문구 생성 adapter, 검증된 fixture, 결정적 렌더러와 테스트가 있다. OpenAI는 제품 기본 생성 경로이며 fixture는 자동 테스트와 비상 발표 fallback으로만 명시한다. Supabase API와 실제 Meta 계정은 아직 연결하지 않았으며 live 연동의 완료 기준은 이 문서를 따른다.
 
 ## 1. 우승 전략
 
@@ -331,7 +331,7 @@ Zod에서 배열 길이와 문자열 최대 길이를 제한한다. 한국어 �
 - Next.js App Router, TypeScript, React/CSS 결정적 렌더러
 - Zod
 - OpenAI JavaScript SDK와 Responses API
-- 개발·발표 생성 기본값은 외부 호출이 없는 `fixture`. live를 명시적으로 활성화할 때만 `gpt-4o-mini`를 사용하며 `OPENAI_TEXT_MODEL`로 교체 가능
+- 제품 생성 기본값은 `openai`. 자동 테스트와 비상 발표 fallback만 외부 호출이 없는 `fixture`를 명시하며, 기본 `gpt-4o-mini`는 `OPENAI_TEXT_MODEL`로 교체 가능
 - 개발·발표에서는 이미지 모델도 비활성화하고 검증된 reference 자산과 결정적 renderer만 사용
 - Supabase Postgres
 - `html-to-image`와 JSZip
@@ -394,7 +394,7 @@ tests/e2e/
 
 ### API 경계
 
-- `POST /api/generate`: 2단계 입력을 검증하고 `{ spec: CampaignSpec }`을 반환한다. 성공 시 클라이언트가 `crypto.randomUUID()`로 `draftId`를 만들고 바로 게시 요청을 보낸다.
+- `POST /api/generate`: 2단계 입력을 검증하고 `{ spec: CampaignSpec }`을 반환한다. OpenAI 모드는 JSON·same-origin·Google 로그인과 사용자별 단일 프로세스 분당 3회 제한을 통과해야 한다. fixture fallback은 자동 테스트와 발표 복구를 위해 인증 없이 유지한다. 성공 시 클라이언트가 `crypto.randomUUID()`로 `draftId`를 만들고 바로 게시 요청을 보낸다.
 - `POST /api/campaigns`: `{ draftId, spec }`을 다시 검증해 공개 snapshot으로 저장한다. 같은 `draftId`와 동일한 spec의 재요청은 중복 캠페인을 만들지 않고 기존 결과를 반환한다. 이미 게시된 `draftId`에 다른 spec이 오면 충돌로 처리한다. 성공하면 게시 campaign, 공개 URL과 초기 예약자명단을 반환한다.
 - `POST /api/reservations`: `{ campaignId, name, email, consent, utm? }`를 검증해 동의된 예약 한 건을 기록한다. fixture는 `(campaignId, email)` hash, live는 서버 HMAC email hash와 DB unique constraint로 중복을 막는다.
 - `PATCH /api/campaigns`: `{ campaignId, draftId, nextAction }`을 받아 소유 draft가 맞을 때만 사람의 선택 `continue`, `revise`, `pause`를 저장한다.
