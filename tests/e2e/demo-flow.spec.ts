@@ -101,6 +101,16 @@ test.beforeEach(async ({ request }) => {
   expect(response.ok()).toBe(true);
 });
 
+test("Supabase 미설정 GNB는 인증 요청 없이 준비 상태를 표시한다", async ({ page }) => {
+  const authRequests: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/api/auth/session")) authRequests.push(request.url());
+  });
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: "로그인 준비 중" })).toBeDisabled();
+  expect(authRequests).toEqual([]);
+});
+
 test("fixture 생성부터 산출물, 응답, 판단, 초기화까지 실제 API 경계로 이어진다", async ({ context, page, request }) => {
   const runtimeErrors: string[] = [];
   captureRuntimeErrors(page, runtimeErrors);

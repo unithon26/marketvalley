@@ -41,6 +41,18 @@ button { color: inherit; }
 .header-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 .demo-chip { padding: 5px 9px; border-radius: 999px; background: var(--purple-soft); color: var(--purple-dark); font-size: 11px; font-weight: 800; letter-spacing: .08em; }
 .avatar { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; background: var(--ink); color: white; font-size: 11px; font-weight: 800; }
+.auth-button { display: inline-flex; min-height: 36px; padding: 0 12px; align-items: center; justify-content: center; gap: 7px; border: 1px solid var(--line); border-radius: 10px; background: #fff; cursor: pointer; font-size: 12px; font-weight: 750; white-space: nowrap; }
+.auth-button:hover:not(:disabled) { border-color: #cfc7ff; background: var(--purple-soft); }
+.auth-button-muted { color: var(--tertiary); background: var(--surface); cursor: pointer; }
+.auth-button-muted:disabled { cursor: not-allowed; }
+.auth-loading { width: 34px; height: 34px; border: 3px solid var(--surface-strong); border-top-color: var(--purple); border-radius: 50%; animation: auth-spin .8s linear infinite; }
+.auth-user { display: flex; min-width: 0; align-items: center; gap: 8px; }
+.auth-avatar { display: grid; flex: 0 0 auto; width: 34px; height: 34px; place-items: center; border-radius: 50%; color: #fff; background: var(--ink); font-size: 10px; font-weight: 850; }
+.auth-user-copy { display: flex; min-width: 0; max-width: 130px; flex-direction: column; line-height: 1.2; }
+.auth-user-copy strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.auth-user-copy small { margin-top: 2px; color: var(--tertiary); font-size: 10px; }
+.auth-logout-button { min-height: 32px; padding-inline: 9px; color: var(--muted); background: transparent; }
+@keyframes auth-spin { to { transform: rotate(360deg); } }
 
 .button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 0 18px; border: 0; border-radius: 12px; cursor: pointer; font-weight: 700; transition: transform .18s ease, background .18s ease, box-shadow .18s ease; }
 .button:hover:not(:disabled) { transform: translateY(-1px); }
@@ -399,6 +411,11 @@ button { color: inherit; }
   .header-inner { gap: 16px; }
   .brand { font-size: 16px; }
   .avatar { display: none; }
+  .demo-chip, .auth-user-copy { display: none; }
+  .auth-button { min-height: 34px; padding-inline: 9px; }
+  .auth-login-button span { display: none; }
+  .auth-login-button { width: 36px; padding: 0; }
+  .auth-avatar { width: 32px; height: 32px; }
   .dashboard, .wizard-page, .progress-page, .report-page { padding-top: 34px; }
   .dashboard-heading, .progress-heading-row, .section-heading { align-items: flex-start; flex-direction: column; }
   .dashboard-heading .button { width: 100%; }

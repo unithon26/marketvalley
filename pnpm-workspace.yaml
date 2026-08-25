@@ -3,3 +3,10 @@ allowBuilds:
   unrs-resolver: false
 minimumReleaseAgeExclude:
   - '@types/react-dom@19.2.5'
+  - '@supabase/ssr@0.12.5'
+  - '@supabase/auth-js@2.112.4'
+  - '@supabase/functions-js@2.112.4'
+  - '@supabase/postgrest-js@2.112.4'
+  - '@supabase/realtime-js@2.112.4'
+  - '@supabase/storage-js@2.112.4'
+  - '@supabase/supabase-js@2.112.4'
