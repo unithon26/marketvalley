@@ -111,6 +111,30 @@ test("로그인 화면은 확정 로고와 Google 인증 진입점을 보여준�
   await expect(page).toHaveURL(/\/login\?next=%2Fnew$/);
 });
 
+test("광고 입력 2단계는 브라우저 뒤로가기로 입력값을 보존한 1단계에 돌아간다", async ({ page }) => {
+  const background = "카페 마감 메뉴를 알리기 위해 매일 같은 광고를 다시 만드는 반복 작업이 있습니다.";
+  const solution = "마감한입은 메뉴를 한 번 입력하면 랜딩과 카드뉴스를 함께 준비하는 서비스입니다.";
+
+  await page.goto("/new");
+  await page.getByRole("textbox", { name: "제품 배경" }).fill(background);
+  await page.getByRole("button", { name: "다음" }).click();
+  await page.getByRole("textbox", { name: "솔루션 설명" }).fill(solution);
+  await expect(page.getByText("2/2", { exact: true })).toBeVisible();
+
+  await page.goBack();
+  await expect(page).toHaveURL(/\/new$/);
+  await expect(page.getByText("1/2", { exact: true })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "제품 배경" })).toHaveValue(background);
+
+  await page.goForward();
+  await expect(page.getByText("2/2", { exact: true })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "솔루션 설명" })).toHaveValue(solution);
+
+  await page.getByRole("button", { name: "이전" }).click();
+  await expect(page.getByText("1/2", { exact: true })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "제품 배경" })).toHaveValue(background);
+});
+
 test("fixture 생성부터 산출물, 예약, 판단, 초기화까지 실제 API 경계로 이어진다", async ({ context, page, request }) => {
   const runtimeErrors: string[] = [];
   captureRuntimeErrors(page, runtimeErrors);

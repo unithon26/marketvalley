@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRightIcon } from "@/components/icons";
 import type { CampaignGeneratorStatus } from "@/lib/ai/generatorConfig";
@@ -15,6 +15,18 @@ const example = {
 };
 
 type Step = 1 | 2;
+const wizardHistoryKey = "marketvalleyWizardStep";
+
+export function resolveWizardStep(state: unknown): Step {
+  if (typeof state !== "object" || state === null) return 1;
+  return wizardHistoryKey in state && state[wizardHistoryKey] === 2 ? 2 : 1;
+}
+
+export function createWizardHistoryState(state: unknown, step: Step): Record<string, unknown> {
+  const base = typeof state === "object" && state !== null ? state : {};
+  return { ...base, [wizardHistoryKey]: step };
+}
+
 type PublishAttempt = {
   fingerprint: string;
   draftId: string;
@@ -77,6 +89,16 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
   const [submitting, setSubmitting] = useState(false);
   const publishAttemptRef = useRef<PublishAttempt | null>(null);
 
+  useEffect(() => {
+    function syncStep(event: PopStateEvent) {
+      setStep(resolveWizardStep(event.state));
+      setError("");
+    }
+
+    window.addEventListener("popstate", syncStep);
+    return () => window.removeEventListener("popstate", syncStep);
+  }, []);
+
   const canContinue = step === 1 ? background.trim().length >= 20 : solution.trim().length >= 20;
   const usesLiveAI = generatorStatus.mode !== "fixture";
   const generatorNotice = usesLiveAI
@@ -98,6 +120,11 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
     }
     setError("");
     if (step === 1) {
+      window.history.pushState(
+        createWizardHistoryState(window.history.state, 2),
+        "",
+        window.location.href,
+      );
       setStep(2);
       return;
     }
@@ -148,6 +175,10 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
     }
   }
 
+  function previous() {
+    window.history.back();
+  }
+
   return (
     <main className="wizard-page page-container">
       <div className="wizard-topline">
@@ -178,7 +209,7 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
         </label>
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="wizard-actions">
-          {step === 2 && <button className="button button-secondary" type="button" onClick={() => setStep(1)}>이전</button>}
+          {step === 2 && <button className="button button-secondary" type="button" onClick={previous}>이전</button>}
           <button
             className="button button-primary"
             type="button"
