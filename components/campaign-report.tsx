@@ -151,6 +151,8 @@ export function CampaignReport({
     const destinationUrl = new URL(publicPath, window.location.origin).toString();
     const text = [
       "[Meta 게시 준비 — 실제 게시 아님]",
+      `상품명: ${spec.project.name}`,
+      `핵심 특징: ${spec.landing.benefits.map((benefit) => benefit.title).join(" · ")}`,
       `기본 문구: ${spec.messaging.caption}`,
       `Headline: ${spec.messaging.hooks[0]}`,
       `CTA: ${spec.validation.signal.ctaLabel}`,

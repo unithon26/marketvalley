@@ -129,10 +129,18 @@ test("fixture 생성부터 산출물, 응답, 판단, 초기화까지 실제 API
   const campaignResponse = await request.get(`/api/campaigns?id=${campaignId}`);
   expect(campaignResponse.ok()).toBe(true);
   const campaign = await campaignResponse.json();
+  expect(campaign.spec.project.name).toBe("마감한입");
+  expect(campaign.spec.landing.benefits.map((benefit: { title: string }) => benefit.title)).toEqual([
+    "남은 메뉴 한 번 입력",
+    "공개 페이지와 게시 카드 동시 생성",
+    "개인정보 없는 구매 의향 수집",
+  ]);
   await expect(page.locator(".carousel-card-1")).toHaveAttribute(
     "data-carousel-cover-template",
     campaign.spec.templates.carouselCover,
   );
+  await expect(page.locator(".carousel-card-1")).toHaveAttribute("data-product-name", "마감한입");
+  await expect(page.locator(".carousel-card-3")).toContainText("공개 페이지와 게시 카드 동시 생성");
   const copyCases = [
     { cardLabel: "게시 문구", noticeLabel: "게시 문구", value: campaign.spec.messaging.caption },
     { cardLabel: "후킹 문구 3개", noticeLabel: "후킹 문구", value: campaign.spec.messaging.hooks.join("\n") },
@@ -165,6 +173,8 @@ test("fixture 생성부터 산출물, 응답, 판단, 초기화까지 실제 API
   await expectCarouselEntries(metaZip);
   const metaText = await metaZip.file("meta-ready.txt")!.async("string");
   expect(metaText).toContain("[Meta 게시 준비 — 실제 게시 아님]");
+  expect(metaText).toContain("상품명: 마감한입");
+  expect(metaText).toContain("핵심 특징: 남은 메뉴 한 번 입력 · 공개 페이지와 게시 카드 동시 생성 · 개인정보 없는 구매 의향 수집");
   expect(metaText).toContain(`Destination URL: ${new URL(page.url()).origin}/p/${campaign.slug}`);
   expect(metaText).toContain(`Media files: ${carouselFileNames.join(", ")}`);
   expect(metaText).toContain(campaign.spec.brand.visualDirection);
@@ -181,6 +191,8 @@ test("fixture 생성부터 산출물, 응답, 판단, 초기화까지 실제 API
     "data-landing-template",
     campaign.spec.templates.landingIntro,
   );
+  await expect(landingPage.locator(".public-landing")).toHaveAttribute("data-product-name", "마감한입");
+  await expect(landingPage.getByText("#남은 메뉴 한 번 입력", { exact: true })).toBeVisible();
   await landingPage.getByRole("button", { name: "네, 써보고 싶어요" }).click();
   await landingPage.getByRole("button", { name: "익명으로 응답하기" }).click();
   await expect(landingPage.getByRole("heading", { name: "응답이 기록됐어요" })).toBeVisible();
@@ -220,6 +232,65 @@ test("fixture 생성부터 산출물, 응답, 판단, 초기화까지 실제 API
 
   expect(runtimeErrors.filter((message) => !message.includes("status of 409 (Conflict)"))).toEqual([]);
   expect(runtimeErrors.filter((message) => message.includes("status of 409 (Conflict)"))).toHaveLength(1);
+});
+
+test("입력한 상품명과 특징이 랜딩과 카드뉴스에 자동으로 이어진다", async ({ page, request }) => {
+  const background = "예약 취소가 생길 때마다 동네 공방 빈자리 안내를 여러 채널에 다시 만들어 올리는 일이 반복됩니다.";
+  const solution = "서비스 이름은 ‘공방온’입니다. 핵심 특징은 빈자리 한 번 입력, 이웃 대상 공개 페이지, 개인정보 없는 참여 의향 수집입니다. 공방 운영자의 안내 캠페인을 자동으로 만듭니다.";
+
+  await page.goto("/new");
+  await page.getByRole("textbox", { name: "제품 배경" }).fill(background);
+  await page.getByRole("button", { name: "다음" }).click();
+  await page.getByRole("textbox", { name: "솔루션 설명" }).fill(solution);
+  await page.getByRole("button", { name: /캠페인 만들기/ }).click();
+  await expect(page).toHaveURL(/\/campaigns\/[^/]+\/progress$/);
+
+  const campaignId = decodeURIComponent(page.url().match(/\/campaigns\/([^/]+)\/progress$/)?.[1] ?? "");
+  const reportLink = page.getByRole("link", { name: /검증 리포트 확인하기/ });
+  await expect(reportLink).toBeVisible({ timeout: 5_000 });
+  await reportLink.click();
+
+  const campaignResponse = await request.get(`/api/campaigns?id=${campaignId}`);
+  expect(campaignResponse.ok()).toBe(true);
+  const campaign = await campaignResponse.json();
+  expect(campaign.spec.project.name).toBe("공방온");
+  expect(campaign.spec.landing.benefits.map((benefit: { title: string }) => benefit.title)).toEqual([
+    "빈자리 한 번 입력",
+    "이웃 대상 공개 페이지",
+    "개인정보 없는 참여 의향 수집",
+  ]);
+
+  await expect(page.locator(".carousel-card-1")).toHaveAttribute("data-product-name", "공방온");
+  await expect(page.locator(".carousel-card-3")).toContainText("이웃 대상 공개 페이지");
+  await expect(page.locator(".carousel-card-4")).toContainText("공방온");
+
+  const [carouselDownload] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "캐러셀 ZIP 다운로드" }).click(),
+  ]);
+  const carouselZip = await JSZip.loadAsync(await downloadBytes(carouselDownload));
+  expect(Object.keys(carouselZip.files).sort()).toEqual([...carouselFileNames].sort());
+  for (const fileName of carouselFileNames) {
+    const bytes = await carouselZip.file(fileName)!.async("uint8array");
+    expect(pngDimensions(bytes)).toEqual({ width: 1080, height: 1350 });
+  }
+
+  const [metaDownload] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Meta 게시 준비 다운로드" }).click(),
+  ]);
+  const metaZip = await JSZip.loadAsync(await downloadBytes(metaDownload));
+  const metaText = await metaZip.file("meta-ready.txt")!.async("string");
+  expect(metaText).toContain("상품명: 공방온");
+  expect(metaText).toContain("핵심 특징: 빈자리 한 번 입력 · 이웃 대상 공개 페이지 · 개인정보 없는 참여 의향 수집");
+
+  await page.goto(`/p/${campaign.slug}`);
+  await expect(page.locator(".public-landing")).toHaveAttribute("data-product-name", "공방온");
+  await expect(page.getByText("공방온", { exact: true }).first()).toBeVisible();
+  for (const feature of ["빈자리 한 번 입력", "이웃 대상 공개 페이지", "개인정보 없는 참여 의향 수집"]) {
+    await expect(page.getByText(feature, { exact: true }).first()).toBeVisible();
+  }
+  await expectNoHorizontalOverflow(page);
 });
 
 test("API가 잘못된 입력, 크기 제한, 소유권과 없는 리소스를 명시적으로 거절한다", async ({ request }) => {
@@ -346,11 +417,11 @@ test("각 reference fixture가 고유 slug, SEO와 브랜드 테마를 유지한
   const campaigns = await Promise.all([
     publishFixtureCampaign(request, {
       background: "예약 취소로 생기는 동네 공방 빈자리를 매번 다시 알리는 반복 업무를 줄이려 합니다.",
-      solution: "공방 취소 자리를 공개 안내하고 개인정보 없이 참여 의향을 받는 캠페인입니다.",
+      solution: "서비스 이름은 ‘동네공방 빈자리’입니다. 핵심 특징은 빈자리 한 번 입력, 공개 안내 구성, 익명 참여 의향 수집입니다.",
     }),
     publishFixtureCampaign(request, {
       background: "독립 클래스 강사가 일정과 준비물 문의를 매번 반복해서 답하는 일을 줄이려 합니다.",
-      solution: "강사 수업 정보를 안내 페이지와 익명 수강 의향 질문으로 한 번에 연결합니다.",
+      solution: "서비스 이름은 ‘클래스 문의형’입니다. 핵심 특징은 수업 정보 한 번 입력, 문의 안내 구성, 익명 수강 의향 수집입니다.",
     }),
   ]);
 
@@ -444,6 +515,12 @@ test("Figma 표지 3종과 랜딩 도입부 7종만 결정적으로 렌더링한
       landingIntro,
     );
     await expect(page.locator(".landing-intro-frame h1")).toBeVisible();
+    await expect(page.locator(".landing-intro-frame")).toContainText(baseSpec.project.name);
+    if (landingIntro === "intro-1" || landingIntro === "intro-3" || landingIntro === "intro-6" || landingIntro === "intro-7") {
+      for (const benefit of baseSpec.landing.benefits) {
+        await expect(page.locator(".landing-intro-frame")).toContainText(benefit.title);
+      }
+    }
     await expectNoHorizontalOverflow(page);
   }
 
@@ -457,6 +534,7 @@ test("Figma 표지 3종과 랜딩 도입부 7종만 결정적으로 렌더링한
     const boundarySpec = structuredClone(baseSpec);
     boundarySpec.project.name = "가".repeat(80);
     boundarySpec.project.oneLiner = "나".repeat(120);
+    boundarySpec.project.category = "카".repeat(80);
     boundarySpec.messaging.hooks[0] = "다".repeat(70);
     boundarySpec.carousel.hookBody = "라".repeat(180);
     boundarySpec.templates = { carouselCover, landingIntro: "intro-2" };
@@ -610,14 +688,14 @@ test("게시 응답이 유실돼도 같은 draft와 생성 결과로 재시도�
 test("새 캠페인을 게시해도 이미 열린 공개 랜딩의 상태가 섞이지 않는다", async ({ page, request }) => {
   const first = await publishFixtureCampaign(request, {
     background: "마감 뒤 남은 메뉴와 폐기를 줄이려는 동네 카페 사장님의 반복 업무입니다.",
-    solution: "남은 메뉴 안내와 익명 관심 응답을 한 번에 연결하는 공개 캠페인입니다.",
+    solution: "서비스 이름은 ‘마감한입’입니다. 핵심 특징은 남은 메뉴 한 번 입력, 공개 안내 구성, 익명 구매 의향 수집입니다.",
   });
   await page.goto(`/p/${first.slug}`);
   await expect(page.getByText("마감한입", { exact: true }).first()).toBeVisible();
 
   const second = await publishFixtureCampaign(request, {
     background: "예약 취소로 생기는 동네 공방 빈자리를 매번 다시 알리는 반복 업무입니다.",
-    solution: "취소 자리를 공개 안내하고 개인정보 없이 관심 신호를 받는 캠페인입니다.",
+    solution: "서비스 이름은 ‘공방온’입니다. 핵심 특징은 빈자리 한 번 입력, 공개 안내 구성, 익명 참여 의향 수집입니다.",
   });
   expect(second.id).not.toBe(first.id);
   expect(second.slug).not.toBe(first.slug);

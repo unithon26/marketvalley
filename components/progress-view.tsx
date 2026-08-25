@@ -34,7 +34,7 @@ export function ProgressView({ campaignId }: { campaignId: string }) {
         <div className={`processing-orb stage-${current}`}><i /><i /><i /></div>
         <span className="processing-status">{stages[current]}</span>
         <h2>{current === 3 ? "랜딩·캐러셀·게시 준비가 끝났어요" : "같은 가설로 모든 결과물을 맞추고 있어요"}</h2>
-        <p>{current === 3 ? "실제 외부 API 없이 동일한 fixture와 렌더러로 완성했습니다." : "잠시만 기다려주세요. 이 화면은 발표용 결정적 시뮬레이션입니다."}</p>
+        <p>{current === 3 ? "입력한 상품명과 특징을 같은 CampaignSpec의 랜딩·카드뉴스에 반영했습니다." : "잠시만 기다려주세요. 이 화면은 발표용 결정적 시뮬레이션입니다."}</p>
       </section>
 
       <div className="progress-actions">

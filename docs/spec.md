@@ -27,12 +27,15 @@ P0는 하나라도 빠지면 발표용 제품이 완성되지 않은 것으로 �
 - 필수 1단계: 제품을 만들게 된 배경, 20~600자
 - 필수 2단계: 제공할 솔루션, 20~500자
 
+상품명과 핵심 특징이 정해져 있다면 2단계 솔루션에 함께 적는다. mock 생성기는 명시된 값을 결정적으로 추출하고, live 생성기는 같은 정보를 Structured Outputs로 구성한다. 별도 입력 단계를 늘리지 않는다.
+
 generator가 추론한 내용은 `assumptions`에 표시한다. 제출 버튼을 연속 클릭할 수 없게 하고, 오류가 나면 현재 입력을 보존한다.
 
 완료 기준:
 
 - 필수값 검증과 오류 문구가 있다.
 - 제공된 데모 입력을 한 번에 채우는 `예시 불러오기`가 있다.
+- 예시 입력의 상품명과 핵심 특징 3개가 생성된 `CampaignSpec`, 랜딩, 캐러셀과 게시 준비 파일에 같은 값으로 나타난다.
 - 모바일과 노트북 화면에서 주요 CTA가 보인다.
 
 ### P0-2. 검증 가설 및 캠페인 생성
@@ -98,7 +101,7 @@ CTA를 누르면 `CampaignSpec.validation.signal`의 질문과 세 선택지를 
 4. Solution
 5. CTA
 
-첫 번째 Hook 장은 `CampaignSpec.templates.carouselCover`에 따라 Figma 표지 `cover-31`, `cover-32`, `cover-34` 중 하나를 사용한다. 나머지 네 장은 같은 5장 메시지 흐름 안에서 결정적으로 조판한다.
+첫 번째 Hook 장은 `CampaignSpec.templates.carouselCover`에 따라 Figma 표지 `cover-31`, `cover-32`, `cover-34` 중 하나를 사용한다. 나머지 네 장은 같은 5장 메시지 흐름 안에서 선택된 표지의 사진·흑백·보라 강조·타이포 규칙을 이어 결정적으로 조판한다.
 
 AI는 문구와 선택적 배경 이미지 프롬프트만 만든다. 모든 텍스트는 디자이너가 정의한 React/CSS 템플릿으로 조판한다.
 
@@ -120,7 +123,7 @@ AI는 문구와 선택적 배경 이미지 프롬프트만 만든다. 모든 텍
 
 완료 기준:
 
-- 서버 시작 직후 `/campaigns/demo`과 `/p/demo`으로 seed 캠페인에 접근할 수 있고, `/new` 입력은 reference fixture 3종 중 하나로 이어진다.
+- 서버 시작 직후 `/campaigns/demo`과 `/p/demo`으로 seed 캠페인에 접근할 수 있고, `/new` 입력은 reference fixture 3종 중 하나의 시각 템플릿을 선택한 뒤 중립 문장 골격에 입력한 상품명·특징·문제·솔루션을 주입한다.
 - OpenAI, 이미지 생성, Supabase 중 하나가 실패해도 샘플 흐름으로 랜딩·캐러셀·응답·사람의 판단·다운로드 시연을 끝낼 수 있다.
 - 발표 전 데모용 공개 URL과 백업 화면 녹화를 준비한다.
 
@@ -290,8 +293,10 @@ Zod에서 배열 길이와 문자열 최대 길이를 제한한다. 한국어 �
 
 | Source field | 랜딩 사용처 | 캐러셀 사용처 |
 | --- | --- | --- |
-| `project.name` | Header 제품명 | 모든 장 footer |
-| `messaging.valueProposition` | Hero H1 | 4장 Solution headline |
+| `project.name` | Header와 Figma 상품명 슬롯 | 1장 Hook 문구와 모든 장 footer |
+| `project.oneLiner` | 한 줄 특징·설명 슬롯 | 1장 보조 문구 생성 근거 |
+| `landing.benefits[].title` | 특징 키워드와 가치 3개 | 3·4장 Insight·Solution 문구 |
+| `messaging.valueProposition` | 상품 메인 아웃풋 슬롯 | 1·4장 핵심 문구 |
 | `messaging.hooks[0]` | SEO 설명 보조 | 1장 Hook headline |
 | `validation.signal.ctaLabel` | Hero·마지막 CTA 버튼 | 5장 CTA headline |
 | `validation.signal.question` | CTA 응답 모달 | 5장 CTA body |

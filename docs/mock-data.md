@@ -13,7 +13,15 @@
 - 의료·금융처럼 잘못된 효능 표현의 위험이 큰 분야가 아니다.
 - 문제 해결 효과를 사실로 단정하지 않고 사용 의향만 물을 수 있다.
 
-fixture 원본과 reference template 3종은 `lib/demo/demo-campaign.ts`에서 관리한다. `lib/demo/demoCampaign.ts`는 기존 import를 위한 하위 호환 shim이다. 화면별로 문구를 복사하지 않고 랜딩, 캐러셀, 게시 문구와 신호 질문이 모두 같은 `CampaignSpec`을 읽는다.
+fixture 원본과 reference template 3종은 `lib/demo/demo-campaign.ts`에서 관리한다. `lib/demo/demoCampaign.ts`는 기존 import를 위한 하위 호환 shim이다. `/new` 생성기는 이 fixture를 그대로 반환하지 않는다. 키워드는 Figma 템플릿·색상 선택에만 사용하고, 중립 문장 골격에 입력한 상품명·핵심 특징과 문제·솔루션을 주입한다. 이름이 명시되지 않으면 `새 시장검증 캠페인`, 특징이 부족하면 업종과 무관한 안전한 기본 특징으로 보완한다. 화면별로 문구를 복사하지 않고 랜딩, 캐러셀, 게시 문구와 신호 질문이 모두 같은 `CampaignSpec`을 읽는다.
+
+입력과 산출물의 핵심 매핑은 다음과 같다.
+
+- 솔루션의 `제품/서비스 이름`: `project.name`
+- 솔루션의 `핵심 특징` 세 항목: `landing.benefits[].title`
+- 제품 배경: `validation.problem`과 문제 카드·캐러셀 Problem
+- 솔루션 원문: `validation.solution`, 한 줄 설명과 Hero 보조 문구
+- 위 필드에서 파생한 후킹·캡션·해시태그: 랜딩, 캐러셀과 `Meta 게시 준비` 공통 사용
 
 각 fixture는 Figma 산출물 템플릿 선택도 함께 고정한다.
 

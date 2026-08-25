@@ -37,29 +37,47 @@ function splitHighlight(text: string) {
   };
 }
 
+function HighlightedText({ text }: { text: string }) {
+  const copy = splitHighlight(text);
+  return (
+    <>
+      {copy.before && <span>{copy.before} </span>}
+      <mark>{copy.highlight}</mark>
+      {copy.after && <span> {copy.after}</span>}
+    </>
+  );
+}
+
 function CarouselCover({ spec }: { spec: CampaignSpec }) {
   const template = spec.templates.carouselCover;
-  const headline = splitHighlight(spec.messaging.hooks[0]);
   const headlineLength = spec.messaging.hooks[0].length;
   const bodyLength = spec.carousel.hookBody.length;
   const copyClasses = [
     "carousel-cover-copy",
     headlineLength > 54 ? "has-extra-long-headline" : headlineLength > 36 ? "has-long-headline" : "",
     bodyLength > 130 ? "has-extra-long-body" : bodyLength > 90 ? "has-long-body" : "",
-    spec.project.oneLiner.length > 80 ? "has-long-eyebrow" : "",
+    spec.project.category.length > 40 ? "has-long-eyebrow" : "",
   ].filter(Boolean).join(" ");
+
+  if (template === "cover-31") {
+    return (
+      <div className={copyClasses}>
+        <h2><HighlightedText text={spec.messaging.hooks[0]} /></h2>
+        <p>{spec.carousel.hookBody}</p>
+      </div>
+    );
+  }
 
   return (
     <>
-      {template !== "cover-31" && <div className="carousel-cover-photo" aria-hidden="true" />}
-      {template !== "cover-31" && <div className="carousel-cover-overlay" aria-hidden="true" />}
+      <div className="carousel-cover-photo" aria-hidden="true" />
+      <div className="carousel-cover-overlay" aria-hidden="true" />
       <div className={copyClasses}>
-        <span className="carousel-cover-eyebrow">{spec.project.oneLiner}</span>
-        <h2>
-          {headline.before && <span>{headline.before} </span>}
-          <mark>{headline.highlight}</mark>
-          {headline.after && <span> {headline.after}</span>}
-        </h2>
+        {template === "cover-34" && <span className="carousel-cover-eyebrow">{spec.project.category}</span>}
+        <h2><HighlightedText text={spec.messaging.hooks[0]} /></h2>
+        {template === "cover-32" && (
+          <h3><HighlightedText text={spec.messaging.valueProposition} /></h3>
+        )}
         <p>{spec.carousel.hookBody}</p>
       </div>
     </>
@@ -76,17 +94,18 @@ export function CarouselCard({ spec, index, exportRef }: { spec: CampaignSpec; i
       style={campaignThemeStyle(spec.brand)}
       data-brand-tone={spec.brand.tone}
       data-carousel-cover-template={coverTemplate}
+      data-product-name={spec.project.name}
     >
       {index === 0 ? <CarouselCover spec={spec} /> : (
         <>
-          <div className="carousel-grain" />
+          {coverTemplate !== "cover-31" && <div className="carousel-cover-photo carousel-series-photo" aria-hidden="true" />}
+          {coverTemplate !== "cover-31" && <div className="carousel-cover-overlay carousel-series-overlay" aria-hidden="true" />}
           <div className="carousel-index">0{index + 1}</div>
           <div className="carousel-content">
             <span>{copy.kicker}</span>
-            <h2>{copy.headline}</h2>
+            <h2><HighlightedText text={copy.headline} /></h2>
             <p>{copy.body}</p>
           </div>
-          <div className="carousel-shape"><i /><i /></div>
           <footer><strong>{spec.project.name}</strong><span>marketvalley campaign</span></footer>
         </>
       )}

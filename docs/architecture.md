@@ -14,7 +14,7 @@
 ```text
 2단계 사용자 입력
    ↓ POST /api/generate
-CampaignGenerator ── mock: 키워드 기반 reference fixture 3종
+CampaignGenerator ── mock: 키워드 기반 시각 template 선택 + 중립 문장 골격 + 입력값 결정적 주입
    │                live: OpenAI Structured Outputs
    ↓
 CampaignSpec (Zod 검증, 단일 진실 공급원)
@@ -34,7 +34,7 @@ CampaignRepository ── mock: Node.js 프로세스 메모리
 - `CampaignSpec` 외에 화면별 카피 복제본을 만들지 않는다.
 - `/campaigns/[id]`는 id로, `/p/[slug]`는 slug로 저장소를 조회한다.
 - 새 게시에는 고유 id와 slug를 발급해 이미 열린 다른 캠페인 화면과 상태가 섞이지 않게 한다.
-- 프로젝트명, 가치 제안, CTA와 공개 경로는 게시된 campaign snapshot에서 파생한다.
+- 상품명, 핵심 특징 3개, 문제·솔루션, 가치 제안, CTA와 공개 경로는 게시된 campaign snapshot에서 파생한다.
 - 공개 랜딩의 title·description과 랜딩·캐러셀 색상은 같은 snapshot의 SEO·brand 필드에서 파생한다.
 - 카드뉴스 표지와 랜딩 도입부는 같은 snapshot의 `templates` 필드에서 선택하며, tone이나 화면별 조건으로 암묵적으로 추론하지 않는다.
 - mock 데이터는 화면에서 `데모 데이터`로 식별한다.
@@ -51,7 +51,7 @@ CampaignRepository ── mock: Node.js 프로세스 메모리
 
 mock 저장소의 `Map`은 한 Node.js 프로세스 안에서 브라우저 간 상태를 공유하지만 서버 재시작과 serverless 인스턴스 전환에는 유지되지 않는다. 따라서 로컬 발표와 단일 프로세스 QA에는 사용할 수 있고, Vercel에서 여러 기기의 실제 응답을 받을 때는 먼저 Supabase adapter로 교체해야 한다.
 
-캐러셀 ZIP에는 선택된 Figma 표지와 후속 카드로 구성된 1080×1350 PNG 5장을 넣는다. `Meta 게시 준비` ZIP에는 동일한 PNG 5장과 기본 문구, headline, CTA, 대상 고객 가설, 시각 방향, 표지·랜딩 템플릿 ID, 파일 목록과 절대 destination URL을 적은 `meta-ready.txt`를 함께 넣는다. 두 ZIP 모두 같은 숨은 React/CSS 렌더러를 사용하며 실제 Meta 계정에는 쓰지 않는다.
+캐러셀 ZIP에는 선택된 Figma 표지와 같은 시각 규칙을 잇는 후속 카드로 구성된 1080×1350 PNG 5장을 넣는다. `Meta 게시 준비` ZIP에는 동일한 PNG 5장과 상품명·핵심 특징, 기본 문구, headline, CTA, 대상 고객 가설, 시각 방향, 표지·랜딩 템플릿 ID, 파일 목록과 절대 destination URL을 적은 `meta-ready.txt`를 함께 넣는다. 두 ZIP 모두 같은 숨은 React/CSS 렌더러를 사용하며 실제 Meta 계정에는 쓰지 않는다.
 
 ## 진행 상황 화면
 

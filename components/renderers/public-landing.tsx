@@ -25,7 +25,7 @@ function IntroAction({ spec }: { spec: CampaignSpec }) {
 
 function LandingIntro({ spec }: { spec: CampaignSpec }) {
   const template = spec.templates.landingIntro;
-  const hashtags = spec.messaging.hashtags.slice(0, 3);
+  const featureKeywords = spec.landing.benefits.map((benefit) => benefit.title);
 
   if (template === "intro-1") {
     return (
@@ -35,7 +35,7 @@ function LandingIntro({ spec }: { spec: CampaignSpec }) {
           <div className="intro-problem-stack">
             {spec.landing.painPoints.map((item) => <article key={item.title}><strong>{item.title}</strong><p>{item.body}</p></article>)}
           </div>
-          <div className="intro-hashtags">{hashtags.map((hashtag) => <span key={hashtag}>{hashtag}</span>)}</div>
+          <div className="intro-hashtags">{featureKeywords.map((feature) => <span key={feature}>#{feature}</span>)}</div>
         </div>
         <IntroAction spec={spec} />
       </section>
@@ -46,7 +46,7 @@ function LandingIntro({ spec }: { spec: CampaignSpec }) {
     return (
       <section className="landing-intro landing-intro-2">
         <div className="landing-intro-frame">
-          <span className="intro-eyebrow">{spec.landing.hero.eyebrow}</span>
+          <span className="intro-eyebrow">{spec.messaging.valueProposition}</span>
           <h1>{spec.project.name}</h1>
           <div className="intro-full-art" aria-hidden="true"><i /><i /><i /></div>
         </div>
@@ -62,7 +62,7 @@ function LandingIntro({ spec }: { spec: CampaignSpec }) {
           <span className="intro-eyebrow">{spec.project.category}</span>
           <h1>{spec.messaging.hooks[0]}</h1>
           <div className="intro-issue-list">
-            {spec.landing.painPoints.map((item, index) => <article key={item.title}><div><strong>{item.title}</strong><p>{item.body}</p></div><span>0{index + 1}</span></article>)}
+            {spec.landing.benefits.map((item, index) => <article key={item.title}><div><strong>{item.title}</strong><p>{item.body}</p></div><span>0{index + 1}</span></article>)}
           </div>
         </div>
         <IntroAction spec={spec} />
@@ -74,7 +74,7 @@ function LandingIntro({ spec }: { spec: CampaignSpec }) {
     return (
       <section className="landing-intro landing-intro-4">
         <div className="landing-intro-frame">
-          <span className="intro-eyebrow">{spec.landing.hero.eyebrow}</span>
+          <span className="intro-eyebrow">{spec.messaging.valueProposition}</span>
           <h1><mark>{spec.project.name}</mark></h1>
           <div className="intro-window-art" aria-hidden="true"><i /><i /><i /></div>
         </div>
@@ -87,8 +87,8 @@ function LandingIntro({ spec }: { spec: CampaignSpec }) {
     return (
       <section className="landing-intro landing-intro-5">
         <div className="landing-intro-frame">
-          <span className="intro-rule-label">{spec.landing.hero.eyebrow}</span>
-          <h1><span>{spec.messaging.valueProposition}</span>{spec.project.name}</h1>
+          <span className="intro-rule-label">한 줄 핵심 특징</span>
+          <h1 className={spec.project.oneLiner.length > 80 ? "intro-long-copy" : ""}><span>{spec.project.name}</span>{spec.project.oneLiner}</h1>
           <div className="intro-signal-seal"><b>10초</b><span>익명 신호</span></div>
         </div>
         <IntroAction spec={spec} />
@@ -100,11 +100,11 @@ function LandingIntro({ spec }: { spec: CampaignSpec }) {
     return (
       <section className="landing-intro landing-intro-6">
         <div className="landing-intro-frame">
-          <span className="intro-eyebrow">{spec.landing.hero.eyebrow}</span>
+          <span className="intro-eyebrow">{spec.messaging.valueProposition}</span>
           <h1>{spec.project.name}</h1>
           <i className="intro-divider" aria-hidden="true" />
           <div className="intro-square-art" aria-hidden="true"><span>{spec.project.name}</span><i /><i /></div>
-          <div className="intro-hashtags">{hashtags.map((hashtag) => <span key={hashtag}>{hashtag}</span>)}</div>
+          <div className="intro-hashtags">{featureKeywords.map((feature) => <span key={feature}>#{feature}</span>)}</div>
         </div>
         <IntroAction spec={spec} />
       </section>
@@ -114,9 +114,9 @@ function LandingIntro({ spec }: { spec: CampaignSpec }) {
   return (
     <section className="landing-intro landing-intro-7">
       <div className="landing-intro-frame">
-        <span className="intro-rule-label">{spec.project.category}</span>
+        <span className="intro-rule-label">특징 키워드 · {featureKeywords.join(" · ")}</span>
         <h1>{spec.project.name}</h1>
-        <p className="intro-bottom-copy">{spec.project.oneLiner}<br />{spec.messaging.valueProposition}</p>
+        <p className="intro-bottom-copy">{spec.project.oneLiner}<br />{featureKeywords.join(" · ")}</p>
       </div>
       <IntroAction spec={spec} />
     </section>
@@ -165,6 +165,7 @@ export function PublicLanding({ spec, campaignId }: { spec: CampaignSpec; campai
       style={campaignThemeStyle(spec.brand)}
       data-brand-tone={spec.brand.tone}
       data-landing-template={spec.templates.landingIntro}
+      data-product-name={spec.project.name}
     >
       <header className="landing-header">
         <a className="landing-brand" href="#top"><span>{spec.project.name}</span></a>

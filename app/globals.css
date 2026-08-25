@@ -221,30 +221,27 @@ button { color: inherit; }
 
 /* Export-only deterministic carousel */
 .export-stage { position: fixed; z-index: -10; left: -20000px; top: 0; display: flex; gap: 10px; pointer-events: none; }
-.carousel-card { position: relative; flex: 0 0 auto; width: 1080px; height: 1350px; overflow: hidden; padding: 76px; color: var(--campaign-primary-ink, white); background: var(--campaign-primary, #17191d); }
-.carousel-card-1 { padding: 0; color: #fff; background: #111; }
-.carousel-card-2, .carousel-card-4 { color: var(--campaign-surface-ink, #15171a); background: var(--campaign-surface, #f5f2eb); }
-.carousel-card-3 { color: var(--campaign-accent-ink, #191f28); background: var(--campaign-accent, #8b5cf6); }
-.carousel-card-5 { background: var(--campaign-primary, #101114); }
+.carousel-card { position: relative; flex: 0 0 auto; width: 1080px; height: 1350px; overflow: hidden; padding: 0; color: #fff; background: #111; }
 .carousel-cover-photo, .carousel-cover-overlay { position: absolute; inset: 0; }
 .carousel-cover-photo { background-position: center; background-repeat: no-repeat; background-size: cover; transform: scale(1.01); }
 .carousel-cover-template-cover-32 .carousel-cover-photo { background-image: url("/figma-templates/cover-32.jpg"); filter: grayscale(1); }
 .carousel-cover-template-cover-34 .carousel-cover-photo { background-image: url("/figma-templates/cover-34.jpg"); background-position: 52% center; }
-.carousel-cover-overlay { background: linear-gradient(180deg, rgba(0,0,0,.5) 0%, rgba(0,0,0,.33) 45%, rgba(0,0,0,.92) 100%); }
-.carousel-cover-copy { position: absolute; z-index: 2; inset: 0; padding: 92px 74px; }
-.carousel-cover-eyebrow { display: block; max-width: 850px; font-size: 32px; font-weight: 700; line-height: 1.35; }
-.carousel-cover-copy h2 { max-width: 900px; margin: 34px 0 0; font-size: 78px; line-height: 1.25; letter-spacing: -.055em; }
-.carousel-cover-copy h2 mark { padding: 0 .08em .03em; color: #fff; background: #6b36e8; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
-.carousel-cover-copy p { max-width: 870px; margin: 80px 0 0; font-size: 34px; font-weight: 650; line-height: 1.55; text-decoration: underline; text-decoration-color: #6b36e8; text-decoration-thickness: 8px; text-underline-offset: -3px; text-decoration-skip-ink: none; }
+.carousel-cover-overlay { background: linear-gradient(180deg, rgba(0,0,0,.58) 0%, rgba(0,0,0,.42) 48%, rgba(0,0,0,.92) 100%); }
+.carousel-cover-copy { position: absolute; z-index: 2; inset: 0; padding: 92px 78px; }
+.carousel-cover-eyebrow { display: block; max-width: 900px; font-size: 38px; font-weight: 650; line-height: 1.35; }
+.carousel-cover-copy h2, .carousel-cover-copy h3 { max-width: 920px; letter-spacing: -.055em; }
+.carousel-cover-copy h2 { margin: 0; font-size: 78px; line-height: 1.17; }
+.carousel-cover-copy h3 { margin: 78px 0 0; font-size: 58px; line-height: 1.22; }
+.carousel-cover-copy mark, .carousel-content mark { padding: 0 .08em .03em; color: #fff; background: #6331e6; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.carousel-cover-copy p { max-width: 900px; margin: 86px 0 0; font-size: 32px; font-weight: 600; line-height: 1.55; text-decoration: underline; text-decoration-color: #6331e6; text-decoration-thickness: 7px; text-underline-offset: -2px; text-decoration-skip-ink: none; }
 .carousel-cover-template-cover-31 { color: #090909; background: #fff; }
-.carousel-cover-template-cover-31 .carousel-cover-copy { padding: 118px 86px; }
-.carousel-cover-template-cover-31 .carousel-cover-eyebrow { display: none; }
-.carousel-cover-template-cover-31 .carousel-cover-copy h2 { max-width: 890px; margin: 0; font-size: 91px; line-height: 1.25; }
-.carousel-cover-template-cover-31 .carousel-cover-copy h2 mark { color: #fff; background: #050505; }
-.carousel-cover-template-cover-31 .carousel-cover-copy p { max-width: 870px; margin-top: 116px; font-size: 52px; font-weight: 800; line-height: 1.42; text-decoration: none; }
-.carousel-cover-template-cover-34 .carousel-cover-copy { padding-top: 76px; }
-.carousel-cover-template-cover-34 .carousel-cover-copy h2 { margin-top: 24px; font-size: 72px; }
-.carousel-cover-template-cover-34 .carousel-cover-copy p { margin-top: 58px; }
+.carousel-cover-template-cover-31 .carousel-cover-copy { padding: 112px 86px; }
+.carousel-cover-template-cover-31 .carousel-cover-copy h2 { max-width: 900px; font-size: 91px; line-height: 1.24; }
+.carousel-cover-template-cover-31 .carousel-cover-copy mark, .carousel-cover-template-cover-31 .carousel-content mark { color: #fff; background: #050505; }
+.carousel-cover-template-cover-31 .carousel-cover-copy p { max-width: 880px; margin-top: 118px; font-size: 52px; font-weight: 800; line-height: 1.42; text-decoration: none; }
+.carousel-cover-template-cover-34 .carousel-cover-copy { padding-top: 74px; }
+.carousel-cover-template-cover-34 .carousel-cover-copy h2 { margin-top: 56px; font-size: 72px; line-height: 1.2; }
+.carousel-cover-template-cover-34 .carousel-cover-copy p { margin-top: 74px; }
 .carousel-cover-copy.has-long-eyebrow .carousel-cover-eyebrow { font-size: 26px; }
 .carousel-cover-copy.has-long-headline h2 { font-size: 64px; line-height: 1.2; }
 .carousel-cover-copy.has-extra-long-headline h2 { font-size: 56px; line-height: 1.18; }
@@ -254,16 +251,20 @@ button { color: inherit; }
 .carousel-cover-template-cover-31 .carousel-cover-copy.has-extra-long-headline h2 { font-size: 56px; line-height: 1.16; }
 .carousel-cover-template-cover-31 .carousel-cover-copy.has-long-body p { margin-top: 82px; font-size: 44px; line-height: 1.38; }
 .carousel-cover-template-cover-31 .carousel-cover-copy.has-extra-long-body p { margin-top: 40px; font-size: 32px; line-height: 1.3; }
-.carousel-grain { position: absolute; inset: 0; opacity: .22; background-image: radial-gradient(rgba(255,255,255,.7) 1px, transparent 1px); background-size: 6px 6px; mask-image: linear-gradient(to bottom, black, transparent); }
-.carousel-index { position: relative; z-index: 1; font-size: 28px; font-weight: 800; letter-spacing: .14em; }
-.carousel-content { position: relative; z-index: 2; margin-top: 185px; }
-.carousel-content > span { display: inline-block; padding: 12px 18px; color: var(--campaign-accent-ink, white); background: var(--campaign-accent, var(--purple)); font-size: 28px; font-weight: 800; }
-.carousel-content h2 { max-width: 870px; margin: 30px 0; font-size: 78px; line-height: 1.15; letter-spacing: -.05em; white-space: pre-line; }
-.carousel-content p { max-width: 790px; margin: 0; font-size: 31px; line-height: 1.55; }
-.carousel-shape { position: absolute; right: -120px; bottom: -180px; width: 560px; height: 560px; border-radius: 50%; background: var(--campaign-accent, var(--purple)); opacity: .9; }
-.carousel-shape i { position: absolute; width: 160px; height: 160px; border-radius: 42px; background: var(--campaign-surface, #f4b860); transform: rotate(25deg); }
-.carousel-shape i:first-child { left: -100px; top: 110px; }
-.carousel-shape i:last-child { left: 70px; top: -100px; background: var(--campaign-primary, #3182f6); }
+.carousel-series-photo { transform: scale(1.08); }
+.carousel-series-overlay { background: rgba(0,0,0,.76); }
+.carousel-cover-template-cover-32.carousel-card-3 .carousel-series-photo,
+.carousel-cover-template-cover-34.carousel-card-3 .carousel-series-photo { background-position: 35% center; }
+.carousel-cover-template-cover-32.carousel-card-4 .carousel-series-photo,
+.carousel-cover-template-cover-34.carousel-card-4 .carousel-series-photo { background-position: 68% center; }
+.carousel-cover-template-cover-32.carousel-card-5 .carousel-series-photo,
+.carousel-cover-template-cover-34.carousel-card-5 .carousel-series-photo { background-position: center 70%; }
+.carousel-index { position: absolute; z-index: 2; left: 76px; top: 72px; font-size: 27px; font-weight: 800; letter-spacing: .18em; }
+.carousel-content { position: absolute; z-index: 2; left: 76px; right: 76px; top: 246px; }
+.carousel-content > span { display: inline-block; padding: 10px 16px 12px; color: #fff; background: #6331e6; font-size: 27px; font-weight: 800; }
+.carousel-content h2 { max-width: 900px; margin: 38px 0 58px; font-size: 80px; line-height: 1.18; letter-spacing: -.055em; white-space: pre-line; }
+.carousel-content p { max-width: 860px; margin: 0; font-size: 34px; font-weight: 600; line-height: 1.55; }
+.carousel-cover-template-cover-31 .carousel-content > span { color: #fff; background: #050505; }
 .carousel-card footer { position: absolute; z-index: 2; left: 76px; right: 76px; bottom: 62px; display: flex; justify-content: space-between; align-items: center; padding-top: 25px; border-top: 2px solid currentColor; font-size: 22px; }
 .carousel-card footer strong { max-width: 62%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -312,10 +313,11 @@ button { color: inherit; }
 .intro-window-art i:nth-child(2) { left: calc(50% - 60px); height: 230px; }
 .intro-window-art i:last-child { right: 120px; }
 .landing-intro-5 .landing-intro-frame { display: flex; min-height: 800px; padding: 60px 44px; flex-direction: column; text-align: center; }
-.intro-rule-label { display: flex; align-items: center; gap: 14px; justify-content: center; color: #252525; font-size: 17px; font-weight: 650; }
+.intro-rule-label { display: flex; align-items: center; gap: 14px; justify-content: center; color: #252525; font-size: 17px; font-weight: 650; line-height: 1.45; text-wrap: balance; }
 .intro-rule-label::before, .intro-rule-label::after { content: ""; width: min(180px, 24vw); height: 1px; background: #555; }
 .landing-intro-5 h1 { margin-top: 54px; }
 .landing-intro-5 h1 span { display: block; margin-bottom: 9px; font-size: .7em; font-weight: 500; }
+.landing-intro-5 h1.intro-long-copy { font-size: clamp(30px, 4vw, 48px); line-height: 1.2; }
 .intro-signal-seal { display: grid; width: 132px; height: 132px; margin: auto 0 0 auto; flex: 0 0 132px; place-content: center; border: 1px solid #999; border-radius: 50%; }
 .intro-signal-seal::before { content: ""; width: 38px; height: 38px; margin: 0 auto 5px; border-radius: 50%; background: var(--orange); }
 .intro-signal-seal b, .intro-signal-seal span { display: block; }
@@ -330,6 +332,7 @@ button { color: inherit; }
 .intro-square-art i:last-child { right: -90px; bottom: -70px; background: var(--orange); border-color: transparent; }
 .landing-intro-6 .intro-hashtags { margin-top: 52px; }
 .landing-intro-7 .landing-intro-frame { display: flex; min-height: 820px; padding: 62px 60px; flex-direction: column; text-align: center; }
+.landing-intro-7 .intro-rule-label { font-size: 15px; }
 .landing-intro-7 h1 { margin-top: 48px; }
 .intro-bottom-copy { max-width: 520px; margin: auto 0 0; color: #444; line-height: 1.65; text-align: left; }
 .landing-kicker { color: #171717; }
