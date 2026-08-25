@@ -3,7 +3,7 @@
 상태: 로컬 Google·Supabase provider 연결과 실제 계정 로그인·로그아웃 검증 완료, production URL 설정 대기
 기준일: 2026-08-25
 
-marketvalley 로그인은 Google 토큰을 애플리케이션이 직접 교환하거나 저장하지 않고 Supabase Auth의 Authorization Code + PKCE 흐름을 사용한다. 브라우저 JavaScript에는 access token과 refresh token을 노출하지 않는다. Next.js Route Handler와 Proxy가 HttpOnly 쿠키 세션을 소유한다.
+제품 모드의 marketvalley 로그인은 Google 토큰을 애플리케이션이 직접 교환하거나 저장하지 않고 Supabase Auth의 Authorization Code + PKCE 흐름을 사용한다. 브라우저 JavaScript에는 access token과 refresh token을 노출하지 않는다. Next.js Route Handler와 Proxy가 HttpOnly 쿠키 세션을 소유한다. 발표 모드는 외부 callback 없이 별도의 HttpOnly 목 세션만 사용한다.
 
 ## 애플리케이션 계약
 
@@ -18,7 +18,7 @@ marketvalley 로그인은 Google 토큰을 애플리케이션이 직접 교환�
 
 `next`는 같은 앱의 화면 경로만 허용한다. 외부 URL, `/auth/*`, `/api/*`, 역슬래시와 제어문자가 포함된 값은 `/`로 바꾼다. 이동 경로는 PKCE flow ID별 10분짜리 HttpOnly 쿠키에 저장하고 callback URL 자체는 고정한다. 제품 환경의 광고 생성 CTA는 session API로 상태를 확인하고, 비로그인 사용자는 중간 화면 없이 `/auth/google?next=/new`에서 Google OAuth를 바로 시작한다. `/login` 직접 접근과 `/new`의 인증 오류 fallback은 전용 로그인 화면을 유지하고 `/new`는 서버가 세션을 다시 확인하므로 client 분기만 권한 경계로 신뢰하지 않는다. GNB는 session API의 `authenticated`와 최소 사용자 정보만 사용한다. 로그아웃은 링크가 아니라 POST form 또는 same-origin fetch로 호출해야 한다.
 
-확정 `market valley` SVG 로고와 공용 로그인 카드가 전용 화면과 모달에 적용돼 있다. `lib/client/use-auth-session.ts`가 GNB·광고 진입 상태와 API 계약을 소유하고 표현 컴포넌트는 이를 재사용한다. Supabase가 미설정된 발표 모드에서는 광고 진입도 session API를 호출하지 않고 기존 fixture `/new` 경로를 유지한다.
+확정 `market valley` SVG 로고와 공용 로그인 카드가 전용 화면과 모달에 적용돼 있다. `lib/client/use-auth-session.ts`가 GNB·광고 진입 상태와 API 계약을 소유하고 표현 컴포넌트는 이를 재사용한다. `NEXT_PUBLIC_AUTH_MODE=mock`인 발표 모드는 비로그인 `새 광고`에서 메인 위 로그인 모달을 열고, Google 버튼을 누르면 8시간짜리 HttpOnly 데모 세션을 만든 뒤 메인으로 돌아온다. 메인 프로젝트 UI와 Google 로그인 진입 형태는 유지하면서 실제 Google 계정·Supabase callback에는 의존하지 않는다.
 
 서버에서 소유권을 확인하는 데이터 작업은 `requireVerifiedIdentity()`로 서명 검증된 JWT의 `sub`를 사용한다. session API는 Supabase Auth 서버의 `getUser()`로 최신 사용자를 다시 확인한다. 쿠키에서 읽은 `getSession()` 사용자 객체를 권한 판단에 사용하지 않는다.
 
@@ -28,9 +28,12 @@ marketvalley 로그인은 Google 토큰을 애플리케이션이 직접 교환�
 
 ```dotenv
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
+NEXT_PUBLIC_AUTH_MODE=supabase
 NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable-key>
 ```
+
+로컬 발표에서는 `NEXT_PUBLIC_AUTH_MODE=mock`으로 바꾼다. 제품과 배포 환경에서는 반드시 `supabase`를 사용한다.
 
 legacy 프로젝트는 `NEXT_PUBLIC_SUPABASE_ANON_KEY`도 호환하지만 새 설정은 publishable key를 사용한다. `SUPABASE_SERVICE_ROLE_KEY`는 사용자 로그인에 필요하지 않으며 브라우저와 인증 route에서 사용하지 않는다.
 

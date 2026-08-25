@@ -2,7 +2,7 @@ import {
   AuthenticationRequiredError,
   requireVerifiedIdentity,
 } from "@/lib/auth/authorization";
-import { getOptionalSupabaseConfig } from "@/lib/supabase/config";
+import { resolveAuthMode } from "@/lib/auth/mode";
 
 export type CampaignEntryGateResult =
   | "allow"
@@ -16,7 +16,7 @@ type CampaignEntryGateDependencies = {
 };
 
 const defaultDependencies: CampaignEntryGateDependencies = {
-  hasConfiguration: () => getOptionalSupabaseConfig() !== null,
+  hasConfiguration: () => resolveAuthMode() !== "disabled",
   requireIdentity: requireVerifiedIdentity,
 };
 

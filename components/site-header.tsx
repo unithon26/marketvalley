@@ -3,10 +3,10 @@ import Link from "next/link";
 import { AuthControls } from "@/components/auth-controls";
 import { BrandLogo } from "@/components/brand-logo";
 import { CampaignEntryLink } from "@/components/campaign-entry-link";
-import { hasCompleteBundledSupabaseConfig } from "@/lib/supabase/config";
+import { hasBundledAuthMode } from "@/lib/auth/mode";
 
 export function SiteHeader({ compact = false }: { compact?: boolean }) {
-  const authEnabled = hasCompleteBundledSupabaseConfig();
+  const authEnabled = hasBundledAuthMode();
 
   return (
     <header className={compact ? "site-header site-header-compact" : "site-header"}>

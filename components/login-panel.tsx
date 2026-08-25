@@ -17,12 +17,13 @@ const loginErrors: Record<string, string> = {
 type LoginPanelProps = {
   authenticated?: boolean;
   enabled: boolean;
+  loginNextPath?: string;
   nextPath: string;
   errorCode?: string | null;
   modal?: boolean;
 };
 
-export function LoginPanel({ authenticated = false, enabled, nextPath, errorCode = null, modal = false }: LoginPanelProps) {
+export function LoginPanel({ authenticated = false, enabled, nextPath, loginNextPath = nextPath, errorCode = null, modal = false }: LoginPanelProps) {
   const errorMessage = errorCode ? loginErrors[errorCode] : null;
   const card = (
     <section className={modal ? "login-card login-card-modal" : "login-card"} aria-labelledby="login-title">
@@ -37,7 +38,7 @@ export function LoginPanel({ authenticated = false, enabled, nextPath, errorCode
           <span>로그인 상태로 계속하기</span>
         </Link>
       ) : enabled ? (
-        <a className="google-login-button" href={`/auth/google?next=${encodeURIComponent(nextPath)}`}>
+        <a className="google-login-button" href={`/auth/google?next=${encodeURIComponent(loginNextPath)}`}>
           <GoogleIcon />
           <span>Google 계정으로 로그인</span>
         </a>
@@ -47,7 +48,9 @@ export function LoginPanel({ authenticated = false, enabled, nextPath, errorCode
           <span>로그인 준비 중</span>
         </button>
       )}
-      <p className="login-footnote">로그인 후 작성하던 화면으로 바로 돌아갑니다.</p>
+      <p className="login-footnote">
+        {loginNextPath === "/" ? "로그인 후 메인 화면으로 돌아갑니다." : "로그인 후 작성하던 화면으로 바로 돌아갑니다."}
+      </p>
     </section>
   );
 

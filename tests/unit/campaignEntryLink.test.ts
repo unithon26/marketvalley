@@ -12,6 +12,11 @@ describe("resolveCampaignEntryPath", () => {
     expect(resolveCampaignEntryPath({ status: "anonymous" })).toBe("/auth/google?next=%2Fnew");
   });
 
+  it("발표 모드의 비로그인 사용자는 메인 위 Google 로그인 모달로 보낸다", () => {
+    expect(resolveCampaignEntryPath({ status: "anonymous" }, true, true))
+      .toBe("/login?next=%2Fnew");
+  });
+
   it("로그인 상태와 인증 장애는 서버의 기존 /new 경계로 보낸다", () => {
     expect(resolveCampaignEntryPath({
       status: "authenticated",

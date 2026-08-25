@@ -3,6 +3,8 @@ import {
   type SupabaseClient,
 } from "@supabase/supabase-js";
 
+import { resolveAuthMode } from "@/lib/auth/mode";
+import { hasPresentationAuthSession, presentationAuthUser } from "@/lib/auth/presentation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export class AuthenticationRequiredError extends Error {
@@ -20,6 +22,11 @@ export type VerifiedIdentity = {
 export async function requireVerifiedIdentity(
   client?: SupabaseClient,
 ): Promise<VerifiedIdentity> {
+  if (!client && resolveAuthMode() === "mock") {
+    if (!(await hasPresentationAuthSession())) throw new AuthenticationRequiredError();
+    return { userId: presentationAuthUser.id, email: presentationAuthUser.email };
+  }
+
   const supabase = client ?? (await createSupabaseServerClient());
   const { data, error } = await supabase.auth.getClaims();
   const subject = typeof data?.claims?.sub === "string" ? data.claims.sub : null;
