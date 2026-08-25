@@ -5,6 +5,7 @@
 - 목적: source 배포가 성공해도 lifecycle worker가 시작되지 않거나 Meta 비활성 환경이 실제 수집 캠페인을 실패 처리하는 운영 불일치를 제거한다.
 - 변경: release activation 대상에 `lifecycle-worker`를 포함하고 running 확인을 성공 조건으로 추가했다. production preflight는 이제 `META_ADS_MODE=live`를 필수로 하며 기존 account·credential·원장·자동 활성화·예산 일치 검사를 함께 적용한다. Oracle 환경의 Meta 모드와 두 예산을 실제 운영값으로 맞췄다.
 - 복구: worker 시작 직후 `meta_configuration_error`로 실패한 정확한 캠페인과 기존 `ACTIVE` Meta run을 대조했다. 외부 광고는 건드리지 않고 선행조건 SQL로 내부 상태만 `COLLECTING`에 복구한 뒤 worker를 실행해 오류 해제와 다음 수집 예약을 확인했다.
+- 추가 보강: 첫 수정 배포 뒤 app은 새 SHA지만 worker가 실행 중인 이전 SHA image를 유지한 사실을 발견했다. worker를 즉시 새 image로 재생성하고, 이후 배포는 worker를 항상 `--force-recreate`한 뒤 running과 exact image SHA를 함께 검사하도록 고쳤다.
 - 검증: source shell syntax와 배포 trust-boundary 테스트 3파일 11개, owner-only control-plane shell syntax와 테스트 4개가 통과했다. app healthy, proxy와 worker running, 동일 release image, 캠페인 `COLLECTING`과 오류 없음도 운영에서 확인했다.
 - 전달: source와 control-plane 변경을 각각 CI·병합한 뒤 exact-SHA Oracle 재배포로 새 preflight와 worker 성공 조건을 다시 확인한다.
 - 남은 일: 2026-08-27 05:56 KST 수집 종료 뒤 자동 pause·final snapshot·`COMPLETED` 장기 관찰.

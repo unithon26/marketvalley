@@ -543,14 +543,17 @@ wait_for_healthy_app() {
 }
 
 wait_for_running_lifecycle_worker() {
+  local expected_sha="$1"
   local container_id=""
+  local image=""
   local running=""
 
   for _ in $(seq 1 30); do
     container_id="$(compose ps --quiet lifecycle-worker 2>/dev/null || true)"
     if [[ -n "${container_id}" ]]; then
       running="$(docker inspect --format '{{.State.Running}}' "${container_id}" 2>/dev/null || true)"
-      [[ "${running}" == "true" ]] && return
+      image="$(docker inspect --format '{{.Config.Image}}' "${container_id}" 2>/dev/null || true)"
+      [[ "${running}" == "true" && "${image}" == "marketvalley:${expected_sha}" ]] && return
     fi
     sleep 2
   done
@@ -581,7 +584,8 @@ activate_release() {
 
   compose up --detach --no-build app lifecycle-worker proxy || return 1
   wait_for_healthy_app "${target_sha}" || return 1
-  wait_for_running_lifecycle_worker || return 1
+  compose up --detach --no-build --force-recreate lifecycle-worker || return 1
+  wait_for_running_lifecycle_worker "${target_sha}" || return 1
   compose exec --no-TTY proxy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile || return 1
 }
 

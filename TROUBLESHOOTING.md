@@ -1,5 +1,27 @@
 # Troubleshooting
 
+## 2026-08-26 — 실행 중인 worker 검사가 이전 release image를 허용함
+
+### 맥락과 영향
+
+worker 자동 시작 조건을 추가한 exact-SHA 배포가 성공했지만, 사후 컨테이너 대조에서 app은 새 SHA이고 lifecycle worker는 이전 SHA image인 것을 발견했다. worker는 같은 Supabase 상태를 계속 수집할 수 있었으므로 캠페인과 광고가 중단되지는 않았지만, 배포가 주장한 단일 release 불변조건을 위반했다.
+
+### 증거와 원인
+
+- `/opt/marketvalley/current`와 app health는 새 source SHA `2eea8550`이었다.
+- app container는 새 SHA image였지만 running worker의 `.Config.Image`는 이전 SHA `21562e73`이었다.
+- 성공 조건은 worker의 `.State.Running=true`만 확인했다. 기존 worker가 실행 중이면 release SHA가 달라도 통과했다.
+
+근본 원인은 장기 실행 service의 가용성과 배포 provenance를 같은 조건으로 검사하지 않은 것이다.
+
+### 해결과 회귀 방지
+
+현재 worker를 새 release compose와 `--force-recreate`로 교체해 app과 같은 SHA image에서 시작했다. 배포 스크립트도 매 release마다 worker를 명시적으로 재생성하고, running 상태와 `.Config.Image=marketvalley:<target_sha>`를 모두 만족해야 성공하도록 수정했다. source와 owner-only control-plane에 동일한 정적 회귀 검사를 추가했다.
+
+### 남은 위험과 예상 질문
+
+수정된 control-plane CI 뒤 새 exact-SHA 배포로 강제 재생성과 image 검사를 실제 확인한다. 면접에서는 health만 같아도 실행 코드 provenance가 다를 수 있는 장기 실행 worker를 어떻게 검증할지 설명할 수 있다.
+
 ## 2026-08-26 — Oracle의 비활성 Meta 모드가 실제 수집 캠페인을 실패 처리함
 
 ### 맥락과 영향

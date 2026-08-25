@@ -66,7 +66,9 @@ describe("production deployment trust boundary", () => {
     expect(bootstrap).toContain('/opt/marketvalley/docker');
     expect(releaseScript).toContain('dedicated marketvalley volume is not mounted');
     expect(releaseScript).toContain('compose up --detach --no-build app lifecycle-worker proxy');
-    expect(releaseScript).toContain('wait_for_running_lifecycle_worker || return 1');
+    expect(releaseScript).toContain('compose up --detach --no-build --force-recreate lifecycle-worker');
+    expect(releaseScript).toContain('"${image}" == "marketvalley:${expected_sha}"');
+    expect(releaseScript).toContain('wait_for_running_lifecycle_worker "${target_sha}" || return 1');
   });
 
   it("hard-isolates Docker storage on an attached OCI block volume", () => {
