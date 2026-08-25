@@ -1,5 +1,23 @@
 # Troubleshooting
 
+## 2026-08-26 — Compose가 lifecycle worker의 JavaScript 보간을 환경변수로 해석함
+
+### 맥락과 영향
+
+자동 lifecycle을 1분마다 호출하는 Oracle worker를 Compose에 추가한 뒤 PR CI의 앱 lint, typecheck, 단위 테스트, build와 E2E는 모두 통과했지만 배포 파일 검사가 중단됐다. 아직 운영 release를 시작하기 전이라 실행 중인 앱과 광고 수집에는 영향이 없었다.
+
+### 증거와 원인
+
+`docker compose config`는 worker의 인라인 JavaScript에 있던 ``Bearer ${secret}``과 ``${response.status}``를 Compose 환경변수 보간으로 먼저 처리했다. `secret`이 비어 있다는 경고 뒤 command 형식 오류를 반환했다. 원인은 JavaScript template literal과 Compose의 `${VAR}` 문법이 같은 표기를 사용한 것이다.
+
+### 해결과 회귀 방지
+
+인라인 command의 두 template literal을 문자열 연결로 바꿔 `$` 문자를 제거했다. 앱 소스와 owner-only 배포 저장소의 Compose 파일을 같은 내용으로 수정한다. source CI의 실제 `docker compose config --quiet` gate가 이 표현식 회귀를 배포 전에 차단한다.
+
+### 남은 위험과 예상 질문
+
+수정된 source CI와 배포 control-plane CI, 실제 Oracle worker의 1분 호출 로그를 확인해야 한다. 면접에서는 애플리케이션 언어와 배포 템플릿 언어가 겹칠 때 최종 렌더 결과를 검증해야 하는 이유를 설명할 수 있다.
+
 ## 2026-08-26 — AI 생성 503이 진행 상태를 입력 화면으로 되돌림
 
 ### 맥락과 영향
