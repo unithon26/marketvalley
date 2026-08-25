@@ -104,9 +104,11 @@ test("발표용 GNB는 비로그인 상태에서 Google 로그인을 제공한�
   await context.clearCookies();
   await page.goto("/");
   await expect(page.getByRole("link", { name: "Google로 로그인" })).toBeVisible();
-  await expect(page.getByRole("link", { name: /마감한입/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /마감한입/ })).toHaveCount(0);
   await expect(page.getByText("동네공방 빈자리", { exact: true })).toBeVisible();
   await expect(page.getByText("클래스 문의함", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "검증 완료" }).click();
+  await expect(page.getByRole("link", { name: /마감한입/ })).toBeVisible();
 });
 
 test("서비스 루트는 Figma 메인 프로젝트 화면과 제품 플로우를 보여준다", async ({ page }) => {
@@ -115,7 +117,9 @@ test("서비스 루트는 Figma 메인 프로젝트 화면과 제품 플로우�
   await expect(page.getByText("마켓밸리 데모", { exact: true })).toBeVisible();
   await expect(page.locator(".site-header")).toHaveClass(/site-header-compact/);
   await expect(page.getByRole("navigation", { name: "주요 메뉴" })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "새 광고" })).toHaveAttribute("href", "/new");
+  await expect(page.getByRole("link", { name: "광고 만들기" })).toHaveAttribute("href", "/new");
+  await expect(page.getByText("새 아이디어 검증하기")).toHaveCount(0);
+  await page.getByRole("button", { name: "검증 완료" }).click();
   await expect(page.getByRole("link", { name: /마감한입/ })).toHaveAttribute("href", "/campaigns/demo");
   await expect(page.locator("main")).not.toContainText(/THE PROBLEM|THE METHOD|START VALIDATION/u);
   await expectNoHorizontalOverflow(page);
@@ -136,18 +140,17 @@ test("로그인 화면의 Google 목 로그인은 로그인된 메인으로 돌�
   await expect(page.getByText("마켓밸리 데모", { exact: true })).toBeVisible();
 });
 
-test("비로그인 메인의 새 광고는 로그인 모달을 열고 Google 목 로그인 뒤 메인으로 돌아온다", async ({ context, page }) => {
+test("비로그인 메인의 광고 만들기는 로그인 모달을 열고 Google 목 로그인 뒤 메인으로 돌아온다", async ({ context, page }) => {
   await context.clearCookies();
   await page.goto("/");
-  await page.getByRole("link", { name: "새 광고" }).click();
+  await page.getByRole("link", { name: "광고 만들기" }).click();
   await expect(page.getByRole("dialog", { name: /시장 검증을 시작하려면/ })).toBeVisible();
-  await expect(page.getByRole("link", { name: /마감한입/ })).toBeVisible();
   await expect(page.getByText("동네공방 빈자리", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Google 계정으로 로그인" }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByText("마켓밸리 데모", { exact: true })).toBeVisible();
 
-  await page.getByRole("link", { name: "새 광고" }).click();
+  await page.getByRole("link", { name: "광고 만들기" }).click();
   await expect(page).toHaveURL(/\/new$/);
   await expect(page.getByRole("heading", { name: "제품을 만들게 된 배경을 입력해주세요" })).toBeVisible();
 });
@@ -302,7 +305,7 @@ test("fixture 생성부터 Figma 리포트, 산출물과 예약까지 실제 API
   await page.evaluate(() => window.localStorage.clear());
 
   await expect(page.locator("body")).not.toContainText(/캠페인|CampaignSpec/u);
-  await page.getByRole("link", { name: "새 광고" }).click();
+  await page.getByRole("link", { name: "광고 만들기" }).click();
   await page.getByRole("button", { name: "예시 불러오기" }).click();
   await page.getByRole("button", { name: "다음" }).click();
   await page.getByRole("button", { name: /광고 만들기/ }).click();
@@ -507,8 +510,9 @@ test("375px과 키보드에서 필터, 생성, 리포트와 공개 응답을 조
   const completedFilter = page.getByRole("button", { name: /검증 완료/ });
   await completedFilter.click();
   await expect(completedFilter).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByText("완료된 검증이 아직 없어요.")).toBeVisible();
-  await page.getByRole("button", { name: "진행 중 프로젝트 보기" }).click();
+  await expect(page.getByRole("link", { name: /마감한입/ })).toBeVisible();
+  await page.getByRole("button", { name: "진행 중" }).click();
+  await expect(page.getByText("동네공방 빈자리", { exact: true })).toBeVisible();
 
   await page.goto("/new");
   await expectNoHorizontalOverflow(page);
