@@ -214,6 +214,7 @@ describe("GraphMetaAdsProvider", () => {
       objective: "OUTCOME_TRAFFIC",
       buying_type: "AUCTION",
       special_ad_categories: "[]",
+      is_adset_budget_sharing_enabled: "false",
     });
     const adSetForm = requestBody(requests[5].init);
     expect(Object.fromEntries(adSetForm)).toMatchObject({
@@ -232,7 +233,7 @@ describe("GraphMetaAdsProvider", () => {
     const story = JSON.parse(creativeForm.get("object_story_spec") ?? "null");
     expect(story).toMatchObject({
       page_id: binding.pageId,
-      instagram_actor_id: binding.instagramActorId,
+      instagram_user_id: binding.instagramActorId,
       link_data: {
         link: creativePayload.destinationUrl,
         call_to_action: { type: "LEARN_MORE", value: { link: creativePayload.destinationUrl } },

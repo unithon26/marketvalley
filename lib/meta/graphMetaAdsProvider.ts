@@ -211,6 +211,7 @@ export class GraphMetaAdsProvider implements MetaAdsProvider {
       objective: payload.objective,
       buying_type: payload.buyingType,
       special_ad_categories: JSON.stringify(payload.specialAdCategories),
+      is_adset_budget_sharing_enabled: "false",
     }), "Meta campaign ID");
   }
 
@@ -257,7 +258,7 @@ export class GraphMetaAdsProvider implements MetaAdsProvider {
     };
     const objectStorySpec = {
       page_id: this.binding.pageId,
-      instagram_actor_id: this.binding.instagramActorId,
+      instagram_user_id: this.binding.instagramActorId,
       link_data: {
         link: destinationUrl,
         message: payload.message,
