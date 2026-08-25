@@ -5,7 +5,12 @@ import {
   nextActionSchema,
 } from "@/lib/contracts/campaign";
 import type { CampaignSpec } from "@/lib/contracts/campaign";
-import type { PublishedCampaign, ReservationSummary } from "@/lib/contracts/repository";
+import { ideaInputSchema } from "@/lib/contracts/generator";
+import type {
+  CampaignLifecycleRecord,
+  PublishedCampaign,
+  ReservationSummary,
+} from "@/lib/contracts/repository";
 import type { CampaignAnalytics } from "@/lib/contracts/analytics";
 
 const identifierSchema = z.string().trim().min(1).max(100);
@@ -13,6 +18,11 @@ const identifierSchema = z.string().trim().min(1).max(100);
 export const publishCampaignRequestSchema = z.object({
   draftId: identifierSchema,
   spec: campaignSpecSchema,
+}).strict();
+
+export const startCampaignRequestSchema = z.object({
+  draftId: identifierSchema,
+  input: ideaInputSchema,
 }).strict();
 
 export const campaignIdQuerySchema = z.object({
@@ -49,6 +59,7 @@ export const recordReservationRequestSchema = z.object({
 }).strict();
 
 export type PublishCampaignRequest = z.infer<typeof publishCampaignRequestSchema>;
+export type StartCampaignRequest = z.infer<typeof startCampaignRequestSchema>;
 export type UpdateCampaignRequest = z.infer<typeof updateCampaignRequestSchema>;
 export type DeleteCampaignRequest = z.infer<typeof deleteCampaignRequestSchema>;
 export type ResetCampaignRequest = z.infer<typeof resetCampaignRequestSchema>;
@@ -62,6 +73,12 @@ export type CampaignResponse = PublishedCampaign & {
   url: string;
   summary: ReservationSummary;
   analytics: CampaignAnalytics;
+};
+
+export type CampaignLifecycleResponse = CampaignLifecycleRecord & {
+  progressUrl: string;
+  reportUrl: string | null;
+  landingUrl: string | null;
 };
 
 export type RecordReservationResponse = {

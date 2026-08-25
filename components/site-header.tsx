@@ -18,11 +18,9 @@ export function SiteHeader({ compact = false }: { compact?: boolean }) {
           <nav className="header-nav" aria-label="주요 메뉴">
             <Link href="/">프로젝트</Link>
             <CampaignEntryLink>광고 만들기</CampaignEntryLink>
-            <Link href="/campaigns/demo">데모 리포트</Link>
           </nav>
         ) : null}
         <div className="header-actions">
-          {!compact ? <span className="demo-chip">DEMO</span> : null}
           <AuthControls enabled={authEnabled} />
         </div>
       </div>

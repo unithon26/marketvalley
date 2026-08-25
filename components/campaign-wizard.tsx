@@ -1,21 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowRightIcon } from "@/components/icons";
-import {
-  GenerationProgressView,
-  type GenerationProgressStage,
-} from "@/components/generation-progress-view";
+import { GenerationProgressView } from "@/components/generation-progress-view";
 import type { CampaignGeneratorStatus } from "@/lib/ai/generatorConfig";
-import { campaignSpecSchema, type CampaignSpec } from "@/lib/contracts/campaign";
-import { saveCampaignDraftId } from "@/lib/client/demo-store";
-
-const example = {
-  background:
-    "동네에서 작은 카페를 운영합니다. 마감 시간이 가까워지면 멀쩡한 디저트와 샌드위치가 남지만, 이웃에게 알릴 방법이 없어 폐기하는 날이 많습니다. 매번 인스타그램 게시물을 새로 만들고 문의를 확인하는 일도 부담입니다.",
-  solution:
-    "서비스 이름은 ‘마감한입’입니다. 핵심 특징은 남은 메뉴 한 번 입력, 공개 페이지와 게시 카드 동시 생성, 동의 기반 예약자명단입니다. 카페 사장님이 남은 메뉴와 마감 시간을 입력하면 가까운 이웃이 볼 수 있는 광고가 자동으로 만들어집니다.",
-};
 
 type Step = 1 | 2;
 const wizardHistoryKey = "marketvalleyWizardStep";
@@ -33,7 +22,6 @@ export function createWizardHistoryState(state: unknown, step: Step): Record<str
 type PublishAttempt = {
   fingerprint: string;
   draftId: string;
-  spec: CampaignSpec | null;
 };
 
 function publishedCampaignId(value: unknown): string {
@@ -46,28 +34,6 @@ function publishedCampaignId(value: unknown): string {
 type CampaignWizardProps = {
   generatorStatus: CampaignGeneratorStatus;
 };
-
-const submissionAcknowledgementDelayMs = 1_600;
-
-function delay(milliseconds: number, signal: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal.aborted) {
-      reject(new DOMException("작업이 취소됐습니다.", "AbortError"));
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      signal.removeEventListener("abort", abort);
-      resolve();
-    }, milliseconds);
-    function abort() {
-      window.clearTimeout(timer);
-      signal.removeEventListener("abort", abort);
-      reject(new DOMException("작업이 취소됐습니다.", "AbortError"));
-    }
-    signal.addEventListener("abort", abort, { once: true });
-  });
-}
 
 function generationErrorMessage(code: string | null): string {
   if (code === "authentication_required") {
@@ -82,7 +48,7 @@ function generationErrorMessage(code: string | null): string {
   if (code === "campaign_generator_not_configured" || code === "auth_not_configured") {
     return "AI 문구 생성 설정을 확인해주세요.";
   }
-  return "광고 생성에 실패했어요. 다시 시도해주세요.";
+  return "접수하지 못했어요. 입력은 그대로 유지됩니다. 잠시 후 다시 시도해주세요.";
 }
 
 async function responseErrorCode(response: Response): Promise<string | null> {
@@ -106,13 +72,12 @@ async function responseErrorCode(response: Response): Promise<string | null> {
 }
 
 export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
+  const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [background, setBackground] = useState("");
   const [solution, setSolution] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [progressStage, setProgressStage] = useState<GenerationProgressStage>(0);
-  const [completedCampaignId, setCompletedCampaignId] = useState<string | null>(null);
   const publishAttemptRef = useRef<PublishAttempt | null>(null);
   const requestControllerRef = useRef<AbortController | null>(null);
 
@@ -132,14 +97,8 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
   const canContinue = step === 1 ? background.trim().length >= 20 : solution.trim().length >= 20;
   const usesLiveAI = generatorStatus.mode !== "fixture";
   const generatorNotice = usesLiveAI && !generatorStatus.ready
-    ? "AI 문구 생성 · 회전된 API 키 설정 필요"
+    ? "AI 생성 연결을 확인해주세요"
     : null;
-
-  function loadExample() {
-    setBackground(example.background);
-    setSolution(example.solution);
-    setError("");
-  }
 
   async function next() {
     if (!canContinue) {
@@ -160,8 +119,6 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
     const requestController = new AbortController();
     requestControllerRef.current = requestController;
     setSubmitting(true);
-    setProgressStage(0);
-    setCompletedCampaignId(null);
     try {
       const input = { background: background.trim(), solution: solution.trim() };
       const fingerprint = JSON.stringify(input);
@@ -169,47 +126,22 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
         publishAttemptRef.current = {
           fingerprint,
           draftId: window.crypto.randomUUID(),
-          spec: null,
         };
       }
       const attempt = publishAttemptRef.current;
-
-      await delay(submissionAcknowledgementDelayMs, requestController.signal);
-      setProgressStage(1);
-
-      if (!attempt.spec) {
-        const generateResponse = await fetch("/api/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(input),
-          signal: requestController.signal,
-        });
-        if (!generateResponse.ok) {
-          throw new Error(await responseErrorCode(generateResponse) ?? "generate_failed");
-        }
-        const generated: unknown = await generateResponse.json();
-        if (typeof generated !== "object" || generated === null || !("spec" in generated)) {
-          throw new Error("generate_response_invalid");
-        }
-        attempt.spec = campaignSpecSchema.parse(generated.spec);
-      }
-
-      setProgressStage(2);
       const publishResponse = await fetch("/api/campaigns", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ draftId: attempt.draftId, spec: attempt.spec }),
+        body: JSON.stringify({ draftId: attempt.draftId, input }),
         signal: requestController.signal,
       });
-      if (!publishResponse.ok) throw new Error("publish_failed");
+      if (!publishResponse.ok) {
+        throw new Error(await responseErrorCode(publishResponse) ?? "submission_failed");
+      }
       const published: unknown = await publishResponse.json();
       const campaignId = publishedCampaignId(published);
-      saveCampaignDraftId(campaignId, attempt.draftId);
-      setCompletedCampaignId(campaignId);
       requestControllerRef.current = null;
-
-      // 생성 모드와 관계없이 실제 게시 응답이 끝난 시점에만 결과를 연다.
-      setProgressStage(3);
+      router.push(`/campaigns/${encodeURIComponent(campaignId)}/progress`);
     } catch (caught) {
       if (requestController.signal.aborted) return;
       setError(generationErrorMessage(caught instanceof Error ? caught.message : null));
@@ -225,22 +157,21 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
   if (submitting) {
     return (
       <GenerationProgressView
-        current={progressStage}
-        reportHref={completedCampaignId ? `/campaigns/${completedCampaignId}` : "/"}
+        current={0}
+        reportHref="/"
       />
     );
   }
 
   return (
     <main className="wizard-page page-container">
-      <div className="wizard-topline">
-        <button type="button" className="text-button" onClick={loadExample}>예시 불러오기</button>
-        {generatorNotice ? (
-          <span className="mock-notice" role="status">
+      {generatorNotice ? (
+        <div className="wizard-topline">
+          <span className="service-notice" role="status">
             <i /> {generatorNotice}
           </span>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       <section className="wizard-panel">
         <div className="step-kicker">{step}/2</div>
@@ -256,7 +187,9 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
             maxLength={step === 1 ? 600 : 500}
             value={step === 1 ? background : solution}
             onChange={(event) => step === 1 ? setBackground(event.target.value) : setSolution(event.target.value)}
-            placeholder={step === 1 ? example.background : example.solution}
+            placeholder={step === 1
+              ? "누가 어떤 상황에서 어떤 일을 반복하고 있는지, 왜 해결하려는지 구체적으로 적어주세요."
+              : "서비스 이름, 제공할 핵심 가치, 사용자가 하게 될 행동을 구체적으로 적어주세요."}
             autoFocus
           />
           <span className="char-count">{(step === 1 ? background : solution).length}/{step === 1 ? 600 : 500}</span>

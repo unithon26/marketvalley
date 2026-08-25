@@ -142,11 +142,15 @@ body:has(.login-modal-layer) > :not(.login-modal-layer) { filter: blur(3px); }
 .progress-meta b { font-weight: 500; }
 .progress-track { height: 6px; overflow: hidden; border-radius: 9px; background: #d8dce1; }
 .progress-track i { display: block; height: 100%; border-radius: inherit; background: var(--purple); }
+.project-empty { display: grid; min-height: 220px; margin-top: 20px; place-items: center; border: 1px dashed var(--line); border-radius: 18px; color: var(--muted); text-align: center; }
+.project-empty p { margin: 0; }
+.project-error, .project-archive-note { display: block; margin-top: 10px; color: var(--danger); font-size: 12px; line-height: 1.45; }
+.project-archive-note { color: var(--tertiary); }
 /* Wizard */
 .wizard-page { padding: 52px 0 100px; }
 .wizard-topline { display: flex; width: 100%; max-width: 930px; justify-content: space-between; align-items: center; margin: 0 auto 28px; }
-.mock-notice { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; }
-.mock-notice i { width: 7px; height: 7px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 0 4px rgba(24,185,130,.12); }
+.service-notice { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; }
+.service-notice i { width: 7px; height: 7px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 0 4px rgba(24,185,130,.12); }
 .wizard-panel, .approval-panel { max-width: 930px; margin: 0 auto; }
 .wizard-panel h1, .approval-panel h1 { margin: 0; font-size: clamp(28px, 4vw, 38px); line-height: 1.24; letter-spacing: -.04em; }
 .wizard-description { margin: 12px 0 28px; color: var(--muted); font-size: 16px; }
@@ -185,6 +189,7 @@ body:has(.login-modal-layer) > :not(.login-modal-layer) { filter: blur(3px); }
 .stage-line::before { right: 12.5%; background: #dfe2e6; }
 .stage-line::after { background: var(--progress-purple); transform-origin: left; transition: width .55s cubic-bezier(.22,.8,.26,1); animation: validation-line-breathe 1.9s ease-in-out infinite; }
 .stage-line.stage-progress-1::after { width: 25%; }
+.stage-line.stage-progress-0::after { width: 0; }
 .stage-line.stage-progress-2::after { width: 50%; }
 .stage-line.stage-progress-3::after { width: 75%; }
 .stage-line li { position: relative; z-index: 1; display: flex; align-items: center; flex-direction: column; gap: 9px; color: #c1c7ce; font-size: 13px; }
@@ -197,6 +202,7 @@ body:has(.login-modal-layer) > :not(.login-modal-layer) { filter: blur(3px); }
 .stage-line li b { font-weight: 650; }
 .progress-actions { display: flex; justify-content: center; margin-top: 21px; }
 .progress-actions .button { min-height: 48px; border-radius: 10px; }
+.validation-progress-error { width: min(720px, 100%); padding: 14px 18px; margin: 20px auto 0; border: 1px solid #ffd4d7; border-radius: 12px; color: #b42328; background: #fff7f7; font-size: 14px; line-height: 1.55; }
 .validation-progress-page .button-primary { background: var(--progress-purple); box-shadow: 0 6px 14px rgba(128,100,236,.2); }
 .validation-progress-page .button-secondary { color: #6b7684; font-weight: 550; }
 .validation-stage-3 .validation-progress-illustration, .validation-stage-3 .validation-eta, .validation-stage-3 .stage-line::after { animation: none; }
@@ -389,6 +395,7 @@ body:has(.login-modal-layer) > :not(.login-modal-layer) { filter: blur(3px); }
 .creative-carousel-scroll:focus-visible { outline: 2px solid var(--report-purple); outline-offset: 4px; }
 .creative-carousel-slide { position: relative; flex: 0 0 300px; width: 300px; height: 375px; overflow: hidden; border-radius: 16px; background: #111; scroll-snap-align: start; scroll-snap-stop: always; }
 .creative-carousel-scale { position: absolute; top: 0; left: 0; width: 1080px; height: 1350px; transform: scale(.2777778); transform-origin: top left; }
+.creative-carousel-image { display: block; width: 1080px; height: 1350px; object-fit: cover; }
 .creative-carousel-button { position: absolute; z-index: 5; top: 169px; display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid rgba(215,219,225,.9); border-radius: 50%; color: #26313d; background: rgba(255,255,255,.94); box-shadow: 0 4px 12px rgba(25,31,40,.14); cursor: pointer; }
 .creative-carousel-button:disabled { opacity: .35; cursor: default; }
 .creative-carousel-previous { left: 8px; }

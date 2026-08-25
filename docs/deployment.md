@@ -126,6 +126,9 @@ NLB가 healthy가 되기 전에는 기존 security list의 22·6443을 건드리
 - `CAMPAIGN_REPOSITORY_MODE=supabase`, URL·publishable key·server key
 - 배포 뒤 바꾸지 않을 32바이트 이상의 `SIGNAL_HASH_SECRET`
 - 운영 생성 quota
+- `CRON_SECRET`: Oracle lifecycle worker와 내부 endpoint가 공유하는 32바이트 이상 무작위 값
+- `META_AUTO_ACTIVATION_ENABLED=true`와 정확한 광고 계정·lifetime 예산 확인값
+- `META_INSIGHTS_FINALIZATION_DELAY_MINUTES`: 종료 뒤 최종 Insights 반영 대기 시간
 
 `NEXT_PUBLIC_*`만 공개 build argument로 전달한다. Anthropic·Supabase·Turnstile server key와 HMAC secret은 image, Git, Terraform, Actions log에 넣지 않는다.
 
@@ -179,6 +182,8 @@ CI 성공은 배포 승인과 같지 않다. 실행 전 source 앱, `.github/wor
 - 병렬 예약에서 campaign/global 분당 quota와 campaign total capacity가 DB에서 원자적으로 유지됨
 - 다른 계정이 owner route와 예약 원문을 읽지 못함
 - PNG 5장·carousel ZIP·Meta 게시 준비 ZIP이 production에서 생성됨
+- 접수 뒤 브라우저를 닫아도 Oracle worker가 Claude·랜딩·카드·Meta ACTIVE·Insights 단계를 이어가고 재로그인 화면이 DB 상태를 복원함
+- 기존 ACTIVE 캠페인은 중복 Meta 객체 없이 `COLLECTING`으로 이어받고 종료 뒤 PAUSED·final snapshot·`COMPLETED`가 됨
 - 실패 SHA를 의도적으로 배포한 controlled rehearsal에서 직전 public health가 복구됨
 - SSH 22와 k3s API 6443의 OCI ingress가 실제 관리 범위로 축소됨
 - maintenance reboot 뒤 rootless Docker·Compose와 기존 Kubernetes가 모두 자동 복구됨

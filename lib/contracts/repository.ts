@@ -1,4 +1,38 @@
 import type { CampaignSpec, NextAction } from "@/lib/contracts/campaign";
+import type { IdeaInput } from "@/lib/contracts/generator";
+
+export const campaignLifecycleStatuses = [
+  "SUBMITTED",
+  "GENERATING",
+  "PREPARING",
+  "AWAITING_ACTIVATION",
+  "COLLECTING",
+  "FINALIZING",
+  "COMPLETED",
+  "RETRY_WAIT",
+  "FAILED",
+  "ARCHIVED",
+] as const;
+
+export type CampaignLifecycleStatus = typeof campaignLifecycleStatuses[number];
+
+export type CampaignLifecycleRecord = {
+  id: string;
+  draftId: string;
+  status: CampaignLifecycleStatus;
+  spec: CampaignSpec | null;
+  slug: string | null;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  preparationCompletedAt: string | null;
+  collectionStartedAt: string | null;
+  collectionEndsAt: string | null;
+  completedAt: string | null;
+  nextAttemptAt: string | null;
+  lastErrorCode: string | null;
+  lastErrorMessage: string | null;
+};
 
 export type PublishedCampaign = {
   id: string;
@@ -94,6 +128,9 @@ export class DraftOwnershipError extends Error {
 }
 
 export interface CampaignRepository {
+  createSubmission(draftId: string, input: IdeaInput): Promise<CampaignLifecycleRecord>;
+  getLifecycle(id: string): Promise<CampaignLifecycleRecord | null>;
+  listLifecycle(): Promise<CampaignLifecycleRecord[]>;
   publish(draftId: string, spec: CampaignSpec): Promise<PublishedCampaign>;
   getById(id: string): Promise<PublishedCampaign | null>;
   getBySlug(slug: string): Promise<PublishedCampaign | null>;

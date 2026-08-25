@@ -1,5 +1,14 @@
 # 작업 기록
 
+## 2026-08-26 — 계정별 광고 생성·집행·집계 lifecycle 전환
+
+- 목적: 더미 프로젝트와 수동 Meta 조작을 제거하고, Google 계정별 접수부터 실제 광고·집계·최종 리포트까지 브라우저와 무관하게 이어지는 제품 경로를 완성한다.
+- 변경: `/api/campaigns`를 DB 선접수 방식으로 바꾸고 Supabase lease 상태 머신, 1분 Oracle worker와 Vercel fallback cron, Claude 생성, 공개 slug, 서버 `ImageResponse` 카드뉴스 5장, Meta PAUSED 생성·exact 계정/예산 승인·ACTIVE 확인, Insights 중간·최종 snapshot, 완료 리포트를 연결했다. 로그인 대시보드는 계정 데이터만 불러오며 진행 화면은 DB 상태를 복원한다. 예시 불러오기, 메인으로, 수동 PAUSED 초안·활성화·중지 UI/API와 기본 fixture seed를 제거했다. 사용자의 후속 지시에 따라 상태 이메일 구현은 전부 제외했다.
+- 안전: 이전 캠페인은 migration에서 먼저 `ARCHIVED` 처리하고 실제 Meta run만 복원한다. 동일 광고 계정 live run 하나를 DB index와 실행 전 조회로 제한한다. 운영 DB의 발표·시험 캠페인 5개를 정확한 ID로 삭제했고 실제 ACTIVE 캠페인 1개는 보존했다. 이전 외부 Meta 초안은 PAUSED 상태 그대로 변경하지 않았다.
+- 검증: `pnpm check`에서 lint·typecheck와 단위 테스트 41파일 215개가 통과했다. production build를 포함한 Chromium E2E에서 빈 계정, 입력 보존, 접수·결과, 1080×1350 PNG 5장과 ZIP, 공개 예약·마스킹 리포트, 로그인 뒤 상태 복원을 확인했다. 예약 E2E의 잘못된 navigation 대기와 마스킹 기대값을 고친 뒤 focused E2E가 통과했다. 실제 Meta campaign·ad set·ad가 모두 `ACTIVE`, lifetime 예산 5,000원, 2026-08-27 05:56 KST 종료로 확인됐다.
+- 전달: 코드, migration, 운영 환경과 Vercel·Oracle 배포는 이어서 적용한다.
+- 남은 일: production migration, 환경변수, main CI, Vercel·Oracle 배포와 실제 로그인 화면 검증.
+
 ## 2026-08-26 — 아이디어 입력 내부 실행 문구 제거
 
 - 목적: 사용자용 아이디어 입력 화면에서 데모 실행 방식 안내를 노출하지 않는다.

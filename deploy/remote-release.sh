@@ -212,11 +212,15 @@ validate_production_environment() {
   local anthropic_key=""
   local anthropic_model=""
   local bind_address=""
+  local cron_secret=""
   local generator_mode=""
   local hash_secret=""
   local http_port=""
   local https_port=""
   local meta_access_token=""
+  local meta_auto_activation_ad_account_id=""
+  local meta_auto_activation_enabled=""
+  local meta_auto_activation_lifetime_budget_minor=""
   local meta_ad_account_id=""
   local meta_ads_mode=""
   local meta_allowed_destination_origin=""
@@ -228,6 +232,7 @@ validate_production_environment() {
   local meta_draft_lifetime_budget_minor=""
   local meta_draft_operator_user_ids=""
   local meta_instagram_actor_id=""
+  local meta_insights_finalization_delay_minutes=""
   local meta_max_lifetime_budget_minor=""
   local meta_operation_ledger_mode=""
   local meta_page_id=""
@@ -258,6 +263,7 @@ validate_production_environment() {
   service_key="$(read_optional_environment_value SUPABASE_SECRET_KEY)"
   service_role_key="$(read_optional_environment_value SUPABASE_SERVICE_ROLE_KEY)"
   hash_secret="$(read_environment_value SIGNAL_HASH_SECRET)"
+  cron_secret="$(read_environment_value CRON_SECRET)"
   turnstile_site_key="$(read_environment_value NEXT_PUBLIC_TURNSTILE_SITE_KEY)"
   turnstile_secret_key="$(read_environment_value TURNSTILE_SECRET_KEY)"
   turnstile_verify_timeout_ms="$(read_environment_value TURNSTILE_VERIFY_TIMEOUT_MS)"
@@ -296,6 +302,8 @@ validate_production_environment() {
   fi
   [[ "${#hash_secret}" -ge 32 && "${hash_secret}" != replace-with-* ]] \
     || fail "SIGNAL_HASH_SECRET must be a non-placeholder value of at least 32 characters"
+  [[ "${#cron_secret}" -ge 32 && "${cron_secret}" != replace-with-* ]] \
+    || fail "CRON_SECRET must be a non-placeholder value of at least 32 characters"
   [[ -n "${turnstile_site_key}" && "${turnstile_site_key}" != replace-with-* \
     && "${#turnstile_site_key}" -le 256 ]] \
     || fail "NEXT_PUBLIC_TURNSTILE_SITE_KEY must be a non-placeholder value of at most 256 characters"
@@ -329,8 +337,12 @@ validate_production_environment() {
     meta_draft_daily_global_limit="$(read_environment_value META_DRAFT_DAILY_GLOBAL_LIMIT)"
     meta_draft_lead_minutes="$(read_environment_value META_DRAFT_LEAD_MINUTES)"
     meta_draft_duration_hours="$(read_environment_value META_DRAFT_DURATION_HOURS)"
+    meta_insights_finalization_delay_minutes="$(read_environment_value META_INSIGHTS_FINALIZATION_DELAY_MINUTES)"
     meta_access_token="$(read_environment_value META_ACCESS_TOKEN)"
     meta_app_secret="$(read_environment_value META_APP_SECRET)"
+    meta_auto_activation_enabled="$(read_environment_value META_AUTO_ACTIVATION_ENABLED)"
+    meta_auto_activation_ad_account_id="$(read_environment_value META_AUTO_ACTIVATION_AD_ACCOUNT_ID)"
+    meta_auto_activation_lifetime_budget_minor="$(read_environment_value META_AUTO_ACTIVATION_LIFETIME_BUDGET_MINOR)"
 
     [[ "${meta_operation_ledger_mode}" == "supabase" ]] \
       || fail "live Meta drafts require META_OPERATION_LEDGER_MODE=supabase"
@@ -358,6 +370,14 @@ validate_production_environment() {
       || fail "META_DRAFT_LEAD_MINUTES must be between 5 and 1440"
     is_bounded_integer "${meta_draft_duration_hours}" 1 72 \
       || fail "META_DRAFT_DURATION_HOURS must be between 1 and 72"
+    is_bounded_integer "${meta_insights_finalization_delay_minutes}" 1 1440 \
+      || fail "META_INSIGHTS_FINALIZATION_DELAY_MINUTES must be between 1 and 1440"
+    [[ "${meta_auto_activation_enabled}" == "true" ]] \
+      || fail "live Meta lifecycle requires META_AUTO_ACTIVATION_ENABLED=true"
+    [[ "${meta_auto_activation_ad_account_id}" == "${meta_ad_account_id}" ]] \
+      || fail "META_AUTO_ACTIVATION_AD_ACCOUNT_ID must match META_AD_ACCOUNT_ID"
+    [[ "${meta_auto_activation_lifetime_budget_minor}" == "${meta_draft_lifetime_budget_minor}" ]] \
+      || fail "META_AUTO_ACTIVATION_LIFETIME_BUDGET_MINOR must match META_DRAFT_LIFETIME_BUDGET_MINOR"
     [[ -n "${meta_access_token}" && "${meta_access_token}" != replace-with-* ]] \
       || fail "META_ACCESS_TOKEN must be a non-placeholder secret"
     [[ "${meta_app_secret}" =~ ^[0-9a-fA-F]{32}$ ]] \

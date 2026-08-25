@@ -30,7 +30,7 @@ function readNonEmpty(value: string | undefined): string | null {
 export function resolveCampaignRepositoryMode(
   environment: Environment = process.env,
 ): CampaignRepositoryMode {
-  const mode = readNonEmpty(environment.CAMPAIGN_REPOSITORY_MODE) ?? "fixture";
+  const mode = readNonEmpty(environment.CAMPAIGN_REPOSITORY_MODE) ?? "supabase";
   if (mode === "fixture") return mode;
   if (mode !== "supabase") {
     throw new CampaignRepositoryConfigError(

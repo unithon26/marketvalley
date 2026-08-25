@@ -6,7 +6,7 @@ import type { CampaignSpec } from "@/lib/contracts/campaign";
 import type { ReservationUtm } from "@/lib/contracts/repository";
 import { CheckIcon } from "@/components/icons";
 import { campaignThemeStyle } from "@/lib/brand-theme";
-import { getVisitorId } from "@/lib/client/demo-store";
+import { getVisitorId } from "@/lib/client/visitor-store";
 
 const reservationCtaLabel = "사전예약하기";
 
@@ -181,7 +181,6 @@ export function PublicLanding({
   const [turnstileToken, setTurnstileToken] = useState("");
   const turnstileContainer = useRef<HTMLDivElement>(null);
   const turnstileWidgetId = useRef<string | null>(null);
-  const reportPath = `/campaigns/${encodeURIComponent(campaignId)}`;
   const captchaReady = !turnstileSiteKey || turnstileToken !== "";
   const canSubmit = name.trim() !== "" && email.trim() !== "" && consent && captchaReady;
 
@@ -350,9 +349,9 @@ export function PublicLanding({
           </div>
           <div className="signal-form">
             {submitted ? (
-              <div className="signal-success"><span><CheckIcon size={28} /></span><h3>예약이 접수됐어요</h3><p>다음 안내는 운영자가 직접 전달합니다.</p><a href={reportPath}>데모 리포트에서 확인하기</a></div>
+              <div className="signal-success"><span><CheckIcon size={28} /></span><h3>예약이 접수됐어요</h3><p>입력한 이메일로 다음 안내를 전달할 수 있도록 운영자 예약자명단에 안전하게 저장했습니다.</p></div>
             ) : duplicate ? (
-              <div className="signal-success duplicate"><span><CheckIcon size={28} /></span><h3>이미 예약했어요</h3><p>같은 이메일로는 한 번만 예약할 수 있어요.</p><a href={reportPath}>데모 리포트 보기</a></div>
+              <div className="signal-success duplicate"><span><CheckIcon size={28} /></span><h3>이미 예약했어요</h3><p>같은 이메일로 접수된 기존 예약을 유지하고 있습니다.</p></div>
             ) : (
               <>
                 <div className="reservation-fields">
@@ -411,7 +410,7 @@ export function PublicLanding({
         </section>
       </main>
 
-      <footer className="landing-footer"><strong>{spec.project.name}</strong><p>이 페이지는 marketvalley로 만든 발표용 광고 시안입니다.</p><a href="/">Made with marketvalley</a></footer>
+      <footer className="landing-footer"><strong>{spec.project.name}</strong><p>이 페이지는 실제 시장 반응을 수집하기 위해 marketvalley로 제작되었습니다.</p><a href="/">Made with marketvalley</a></footer>
     </div>
     </>
   );

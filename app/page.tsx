@@ -2,26 +2,96 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { CampaignEntryLink } from "@/components/campaign-entry-link";
 import { PlusIcon } from "@/components/icons";
 import { SiteHeader } from "@/components/site-header";
+import { hasBundledAuthMode } from "@/lib/auth/mode";
+import { useAuthSession } from "@/lib/client/use-auth-session";
+import type { CampaignLifecycleResponse } from "@/lib/contracts/api";
 
-const projects = [
-  { id: "closing-bite", name: "마감한입", time: "검증 완료", progress: 100, group: "completed", tone: "violet", image: "/projects/completed.png", href: "/campaigns/demo" },
-  { id: "workshop", name: "동네공방 빈자리", time: "8시간 남음", progress: 64, group: "ongoing", tone: "lavender", image: "/progress/creative.png", href: null },
-  { id: "class-inquiry", name: "클래스 문의함", time: "14시간 남음", progress: 36, group: "ongoing", tone: "blue", image: "/progress/collection.png", href: null },
-  { id: "closing-notice", name: "카페 마감 알림", time: "6시간 남음", progress: 72, group: "ongoing", tone: "mint", image: "/progress/review.png", href: null },
-  { id: "vacancy-notice", name: "공방 빈자리 알림", time: "21시간 남음", progress: 48, group: "ongoing", tone: "peach", image: "/progress/creative.png", href: null },
-  { id: "class-reservation", name: "클래스 예약 알림", time: "12시간 남음", progress: 55, group: "ongoing", tone: "yellow", image: "/progress/collection.png", href: null },
-] as const;
+type ProjectGroup = "ongoing" | "completed";
 
-type ProjectGroup = typeof projects[number]["group"];
+const statusCopy: Record<CampaignLifecycleResponse["status"], string> = {
+  SUBMITTED: "접수 완료",
+  GENERATING: "AI 문구 생성 중",
+  PREPARING: "광고 제작 중",
+  AWAITING_ACTIVATION: "실제 게재 확인 중",
+  COLLECTING: "실제 반응 수집 중",
+  FINALIZING: "최종 집계 중",
+  COMPLETED: "결과 도착",
+  RETRY_WAIT: "자동 재시도 중",
+  FAILED: "확인 필요",
+  ARCHIVED: "이전 프로젝트",
+};
+
+const statusProgress: Record<CampaignLifecycleResponse["status"], number> = {
+  SUBMITTED: 10,
+  GENERATING: 25,
+  PREPARING: 45,
+  AWAITING_ACTIVATION: 60,
+  COLLECTING: 75,
+  FINALIZING: 90,
+  COMPLETED: 100,
+  RETRY_WAIT: 45,
+  FAILED: 45,
+  ARCHIVED: 100,
+};
+
+const statusImage: Record<CampaignLifecycleResponse["status"], string> = {
+  SUBMITTED: "/progress/review.png",
+  GENERATING: "/progress/creative.png",
+  PREPARING: "/progress/creative.png",
+  AWAITING_ACTIVATION: "/progress/creative.png",
+  COLLECTING: "/progress/collection.png",
+  FINALIZING: "/progress/report.png",
+  COMPLETED: "/progress/report.png",
+  RETRY_WAIT: "/progress/creative.png",
+  FAILED: "/progress/review.png",
+  ARCHIVED: "/progress/report.png",
+};
 
 export default function HomePage() {
+  const authEnabled = hasBundledAuthMode();
+  const { state: authState } = useAuthSession(authEnabled);
   const [activeGroup, setActiveGroup] = useState<ProjectGroup>("ongoing");
-  const visibleProjects = projects.filter((project) => project.group === activeGroup);
+  const [projects, setProjects] = useState<CampaignLifecycleResponse[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+
+  const loadProjects = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("/api/campaigns/lifecycle", { cache: "no-store" });
+      if (!response.ok) throw new Error("campaign_list_failed");
+      const body = await response.json() as { campaigns?: unknown };
+      if (!Array.isArray(body.campaigns)) throw new Error("campaign_list_invalid");
+      setProjects(body.campaigns as CampaignLifecycleResponse[]);
+      setLoadError(false);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const canLoad = !authEnabled || authState.status === "authenticated";
+    if (!canLoad) return;
+    const frame = window.requestAnimationFrame(() => { void loadProjects(); });
+    return () => window.cancelAnimationFrame(frame);
+  }, [authEnabled, authState.status, loadProjects]);
+
+  const visibleProjects = useMemo(() => {
+    const accountProjects = !authEnabled || authState.status === "authenticated" ? projects : [];
+    return accountProjects.filter((project) => (
+      activeGroup === "completed"
+        ? project.status === "COMPLETED" || project.status === "ARCHIVED"
+        : project.status !== "COMPLETED" && project.status !== "ARCHIVED"
+    ));
+  }, [activeGroup, authEnabled, authState.status, projects]);
+  const anonymous = authEnabled && authState.status === "anonymous";
 
   return (
     <div className="app-shell">
@@ -37,25 +107,53 @@ export default function HomePage() {
           </div>
           <CampaignEntryLink className="button button-primary"><PlusIcon size={20} /> 광고 만들기</CampaignEntryLink>
         </div>
+
+        {loading ? <p className="project-empty" role="status">내 프로젝트를 불러오고 있어요.</p> : null}
+        {!loading && loadError ? (
+          <div className="project-empty" role="alert">
+            <p>프로젝트를 불러오지 못했어요.</p>
+            <button className="text-button" type="button" onClick={() => void loadProjects()}>다시 불러오기</button>
+          </div>
+        ) : null}
+        {!loading && !loadError && visibleProjects.length === 0 ? (
+          <div className="project-empty">
+            <p>{anonymous
+              ? "Google로 로그인하면 이 계정의 진행 상황을 이어서 볼 수 있어요."
+              : activeGroup === "ongoing"
+                ? "진행 중인 시장검증 광고가 없습니다."
+                : "완료된 시장검증 리포트가 없습니다."}</p>
+          </div>
+        ) : null}
+
         <section className="project-grid" aria-label="프로젝트 목록">
           {visibleProjects.map((project) => {
-            const card = (
-              <>
-                <div className={`project-visual ${project.tone}`}>
-                  <Image src={project.image} width={560} height={330} alt="" unoptimized />
+            const completed = project.status === "COMPLETED" || project.status === "ARCHIVED";
+            const href = project.status === "COMPLETED"
+              ? `/campaigns/${encodeURIComponent(project.id)}`
+              : `/campaigns/${encodeURIComponent(project.id)}/progress`;
+            const name = project.spec?.project.name ?? "시장검증 광고 준비 중";
+            const image = project.spec
+              ? `/api/campaigns/${encodeURIComponent(project.id)}/cards/1`
+              : statusImage[project.status];
+            return (
+              <Link href={href} className="project-card" key={project.id}>
+                <div className="project-visual">
+                  <Image src={image} width={560} height={330} alt="" unoptimized />
                 </div>
                 <div className="project-card-body">
-                  <strong>{project.name}</strong>
-                  <span className="time-chip">{project.time}</span>
-                  <div className="progress-meta"><b>{project.progress}%</b></div>
-                  <div className="progress-track"><i style={{ width: `${project.progress}%` }} /></div>
+                  <strong>{name}</strong>
+                  <span className="time-chip">{statusCopy[project.status]}</span>
+                  <div className="progress-meta"><b>{statusProgress[project.status]}%</b></div>
+                  <div className="progress-track"><i style={{ width: `${statusProgress[project.status]}%` }} /></div>
+                  {project.status === "FAILED" && project.lastErrorMessage ? (
+                    <small className="project-error">{project.lastErrorMessage}</small>
+                  ) : null}
+                  {completed && project.status === "ARCHIVED" ? (
+                    <small className="project-archive-note">새 자동 수집 이전에 만든 프로젝트입니다.</small>
+                  ) : null}
                 </div>
-              </>
+              </Link>
             );
-
-            return project.href
-              ? <Link href={project.href} className="project-card" key={project.id}>{card}</Link>
-              : <article className="project-card project-card-disabled" key={project.id} aria-label={`${project.name}, 발표 범위 밖 목 프로젝트`}>{card}</article>;
           })}
         </section>
       </main>

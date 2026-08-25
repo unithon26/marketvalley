@@ -16,6 +16,7 @@ export function GenerationProgressView({
     <ValidationProgress
       current={current}
       reportHref={reportHref}
+      statusText="접수 내용을 저장하고 있어요"
     />
   );
 }

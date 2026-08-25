@@ -17,8 +17,9 @@ const liveEnvironment = {
 };
 
 describe("campaign repository config", () => {
-  it("기본값은 외부 DB를 쓰지 않는 fixture다", () => {
-    expect(resolveCampaignRepositoryMode({})).toBe("fixture");
+  it("제품 기본값은 Supabase로 fail-closed하고 테스트 fixture는 명시한다", () => {
+    expect(() => resolveCampaignRepositoryMode({})).toThrow(CampaignRepositoryConfigError);
+    expect(resolveCampaignRepositoryMode({ CAMPAIGN_REPOSITORY_MODE: "fixture" })).toBe("fixture");
   });
 
   it("모든 server-only 설정이 있는 경우에만 supabase 모드를 연다", () => {

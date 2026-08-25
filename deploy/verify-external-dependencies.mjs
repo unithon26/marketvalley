@@ -54,8 +54,13 @@ async function expectOpenApiSchema(fetchImplementation, url, serverKey) {
   const requiredPaths = [
     "/campaigns",
     "/campaign_reservations",
+    "/meta_ad_runs",
+    "/meta_insight_snapshots",
     "/rpc/consume_generation_quota",
-    "/rpc/reset_owned_campaign",
+    "/rpc/claim_campaign_lifecycle",
+    "/rpc/renew_campaign_lifecycle_lease",
+    "/rpc/transition_campaign_lifecycle",
+    "/rpc/delete_owned_unstarted_campaign",
     "/rpc/record_campaign_reservation",
   ];
   for (const path of requiredPaths) {

@@ -90,15 +90,18 @@ export function createReservationPostHandler(dependencies: ReservationRouteDepen
     let campaignId: string | null = null;
 
     try {
-      const mode = resolveCampaignRepositoryMode(environment);
-      const protection = resolveReservationProtectionConfig(mode, environment);
+      // Reject malformed and cross-origin envelopes before touching provider or
+      // repository configuration so hostile requests cannot probe deployment state.
       requireSafeReservationRequest(
         request,
-        protection.mode === "turnstile" ? protection.origin : undefined,
+        environment.NEXT_PUBLIC_SITE_URL?.trim() || undefined,
       );
       const input = recordReservationRequestSchema.parse(await readJsonBody(request, 8_192));
       campaignId = input.campaignId;
+      const mode = resolveCampaignRepositoryMode(environment);
+      const protection = resolveReservationProtectionConfig(mode, environment);
       if (protection.mode === "turnstile") {
+        requireSafeReservationRequest(request, protection.origin);
         if (!canonicalUuidPattern.test(input.campaignId)) {
           throw new ApiRequestError(400, "invalid_campaign_id", "캠페인 식별자를 확인해주세요.");
         }

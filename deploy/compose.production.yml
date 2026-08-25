@@ -98,6 +98,58 @@ services:
         max-size: 10m
         max-file: "3"
 
+  lifecycle-worker:
+    image: marketvalley:${APP_IMAGE_TAG:?APP_IMAGE_TAG is required}
+    env_file:
+      - ${MARKETVALLEY_ENV_FILE:?MARKETVALLEY_ENV_FILE is required}
+    environment:
+      NODE_ENV: production
+    command:
+      - node
+      - -e
+      - >-
+        const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+        const run = async () => {
+          const secret = process.env.CRON_SECRET;
+          if (!secret || Buffer.byteLength(secret, 'utf8') < 32) throw new Error('CRON_SECRET is unavailable');
+          const response = await fetch('http://app:3000/api/internal/lifecycle', {
+            headers: { authorization: `Bearer ${secret}` },
+            signal: AbortSignal.timeout(290000)
+          });
+          if (!response.ok) throw new Error(`lifecycle worker returned ${response.status}`);
+        };
+        (async () => {
+          for (;;) {
+            try { await run(); } catch (error) { console.error(error instanceof Error ? error.message : 'lifecycle worker failed'); }
+            await wait(60000);
+          }
+        })();
+    depends_on:
+      app:
+        condition: service_healthy
+    init: true
+    restart: unless-stopped
+    cpus: "0.10"
+    mem_limit: 160m
+    memswap_limit: 160m
+    mem_reservation: 64m
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 64
+    stop_grace_period: 10s
+    networks:
+      - app_internal
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: "2"
+
 volumes:
   app_cache:
     name: marketvalley_app_cache_${APP_IMAGE_TAG}

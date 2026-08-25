@@ -6,6 +6,7 @@ import {
   nextActionSchema,
   type CampaignSpec,
 } from "@/lib/contracts/campaign";
+import { ideaInputSchema, type IdeaInput } from "@/lib/contracts/generator";
 import {
   CampaignNotFoundError,
   DraftConflictError,
@@ -14,6 +15,8 @@ import {
   ReservationRateLimitError,
   ReservationStoreUnavailableError,
   type CampaignRepository,
+  type CampaignLifecycleRecord,
+  type CampaignLifecycleStatus,
   type DeleteCampaignInput,
   type NextActionInput,
   type PublishedCampaign,
@@ -28,10 +31,22 @@ import type { ReservationProtectionLimits } from "@/lib/security/reservationProt
 type CampaignRow = {
   id: string;
   draft_id: string;
-  slug: string;
-  spec: unknown;
+  slug: string | null;
+  spec: unknown | null;
   next_action: unknown;
-  published_at: string;
+  published_at: string | null;
+  input_background: string | null;
+  input_solution: string | null;
+  lifecycle_status: CampaignLifecycleStatus;
+  next_attempt_at: string | null;
+  preparation_completed_at: string | null;
+  collection_started_at: string | null;
+  collection_ends_at: string | null;
+  completed_at: string | null;
+  last_error_code: string | null;
+  last_error_message: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 type ReservationRow = {
@@ -47,14 +62,8 @@ type ReservationRow = {
 
 type DatabaseError = { code?: string; message?: string };
 
-const campaignColumns = "id, draft_id, slug, spec, next_action, published_at";
+const campaignColumns = "id, draft_id, slug, spec, next_action, published_at, input_background, input_solution, lifecycle_status, next_attempt_at, preparation_completed_at, collection_started_at, collection_ends_at, completed_at, last_error_code, last_error_message, created_at, updated_at";
 const reservationColumns = "id, name, email, utm_source, utm_medium, utm_campaign, utm_content, reserved_at";
-
-const knownSlugBases: Record<string, string> = {
-  "마감한입": "magamhanip",
-  "동네공방 빈자리": "workshop-vacancy",
-  "클래스 문의형": "class-inquiry",
-};
 
 function isDatabaseError(error: unknown): error is DatabaseError {
   return typeof error === "object" && error !== null;
@@ -66,12 +75,35 @@ function databaseFailure(operation: string, error: unknown): Error {
 }
 
 function toPublishedCampaign(row: CampaignRow): PublishedCampaign {
+  if (row.slug === null || row.spec === null || row.published_at === null) {
+    throw new Error("campaign is not published");
+  }
   return {
     id: row.id,
     slug: row.slug,
     spec: campaignSpecSchema.parse(row.spec),
     publishedAt: row.published_at,
     nextAction: row.next_action === null ? null : nextActionSchema.parse(row.next_action),
+  };
+}
+
+function toLifecycleRecord(row: CampaignRow): CampaignLifecycleRecord {
+  return {
+    id: row.id,
+    draftId: row.draft_id,
+    status: row.lifecycle_status,
+    spec: row.spec === null ? null : campaignSpecSchema.parse(row.spec),
+    slug: row.slug,
+    publishedAt: row.published_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    preparationCompletedAt: row.preparation_completed_at,
+    collectionStartedAt: row.collection_started_at,
+    collectionEndsAt: row.collection_ends_at,
+    completedAt: row.completed_at,
+    nextAttemptAt: row.next_attempt_at,
+    lastErrorCode: row.last_error_code,
+    lastErrorMessage: row.last_error_message,
   };
 }
 
@@ -93,10 +125,6 @@ function toReservationRecord(row: ReservationRow): ReservationRecord {
 
 function fingerprint(spec: CampaignSpec): string {
   return JSON.stringify(campaignSpecSchema.parse(spec));
-}
-
-function normalizeSlugBase(projectName: string): string {
-  return knownSlugBases[projectName] ?? "campaign";
 }
 
 export type SupabaseCampaignRepositoryOptions = {
@@ -129,22 +157,110 @@ export class SupabaseCampaignRepository implements CampaignRepository {
     this.reservationLimits = options.reservationLimits;
   }
 
+  async createSubmission(draftId: string, input: IdeaInput): Promise<CampaignLifecycleRecord> {
+    const client = this.requireOwnerClient();
+    const normalizedDraftId = draftId.trim();
+    const parsedInput = ideaInputSchema.parse(input);
+    const existing = await this.findOwnerCampaignByDraft(normalizedDraftId);
+    if (existing) {
+      const inputMatches = existing.input_background === parsedInput.background
+        && existing.input_solution === parsedInput.solution;
+      if (!inputMatches) throw new DraftConflictError();
+      return toLifecycleRecord(existing);
+    }
+
+    const { data, error } = await client
+      .from("campaigns")
+      .insert({
+        draft_id: normalizedDraftId,
+        input_background: parsedInput.background,
+        input_solution: parsedInput.solution,
+      })
+      .select(campaignColumns)
+      .single();
+
+    if (error || !data) {
+      if (isDatabaseError(error) && error.code === "23505") {
+        const concurrent = await this.findOwnerCampaignByDraft(normalizedDraftId);
+        if (concurrent) {
+          const inputMatches = concurrent.input_background === parsedInput.background
+            && concurrent.input_solution === parsedInput.solution;
+          if (!inputMatches) throw new DraftConflictError();
+          return toLifecycleRecord(concurrent);
+        }
+      }
+      throw databaseFailure("campaign submission", error);
+    }
+
+    return toLifecycleRecord(data as CampaignRow);
+  }
+
+  async getLifecycle(id: string): Promise<CampaignLifecycleRecord | null> {
+    const { data, error } = await this.requireOwnerClient()
+      .from("campaigns")
+      .select(campaignColumns)
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw databaseFailure("campaign lifecycle lookup", error);
+    return data ? toLifecycleRecord(data as CampaignRow) : null;
+  }
+
+  async listLifecycle(): Promise<CampaignLifecycleRecord[]> {
+    const { data, error } = await this.requireOwnerClient()
+      .from("campaigns")
+      .select(campaignColumns)
+      .order("updated_at", { ascending: false });
+    if (error) throw databaseFailure("campaign lifecycle list", error);
+    return ((data ?? []) as CampaignRow[]).map(toLifecycleRecord);
+  }
+
   async publish(draftId: string, spec: CampaignSpec): Promise<PublishedCampaign> {
     const client = this.requireOwnerClient();
     const normalizedDraftId = draftId.trim();
     const parsedSpec = campaignSpecSchema.parse(structuredClone(spec));
     const existing = await this.findOwnerCampaignByDraft(normalizedDraftId);
-    if (existing) return this.assertIdempotentDraft(existing, parsedSpec);
+    if (existing && existing.spec !== null) {
+      return this.assertIdempotentDraft(existing, parsedSpec);
+    }
 
-    const slugBase = normalizeSlugBase(parsedSpec.project.name);
+    const timestamp = this.now().toISOString();
+    if (existing) {
+      const { data, error } = await client
+        .from("campaigns")
+        .update({
+          slug: `campaign-${this.slugSuffix()}`,
+          spec: parsedSpec,
+          published_at: timestamp,
+          lifecycle_status: "PREPARING",
+          next_attempt_at: timestamp,
+          last_error_code: null,
+          last_error_message: null,
+          updated_at: timestamp,
+        })
+        .eq("id", existing.id)
+        .is("spec", null)
+        .select(campaignColumns)
+        .maybeSingle();
+      if (error) throw databaseFailure("campaign materialization", error);
+      if (data) return toPublishedCampaign(data as CampaignRow);
+      const concurrent = await this.findOwnerCampaignByDraft(normalizedDraftId);
+      if (concurrent && concurrent.spec !== null) {
+        return this.assertIdempotentDraft(concurrent, parsedSpec);
+      }
+      throw databaseFailure("campaign materialization", null);
+    }
+
     const { data, error } = await client
       .from("campaigns")
       .insert({
         draft_id: normalizedDraftId,
-        slug: `${slugBase}-${this.slugSuffix()}`,
+        slug: `campaign-${this.slugSuffix()}`,
         spec: parsedSpec,
         next_action: null,
-        published_at: this.now().toISOString(),
+        published_at: timestamp,
+        lifecycle_status: "PREPARING",
+        next_attempt_at: timestamp,
+        updated_at: timestamp,
       })
       .select(campaignColumns)
       .single();
@@ -167,7 +283,8 @@ export class SupabaseCampaignRepository implements CampaignRepository {
       .eq("id", id)
       .maybeSingle();
     if (error) throw databaseFailure("campaign lookup", error);
-    return data ? toPublishedCampaign(data as CampaignRow) : null;
+    if (!data || (data as CampaignRow).spec === null) return null;
+    return toPublishedCampaign(data as CampaignRow);
   }
 
   async getBySlug(slug: string): Promise<PublishedCampaign | null> {
@@ -177,7 +294,8 @@ export class SupabaseCampaignRepository implements CampaignRepository {
       .eq("slug", slug)
       .maybeSingle();
     if (error) throw databaseFailure("public campaign lookup", error);
-    return data ? toPublishedCampaign(data as CampaignRow) : null;
+    if (!data || (data as CampaignRow).spec === null) return null;
+    return toPublishedCampaign(data as CampaignRow);
   }
 
   async recordReservation(input: ReservationInput): Promise<void> {
@@ -245,15 +363,17 @@ export class SupabaseCampaignRepository implements CampaignRepository {
   }
 
   async delete(input: DeleteCampaignInput): Promise<void> {
-    const campaign = await this.getById(input.campaignId);
-    if (!campaign) return;
     const stored = await this.requireOwnerCampaign(input.campaignId);
     this.assertDraftOwnership(stored, input.draftId);
-    const { error } = await this.requireOwnerClient()
-      .from("campaigns")
-      .delete()
-      .eq("id", input.campaignId);
+    const { data, error } = await this.requireOwnerClient().rpc(
+      "delete_owned_unstarted_campaign",
+      {
+        p_campaign_id: input.campaignId,
+        p_draft_id: input.draftId.trim(),
+      },
+    );
     if (error) throw databaseFailure("campaign delete", error);
+    if (data !== true) throw new CampaignNotFoundError();
   }
 
   private requireOwnerClient(): SupabaseClient {

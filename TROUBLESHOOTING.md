@@ -1,5 +1,29 @@
 # Troubleshooting
 
+## 2026-08-26 — AI 생성 503이 진행 상태를 입력 화면으로 되돌림
+
+### 맥락과 영향
+
+사용자가 아이디어를 제출하면 브라우저가 `/api/generate`와 게시 요청을 연속 실행했다. production 로그에는 같은 endpoint의 503이 반복됐고, 한 번의 Claude 또는 네트워크 실패만으로 진행 화면이 사라진 뒤 입력 화면과 `광고 생성에 실패했어요` 문구가 나타났다. 하루가 걸리는 Meta 수집 상태는 브라우저·계정과 연결된 권위 있는 저장 상태가 없어 다음 로그인에서 복원할 수 없었다.
+
+### 기대와 실제 동작
+
+기대 동작은 접수 사실을 먼저 보존하고 서버가 랜딩·카드뉴스·광고·Insights를 단계별로 재개하는 것이다. 실제 동작은 AI 응답이 있어야 캠페인 행을 만들었고, 브라우저 요청과 컴포넌트 상태가 전체 workflow의 coordinator였다. 외부 호출 오류를 사용자가 다시 제출해야 하는 입력 오류와 구분하지 못했다.
+
+### 원인과 대안
+
+원인은 UI와 transient 요청이 장기 workflow를 소유한 구조다. timeout을 늘리거나 무조건 fixture fallback을 쓰면 실패 빈도만 가리거나 거짓 성공을 만든다. Vercel 요청 하나에서 수집 종료까지 기다릴 수도 없다. 따라서 계정 소유 DB 상태와 idempotent 외부 효과가 필요했다.
+
+### 해결과 회귀 방지
+
+`SUBMITTED → GENERATING → PREPARING → AWAITING_ACTIVATION → COLLECTING → FINALIZING → COMPLETED` 상태 머신과 `RETRY_WAIT`·`FAILED`를 추가했다. 브라우저는 UUID draft로 입력 접수만 재시도하고 worker가 service-role lease로 다음 단계를 처리한다. 같은 draft 재요청은 같은 캠페인을 반환한다. 입력, materialized spec, 수집 일정, 오류와 재시도 시각을 DB에 보존하고 로그인 화면은 lifecycle을 다시 읽는다. 완료 전 리포트 접근은 진행 화면으로 되돌린다.
+
+단위 테스트와 E2E는 기본 seed 없음, 입력 보존, 상태 복원, 실제 예약 반영, 수동 Meta route 부재를 고정한다. migration은 기존 presentation 캠페인을 먼저 보관해 배포 순간 실제 광고로 승격되지 않게 한다.
+
+### 남은 위험과 예상 질문
+
+운영 worker와 migration이 함께 배포돼야 하고 Meta·Supabase 장애 시 `RETRY_WAIT`와 안전 중단을 관찰해야 한다. 면접에서는 왜 메시지 큐 대신 Postgres `SKIP LOCKED` lease를 선택했는지, 외부 Meta 효과의 idempotency와 DB 상태 사이의 실패 창을 어떻게 줄였는지 설명할 수 있다.
+
 ## 2026-08-26 — Meta v26 캠페인·크리에이티브 생성이 신규 필수 계약에서 거절됨
 
 ### 맥락과 영향

@@ -37,21 +37,24 @@ const progressStages = [
 
 function stepState(index: number, current: ValidationProgressStage): "done" | "active" | "pending" {
   if (current === 3) return "done";
-  const activeIndex = current === 0 ? 1 : current;
-  if (index < activeIndex) return "done";
-  if (index === activeIndex) return "active";
+  if (index < current) return "done";
+  if (index === current) return "active";
   return "pending";
 }
 
 export function ValidationProgress({
   current,
   reportHref,
+  statusText,
+  errorMessage,
 }: {
   current: ValidationProgressStage;
   reportHref: string;
+  statusText: string;
+  errorMessage?: string | null;
 }) {
   const activeStage = progressStages[current];
-  const lineProgress = current === 0 ? 1 : current;
+  const lineProgress = current;
   const isComplete = current === 3;
   const headingRef = useRef<HTMLHeadingElement>(null);
 
@@ -80,7 +83,7 @@ export function ValidationProgress({
       </section>
 
       <section className="validation-stage-card">
-        <span className="validation-eta">결과 도착까지 24시간</span>
+        <span className="validation-eta">{statusText}</span>
         <ol className={`stage-line stage-progress-${lineProgress}`} aria-label="광고 검증 진행 상황">
           {progressStages.map((stage, index) => {
             const state = stepState(index, current);
@@ -96,13 +99,15 @@ export function ValidationProgress({
         </ol>
       </section>
 
-      <div className="progress-actions">
-        {isComplete ? (
+      {errorMessage ? (
+        <p className="validation-progress-error" role="alert">{errorMessage}</p>
+      ) : null}
+
+      {isComplete ? (
+        <div className="progress-actions">
           <Link className="button button-primary" href={reportHref}>시장 검증 리포트 확인하기</Link>
-        ) : (
-          <Link className="button button-secondary" href="/">메인으로</Link>
-        )}
-      </div>
+        </div>
+      ) : null}
     </main>
   );
 }
