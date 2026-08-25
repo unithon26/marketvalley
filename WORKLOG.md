@@ -136,5 +136,5 @@
 - 변경: 홈, GNB, 2단계 입력, 진행, 결과, 공개 랜딩, API 오류와 fixture·향후 생성 프롬프트의 사용자 노출 문구를 `광고`, `광고 초안`으로 통일했다. `CampaignSpec`과 `/campaigns` 내부 계약은 호환성을 위해 유지하되 화면에서는 노출하지 않는다. 발표 실행서·검증 문서·제품 스펙·README도 같은 용어 경계로 갱신했다.
 - 기록 정책: `.gitignore`에서 `WORKLOG.md`, 루트 troubleshooting 파일과 `docs/worklog(s)`, `docs/troubleshooting`, `docs/incidents` 제외 규칙을 제거했다. 앞으로 이 기록은 팀 공유 문서로 commit·push하고 `AGENTS.md`와 개인 에이전트 설정만 로컬로 유지한다.
 - 검증: 변경된 generator·prompt 단위 테스트 18개, `pnpm check`의 lint·typecheck·단위 테스트 38개, `pnpm build`, production build 기반 Chromium E2E 13개가 통과했다. E2E는 홈·진행·결과 화면에 `캠페인`과 `CampaignSpec`이 노출되지 않는 경계도 확인한다.
-- 전달: 로컬 구현과 검증 완료. commit·push와 GitHub Actions 결과는 실제 완료 뒤 이 항목에 갱신한다.
+- 전달: 사용자 Git 신원으로 커밋 `02dec40`을 비공개 `unithon26/marketvalley`의 `main`에 push했다. GitHub Actions run `32803996716`에서 install, lint, typecheck, 단위 테스트, production build와 Chromium E2E 13개가 모두 통과했다.
 - 남은 일: 이 작업 범위의 제품 변경은 없다. 제품 배포와 행사 제출은 수행하지 않는다.
