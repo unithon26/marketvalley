@@ -70,12 +70,7 @@ button { color: inherit; }
 .project-visual.blue { background: #e6f0ff; }
 .project-visual.mint { background: #e3f7f0; }
 .visual-pill { position: relative; z-index: 2; display: inline-block; padding: 6px 10px; border-radius: 999px; color: #fff; background: rgba(25,31,40,.76); font-size: 11px; font-weight: 700; }
-.visual-copy { position: absolute; z-index: 2; left: 22px; bottom: 25px; display: flex; flex-direction: column; letter-spacing: -.03em; }
-.visual-copy small { margin-bottom: 4px; color: #4e5968; font-weight: 700; }
-.visual-copy strong { max-width: 190px; font-size: 23px; line-height: 1.15; }
-.visual-orb { position: absolute; width: 150px; height: 150px; right: -28px; bottom: -38px; border-radius: 50%; background: linear-gradient(140deg, rgba(255,255,255,.7), var(--purple)); box-shadow: -20px -10px 60px rgba(255,255,255,.7); }
-.blue .visual-orb { background: linear-gradient(140deg, rgba(255,255,255,.8), #3182f6); }
-.mint .visual-orb { background: linear-gradient(140deg, rgba(255,255,255,.8), #16b981); }
+.visual-flow { position: relative; z-index: 2; display: flex; align-items: center; justify-content: center; height: 100%; color: var(--purple-dark); opacity: .85; }
 .project-card-body { padding: 19px 20px 20px; }
 .project-card-body > strong { display: inline-block; margin-right: 8px; font-size: 18px; }
 .time-chip { display: inline-block; padding: 3px 7px; border-radius: 7px; background: var(--purple-soft); color: var(--purple-dark); font-size: 11px; font-weight: 700; }

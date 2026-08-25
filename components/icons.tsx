@@ -35,3 +35,19 @@ export function CheckIcon(props: IconProps) {
 export function ChartIcon(props: IconProps) {
   return <Svg {...props}><path d="M5 19V9m7 10V5m7 14v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></Svg>;
 }
+
+export function CardFlowIcon(props: IconProps) {
+  const size = props.size ?? 20;
+  return (
+    <svg className={props.className} width={size * 2.3} height={size} viewBox="0 0 62 24" fill="none" aria-hidden="true">
+      <rect x="1" y="2" width="16" height="20" rx="3" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M5 8h8M5 12h8M5 16h5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M22 12h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="m28 8 4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="38" y="2" width="20" height="20" rx="3" stroke="currentColor" strokeWidth="1.6" />
+      <circle cx="45" cy="9" r="2" stroke="currentColor" strokeWidth="1.4" />
+      <path d="m41 18 5-5 4 3 4-5 3 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M56 3v3M54.5 4.5h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
