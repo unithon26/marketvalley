@@ -48,8 +48,8 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 }
 
 async function openCompletedCampaign(page: Page, campaignId?: string): Promise<void> {
-  await expect(page.getByRole("heading", { name: "시장 검증이 완료되었습니다" })).toBeVisible({ timeout: 10_000 });
-  await page.getByRole("link", { name: "시장 검증 리포트 확인하기" }).click();
+  await expect(page.getByRole("heading", { name: "광고 초안이 모두 준비됐어요" })).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("link", { name: "준비된 결과 확인하기" }).click();
   await expect(page).toHaveURL(
     campaignId ? new RegExp(`/campaigns/${campaignId}$`) : /\/campaigns\/[^/]+$/,
     { timeout: 5_000 },
@@ -133,9 +133,9 @@ test("기존 진행 URL은 Figma 완료 프레임과 모바일 반응형 치수�
   await page.setViewportSize({ width: 1440, height: 1024 });
   await page.goto("/campaigns/demo/progress");
 
-  await expect(page.getByRole("heading", { name: "시장 검증이 완료되었습니다" })).toBeVisible();
-  await expect(page.getByText("결과 도착까지 24시간", { exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "시장 검증 리포트 확인하기" })).toHaveAttribute(
+  await expect(page.getByRole("heading", { name: "광고 초안이 모두 준비됐어요" })).toBeVisible();
+  await expect(page.getByText("준비가 끝났어요", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "준비된 결과 확인하기" })).toHaveAttribute(
     "href",
     "/campaigns/demo",
   );
@@ -144,16 +144,16 @@ test("기존 진행 URL은 Figma 완료 프레임과 모바일 반응형 치수�
   const desktopIllustration = await page.locator(".validation-progress-illustration").boundingBox();
   const desktopCard = await page.locator(".validation-stage-card").boundingBox();
   expect(desktopIllustration).toMatchObject({ width: 280, height: 165 });
-  expect(desktopCard).toMatchObject({ width: 1000, height: 224 });
-  await expect(page.getByRole("heading", { name: "시장 검증이 완료되었습니다" })).toHaveCSS("font-size", "24px");
+  expect(desktopCard).toMatchObject({ width: 1000, height: 192 });
+  await expect(page.getByRole("heading", { name: "광고 초안이 모두 준비됐어요" })).toHaveCSS("font-size", "30px");
 
   await page.setViewportSize({ width: 375, height: 812 });
   await expectNoHorizontalOverflow(page);
   const mobileIllustration = await page.locator(".validation-progress-illustration").boundingBox();
   const mobileCard = await page.locator(".validation-stage-card").boundingBox();
   expect(mobileIllustration).toMatchObject({ width: 238, height: 140 });
-  expect(mobileCard).toMatchObject({ width: 343, height: 190 });
-  await expect(page.getByRole("heading", { name: "시장 검증이 완료되었습니다" })).toHaveCSS("font-size", "21px");
+  expect(mobileCard).toMatchObject({ width: 343, height: 181 });
+  await expect(page.getByRole("heading", { name: "광고 초안이 모두 준비됐어요" })).toHaveCSS("font-size", "22px");
 });
 
 test("로그인 화면의 Google 목 로그인은 로그인된 메인으로 돌아온다", async ({ context, page }) => {
@@ -240,11 +240,11 @@ test("접수 뒤 실제 광고 제작과 게시가 끝날 때까지 단계별로
   await page.getByRole("button", { name: "다음" }).click();
   await page.getByRole("button", { name: /광고 만들기/ }).click();
 
-  await expect(page.getByRole("heading", { name: "제출 내용을 검토하고 있습니다" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "아이디어의 핵심을 살펴보고 있어요" })).toBeVisible();
   await page.waitForTimeout(350);
   expect(generateStarted).toBe(false);
 
-  await expect(page.getByRole("heading", { name: "광고 검증을 준비하고 있습니다" })).toBeVisible({ timeout: 3_000 });
+  await expect(page.getByRole("heading", { name: "하나의 메시지로 광고를 엮고 있어요" })).toBeVisible({ timeout: 2_000 });
   expect(generateStarted).toBe(true);
   expect(publishStarted).toBe(false);
   await page.setViewportSize({ width: 375, height: 812 });
@@ -252,13 +252,13 @@ test("접수 뒤 실제 광고 제작과 게시가 끝날 때까지 단계별로
   await expect(page.getByRole("list", { name: "광고 검증 진행 상황" })).toBeVisible();
 
   releaseGenerate();
-  await expect(page.getByRole("heading", { name: "시장 반응 데이터를 수집하고 있습니다" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "사람의 반응을 받을 페이지를 준비하고 있어요" })).toBeVisible();
   expect(publishStarted).toBe(true);
-  await expect(page.getByRole("link", { name: "시장 검증 리포트 확인하기" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "준비된 결과 확인하기" })).toHaveCount(0);
 
   releasePublish();
-  await expect(page.getByRole("heading", { name: "시장 검증이 완료되었습니다" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "시장 검증 리포트 확인하기" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "광고 초안이 모두 준비됐어요" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "준비된 결과 확인하기" })).toBeVisible();
   await openCompletedCampaign(page);
 });
 
@@ -274,11 +274,11 @@ test("접수 확인 중 화면을 이탈하면 유료 생성을 시작하지 않
   await page.getByRole("button", { name: "예시 불러오기" }).click();
   await page.getByRole("button", { name: "다음" }).click();
   await page.getByRole("button", { name: /광고 만들기/ }).click();
-  await expect(page.getByRole("heading", { name: "제출 내용을 검토하고 있습니다" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "아이디어의 핵심을 살펴보고 있어요" })).toBeVisible();
 
-  await page.getByRole("link", { name: "메인으로" }).click();
+  await page.getByRole("link", { name: "메인으로 돌아가기" }).click();
   await expect(page).toHaveURL(/\/$/);
-  await page.waitForTimeout(1_800);
+  await page.waitForTimeout(900);
   expect(generateRequests).toBe(0);
 });
 
@@ -341,7 +341,7 @@ test("fixture 생성부터 Figma 리포트, 산출물과 예약까지 실제 API
   await page.getByRole("button", { name: "다음" }).click();
   await page.getByRole("button", { name: /광고 만들기/ }).click();
 
-  await expect(page.getByRole("heading", { name: "제출 내용을 검토하고 있습니다" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "아이디어의 핵심을 살펴보고 있어요" })).toBeVisible();
   await openCompletedCampaign(page);
   const campaignId = decodeURIComponent(page.url().match(/\/campaigns\/([^/]+)$/)?.[1] ?? "");
   expect(campaignId).not.toBe("");
@@ -436,7 +436,7 @@ test("입력한 상품명과 특징이 랜딩과 카드뉴스에 자동으로 �
   await page.getByRole("button", { name: "다음" }).click();
   await page.getByRole("textbox", { name: "솔루션 설명" }).fill(solution);
   await page.getByRole("button", { name: /광고 만들기/ }).click();
-  await expect(page.getByRole("heading", { name: "제출 내용을 검토하고 있습니다" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "아이디어의 핵심을 살펴보고 있어요" })).toBeVisible();
   await openCompletedCampaign(page);
 
   const campaignId = decodeURIComponent(page.url().match(/\/campaigns\/([^/]+)$/)?.[1] ?? "");

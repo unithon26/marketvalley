@@ -47,7 +47,7 @@ type CampaignWizardProps = {
   generatorStatus: CampaignGeneratorStatus;
 };
 
-const submissionAcknowledgementDelayMs = 1_600;
+const submissionAcknowledgementDelayMs = 700;
 
 function delay(milliseconds: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
