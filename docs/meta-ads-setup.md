@@ -82,13 +82,14 @@ META_MAX_LIFETIME_BUDGET_MINOR=<SERVER_HARD_CAP>
 META_DRAFT_LIFETIME_BUDGET_MINOR=<PAUSED_DRAFT_BUDGET>
 META_DRAFT_DAILY_OWNER_LIMIT=2
 META_DRAFT_DAILY_GLOBAL_LIMIT=50
-META_DRAFT_STARTS_AT=<CANONICAL_UTC_ISO_TIMESTAMP>
-META_DRAFT_ENDS_AT=<CANONICAL_UTC_ISO_TIMESTAMP>
+META_DRAFT_LEAD_MINUTES=10
+META_DRAFT_DURATION_HOURS=24
 META_ACCESS_TOKEN=<SYSTEM_USER_SECRET>
 META_APP_SECRET=<APP_SECRET>
 ```
 
-KRW 광고 계정에서는 budget 숫자를 원 단위로 취급하는지 실제 계정의 API·Ads Manager 표시를 `PAUSED` 검증에서 대조한다. 값의 단위를 확인하기 전에는 `live`를 켜지 않는다. 시작 시각은 현재로부터 5분 이후 30일 이내, 종료 시각은 시작 후 1~72시간이어야 한다.
+KRW 광고 계정에서는 budget 숫자를 원 단위로 취급하는지 실제 계정의 API·Ads Manager 표시를 `PAUSED` 검증에서 대조한다. 값의 단위를 확인하기 전에는 `live`를 켜지 않는다. 시작 여유는 5분~24시간, 집행 구간은 1~72시간 범위에서만 설정한다.
+서버는 요청 시각을 분 단위로 올림한 뒤 `META_DRAFT_LEAD_MINUTES`만큼 뒤에 시작하고 `META_DRAFT_DURATION_HOURS` 뒤에 끝나는 일정을 계산한다. 따라서 오래 실행한 배포가 고정 timestamp 만료 때문에 비활성화되지 않는다. 광고 destination은 요청을 처리한 호스트가 아니라 `META_ALLOWED_DESTINATION_ORIGIN`의 공개 랜딩으로 고정한다.
 
 ## 5. 활성화 순서
 

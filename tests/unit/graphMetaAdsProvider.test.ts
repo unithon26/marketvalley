@@ -493,8 +493,8 @@ describe("GraphMetaAdsProvider", () => {
       META_ALLOWED_DESTINATION_ORIGIN: binding.allowedDestinationOrigins[0],
       META_MAX_LIFETIME_BUDGET_MINOR: String(binding.maxLifetimeBudgetMinor),
       META_DRAFT_LIFETIME_BUDGET_MINOR: "10000",
-      META_DRAFT_STARTS_AT: "2026-08-26T00:00:00.000Z",
-      META_DRAFT_ENDS_AT: "2026-08-27T00:00:00.000Z",
+      META_DRAFT_LEAD_MINUTES: "10",
+      META_DRAFT_DURATION_HOURS: "24",
     };
     expect(readMetaPausedDraftServerPolicy(
       policyEnvironment,
@@ -502,8 +502,8 @@ describe("GraphMetaAdsProvider", () => {
     )).toEqual({
       targeting: { countries: ["KR"], ageMin: 18, ageMax: 65 },
       lifetimeBudgetMinor: 10_000,
-      startsAt: "2026-08-26T00:00:00.000Z",
-      endsAt: "2026-08-27T00:00:00.000Z",
+      startsAt: "2026-08-25T12:10:00.000Z",
+      endsAt: "2026-08-26T12:10:00.000Z",
       dailyOwnerLimit: 2,
       dailyGlobalLimit: 50,
     });
@@ -513,8 +513,16 @@ describe("GraphMetaAdsProvider", () => {
     }, new Date("2026-08-25T12:00:00.000Z"))).toThrow(MetaConfigurationError);
     expect(() => readMetaPausedDraftServerPolicy({
       ...policyEnvironment,
-      META_DRAFT_ENDS_AT: "2026-08-30T00:00:00.000Z",
+      META_DRAFT_DURATION_HOURS: "73",
     }, new Date("2026-08-25T12:00:00.000Z"))).toThrow(MetaConfigurationError);
+
+    expect(readMetaPausedDraftServerPolicy(
+      policyEnvironment,
+      new Date("2026-09-25T12:00:01.000Z"),
+    )).toMatchObject({
+      startsAt: "2026-09-25T12:11:00.000Z",
+      endsAt: "2026-09-26T12:11:00.000Z",
+    });
   });
 
   it("marks every secret-bearing Meta module as server-only", async () => {

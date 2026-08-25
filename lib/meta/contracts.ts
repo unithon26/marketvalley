@@ -428,20 +428,28 @@ export function deriveMetaOperationDescriptor(
   binding: MetaConfiguredBinding,
 ): { operationKey: string; fingerprint: string } {
   const canonicalInput = {
-    version: 1,
+    version: 2,
+    schedulePolicy: "server-relative-paused-window-v1",
     binding: {
       adAccountId: binding.adAccountId,
       pageId: binding.pageId,
       instagramActorId: binding.instagramActorId,
     },
     input: {
-      ...input,
+      sourceCampaignId: input.sourceCampaignId,
+      name: input.name,
+      destinationUrl: input.destinationUrl,
+      message: input.message,
+      headline: input.headline,
       images: input.images.map((image) => ({
         filename: image.filename,
         contentType: image.contentType,
         byteLength: image.bytes.byteLength,
         sha256: hashBytes(image.bytes),
       })),
+      cards: input.cards,
+      targeting: input.targeting,
+      lifetimeBudgetMinor: input.lifetimeBudgetMinor,
     },
   };
   const fingerprint = createHash("sha256").update(JSON.stringify(canonicalInput)).digest("hex");

@@ -18,6 +18,10 @@ PNG는 구조·CRC·1080×1350 RGBA 형식까지 검증하지만 client renderer
 
 서버에 이미 Page와 Instagram ID를 고정하므로 간접 목록을 추론하는 것보다 두 자산을 직접 읽고 Page→Instagram 관계를 대조하는 편이 설명 가능하고 실패 원인이 명확하다. 광고계정에서 사용할 Instagram identity도 별도 edge로 확인해 광고계정, Page와 Instagram 세 경계를 모두 fail-closed로 검증한다.
 
+광고 일정은 배포 환경에 절대 시각을 고정하지 않고 요청마다 서버가 짧은 상대 구간을 계산한다. 상대 일정은 같은 캠페인의 작업 지문에서 제외한다. 문구·이미지·destination·타기팅·예산이 같으면 동일 작업으로 처리하고, 이미 checkpoint된 광고 세트가 있으면 그 일정을 그대로 유지한다. 광고 세트 생성 전 재개라면 현재 기준의 새 안전 일정으로 생성한다. 이를 통해 배포가 오래 살아 있어도 설정 만료로 버튼이 사라지지 않으며, 외부 객체 중복 방지 의미도 유지한다.
+
+내부 운영자가 생성 결과를 바로 확인할 수 있도록 완료 응답에는 비밀값이 아닌 Meta 객체 ID와 고정 광고계정의 Ads Manager URL만 반환한다. destination은 요청을 처리한 deployment origin이 아니라 서버의 `META_ALLOWED_DESTINATION_ORIGIN`을 사용한다.
+
 ## 기각한 대안
 
 ### 모든 캠페인 소유자에게 허용

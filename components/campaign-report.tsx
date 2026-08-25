@@ -225,6 +225,8 @@ type CampaignReportProps = {
 type MetaDraftUiState = {
   kind: "idle" | "creating" | "completed" | "busy" | "quota" | "reconciliation" | "error";
   message: string;
+  adsManagerUrl?: string;
+  campaignId?: string;
 };
 
 export function CampaignReport({
@@ -378,6 +380,8 @@ export function CampaignReport({
         setMetaDraftState({
           kind: "completed",
           message: "Meta 계정의 Ads Manager에 PAUSED 초안을 만들었어요. 실제 노출·광고비 지출은 없습니다.",
+          adsManagerUrl: body.adsManagerUrl,
+          campaignId: body.campaignId,
         });
         return;
       }
@@ -499,12 +503,16 @@ export function CampaignReport({
                   Ads Manager PAUSED 초안 만들기
                 </button>
                 {metaDraftState.message ? (
-                  <p
-                    className={`meta-draft-status meta-draft-status-${metaDraftState.kind}`}
-                    role={metaDraftState.kind === "completed" ? "status" : "alert"}
-                  >
-                    {metaDraftState.message}
-                  </p>
+                  <div className={`meta-draft-status meta-draft-status-${metaDraftState.kind}`}>
+                    <p role={metaDraftState.kind === "completed" ? "status" : "alert"}>
+                      {metaDraftState.message}
+                    </p>
+                    {metaDraftState.kind === "completed" && metaDraftState.adsManagerUrl ? (
+                      <a href={metaDraftState.adsManagerUrl} target="_blank" rel="noreferrer">
+                        Ads Manager에서 확인 (캠페인 ID {metaDraftState.campaignId})
+                      </a>
+                    ) : null}
+                  </div>
                 ) : null}
               </>
             ) : null}
