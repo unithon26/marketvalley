@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   getAuthCookieOptions,
   getOptionalSupabaseConfig,
+  hasCompleteBundledSupabaseConfig,
   SupabaseConfigurationError,
 } from "@/lib/supabase/config";
 import {
@@ -12,6 +13,10 @@ import {
 } from "@/lib/auth/security";
 
 describe("auth security", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("같은 origin의 앱 내부 next 경로만 허용한다", () => {
     expect(sanitizeNextPath("/campaigns/demo?tab=result#summary")).toBe(
       "/campaigns/demo?tab=result#summary",
@@ -79,5 +84,12 @@ describe("auth security", () => {
       sameSite: "lax",
       secure: true,
     });
+  });
+
+  it("client bundle용 설정은 공개 환경변수를 명시적으로 읽는다", () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://project.supabase.co");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "sb_publishable_test");
+
+    expect(hasCompleteBundledSupabaseConfig()).toBe(true);
   });
 });

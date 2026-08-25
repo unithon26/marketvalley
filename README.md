@@ -57,8 +57,8 @@ GNB의 임시 Google 로그인·사용자·로그아웃 UI는 인증 상태 hook
 
 ## 범위 경계
 
-- 모든 화면과 수치는 발표용 mock이다. OpenAI, Supabase, Meta와 배포 환경은 연결하지 않았다.
-- Google OAuth 서버 계약과 테스트는 준비됐지만 Google provider·Supabase 환경변수와 실제 계정은 아직 연결하지 않았다. 기존 fixture 데모에는 로그인을 강제하지 않는다.
+- 모든 광고 화면과 수치는 발표용 mock이다. OpenAI, Supabase 데이터 adapter, Meta와 배포 환경은 연결하지 않았다.
+- Google OAuth는 local Google·Supabase provider와 실제 계정 로그인·로그아웃까지 검증했다. production URL과 Vercel 환경변수는 아직 설정하지 않았고 기존 fixture 데모에는 로그인을 강제하지 않는다.
 - P0는 개인정보를 받지 않는 선택형 관심 응답만 수집하도록 설계한다.
 - Meta 계정 연결, 광고 활성화와 실제 지출은 해커톤 P0 범위에 넣지 않는다.
 - 광고, 응답과 판단은 현재 Node.js 서버 프로세스 메모리에만 저장돼 서버 재시작 또는 serverless 인스턴스 전환 시 초기화된다. 브라우저에는 중복 응답 확인용 익명 `visitorId`와 자신이 만든 광고의 draft 소유 토큰만 저장한다.

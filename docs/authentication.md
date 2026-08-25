@@ -1,6 +1,6 @@
 # Google 로그인 백엔드 운영 가이드
 
-상태: 서버 구현 완료, Google·Supabase 설정과 실제 계정 검증 대기
+상태: 로컬 Google·Supabase provider 연결과 실제 계정 로그인·로그아웃 검증 완료, production URL 설정 대기
 기준일: 2026-08-25
 
 marketvalley 로그인은 Google 토큰을 애플리케이션이 직접 교환하거나 저장하지 않고 Supabase Auth의 Authorization Code + PKCE 흐름을 사용한다. 브라우저 JavaScript에는 access token과 refresh token을 노출하지 않는다. Next.js Route Handler와 Proxy가 HttpOnly 쿠키 세션을 소유한다.
@@ -82,6 +82,15 @@ https://<production-domain>/auth/callback\?sb_flow_id=*
 - Supabase RLS와 repository가 `auth.uid()` 기준으로 자신의 광고만 변경·삭제하게 한다.
 
 마지막 항목은 G3 Supabase 데이터 adapter에서 구현한다. 현재 로그인 백엔드는 준비됐지만 기존 fixture 광고 route에 로그인 강제를 적용하지 않았으므로 발표 데모는 그대로 실행된다.
+
+## 2026-08-25 실제 검증 결과
+
+- Google Web client의 local origin과 Supabase Auth callback을 등록했다.
+- Supabase Google provider, local Site URL, flow ID가 포함된 Redirect URL 패턴과 publishable key를 연결했다.
+- 실제 Google 동의, Supabase callback, HttpOnly 세션 생성, GNB 사용자 표시, 현재 세션 POST 로그아웃과 익명 상태 복귀를 확인했다.
+- Supabase Authentication에 Google provider 사용자 한 명이 생성된 것을 확인했다.
+- production origin·Redirect URL과 Vercel 환경변수는 배포 시점에 별도로 설정해야 한다.
+- 동시 flow 역순 callback과 토큰 갱신은 자동 회귀 테스트로 검증했으며, production 다중 탭 수동 검증은 배포 뒤 남아 있다.
 
 ## 공식 참고 자료
 

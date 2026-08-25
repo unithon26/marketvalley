@@ -148,3 +148,21 @@
 - 검증: 인증 테스트 28개와 `pnpm check`의 lint·typecheck·단위 테스트 66개, `pnpm build`, production Chromium E2E 14개, `pnpm test:coverage`, `pnpm audit --audit-level high`, `pnpm peers check`, `git diff --check`가 통과했다. 커버리지는 statements 81.86%, branches 75.08%, functions 89.92%, lines 84.97%다. 설정 없는 production HTTP smoke에서 홈 200과 직접 호출한 인증 endpoint의 `auth_not_configured` 503·private no-store를 확인했고 GNB는 불필요한 요청 없이 fallback을 표시했다. 독립 보안 검토에서 찾은 로그아웃 오류, 동시 PKCE verifier, callback allow-list 3건을 수정하고 회귀 테스트로 고정했다.
 - 전달: 사용자 Git/GitHub 신원과 계정에 연결된 commit 이메일, 의도한 39개 경로와 staged 비밀정보를 확인한 뒤 기능 커밋 `527888e`를 비공개 `unithon26/marketvalley`의 `main`에 push했다. GitHub Actions run `32807054839`의 install·lint·typecheck·단위 테스트·production build·Chromium E2E가 모두 통과했다. 실제 Google·Supabase 계정 쓰기, 배포와 행사 제출은 수행하지 않았다.
 - 남은 일: [인증 운영 가이드](docs/authentication.md)에 따라 Google Console에 Supabase callback을 등록하고 Supabase provider·Site URL·`sb_flow_id`를 허용하는 Redirect URL 패턴·환경변수를 설정한 뒤 실제 계정으로 로그인·동시 flow·갱신·로그아웃을 검증한다. G3 migration과 RLS에서 `auth.uid()` 광고 소유권을 연결한다. 디자이너 확정본이 오면 `AuthControls` markup과 `auth-*` CSS만 교체한다.
+
+## 2026-08-25 — Google OAuth 실제 계정 연결과 client 환경 경계 수정
+
+- 목적: 준비된 Google OAuth 서버 계약을 local Supabase 프로젝트와 실제 계정에 연결하고, 임시 GNB에서 로그인·로그아웃이 실제로 동작하는지 확인한다.
+- 변경: Google Web client의 local origin과 Supabase callback, Supabase Google provider·Site URL·flow ID Redirect URL·publishable key를 연결했다. client component에서 `process.env` 객체 전체가 비어 GNB만 미설정으로 남던 문제를 공개 환경변수의 정적 참조로 수정하고, E2E server는 개인 `.env.local`과 무관한 미설정 환경을 명시하도록 고정했다.
+- 영향 범위: Google Auth Platform, Supabase Authentication 설정, 로컬 `.env.local`, `SiteHeader`, Supabase 공개 설정 helper, 단위·E2E 설정, README·인증·아키텍처·연동·검증·troubleshooting 문서
+- 검증: 실제 Google 동의와 PKCE callback, GNB 사용자 표시, Supabase Auth 사용자 생성, 현재 세션 POST 로그아웃과 익명 복귀를 확인했다. `pnpm check`의 lint·typecheck·단위 테스트 67개, configured production bundle smoke, production Chromium E2E 14개, `pnpm test:coverage`, `pnpm audit --audit-level high`, `pnpm peers check`, `git diff --check`가 통과했다. 커버리지는 statements 82.24%, branches 75.43%, functions 90.71%, lines 85.38%다. 독립 보안 재검토가 찾은 client bundle 회귀 테스트 공백을 별도 build smoke와 CI gate로 닫았다.
+- 결정: Google Client Secret은 Supabase provider에만 저장하고 로컬 파일·Git에는 두지 않는다. `.env.local`은 공개 URL과 publishable key만 가지며 Git에서 제외한다. 실제 로그인 연결과 광고 데이터 소유권은 별개이므로 fixture route에는 아직 로그인을 강제하지 않는다.
+- 전달: local Google·Supabase 설정과 종단 검증까지 완료했다. production URL·Vercel 설정, 배포와 행사 제출은 수행하지 않았다.
+- 남은 일: G3 migration·RLS·repository에 `auth.uid()` 소유권을 연결한다. 배포 시 production Site URL·Redirect URL·Vercel 환경변수를 추가하고 새로고침·토큰 갱신·동시 탭 OAuth를 실제 도메인에서 재검증한다. 디자이너 확정본이 오면 `AuthControls` markup과 `auth-*` CSS만 교체한다.
+
+## 2026-08-25 — OpenAI 로컬 환경변수 준비
+
+- 목적: 향후 OpenAI adapter가 사용할 서버 전용 API 키를 로컬 Next.js 환경에 준비한다.
+- 변경: Git에서 제외되는 루트 `.env`에 `OPENAI_API_KEY`를 설정하고 파일 권한을 소유자 전용으로 제한했다. `.env.example`에는 실제 값 대신 교체용 placeholder를 명시했다.
+- 검증: 설치된 Next.js 16 환경변수 로더에서 키 존재와 형식을 확인했다. `.env`의 Git 제외 여부, 권한 `600`, Git 추적 파일 전체의 비밀키 패턴 부재와 `.env.example` diff 형식을 확인했다. 실제 OpenAI API 호출은 수행하지 않았다.
+- 전달: 로컬 환경 설정만 완료했다. 현재 작업 트리에 다른 진행 중 변경이 있어 commit·push하지 않았다.
+- 남은 일: G4 OpenAI adapter 구현 시 서버 전용 `OPENAI_API_KEY`를 사용해 실제 호출과 실패 fallback을 검증하고, 노출된 키는 OpenAI에서 회전한다.
