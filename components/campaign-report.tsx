@@ -1,17 +1,23 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import JSZip from "jszip";
-import { CheckIcon, CopyIcon, DownloadIcon, ExternalIcon } from "@/components/icons";
+
 import { CampaignEntryLink } from "@/components/campaign-entry-link";
+import { CheckIcon, DownloadIcon } from "@/components/icons";
 import { CarouselCard, carouselCoverAssets, carouselFileNames } from "@/components/renderers/carousel-card";
-import type { CampaignSpec, NextAction } from "@/lib/contracts/campaign";
 import type { CampaignResponse } from "@/lib/contracts/api";
+import type { CampaignSpec } from "@/lib/contracts/campaign";
 import type { ReservationRecord, ReservationSummary } from "@/lib/contracts/repository";
-import { getCampaignDraftId } from "@/lib/client/demo-store";
-import { createNextActionState } from "@/lib/demo/campaignReservations";
+import {
+  classifyMarketFitByCtr,
+  demoMarketReportMetrics,
+  type MarketFit,
+  type MarketReportMetrics,
+} from "@/lib/demo/reportMetrics";
 
 function triggerDownload(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob);
@@ -19,124 +25,160 @@ function triggerDownload(blob: Blob, name: string) {
   anchor.href = url;
   anchor.download = name;
   anchor.click();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
 }
 
 function maskEmail(email: string): string {
   const [local, domain] = email.split("@");
   if (!domain) return email;
   const visible = local.slice(0, Math.min(2, local.length));
-  const masked = "*".repeat(Math.max(4, local.length - visible.length));
-  return `${visible}${masked}@${domain}`;
+  return `${visible}${"*".repeat(Math.max(4, local.length - visible.length))}@${domain}`;
 }
 
-const carouselPreviewLabels = ["첫 장", "문제", "핵심", "해결", "행동 유도"] as const;
-
-function CarouselPreviewCard({ spec, index }: { spec: CampaignSpec; index: number }) {
-  return (
-    <figure className="carousel-preview-item" role="listitem">
-      <div className="carousel-preview-canvas">
-        <svg viewBox="0 0 1080 1350" aria-hidden="true" focusable="false">
-          <foreignObject width="1080" height="1350">
-            <CarouselCard spec={spec} index={index} preview />
-          </foreignObject>
-        </svg>
-      </div>
-      <figcaption>
-        <strong>{carouselPreviewLabels[index]}</strong>
-        <span>{carouselFileNames[index]}</span>
-      </figcaption>
-    </figure>
-  );
-}
-
-type ReservationTrendGeometry = {
-  area: string;
-  line: string;
-  points: Array<{ id: string; x: number; y: number }>;
+const fitCopy: Record<MarketFit, string> = {
+  unsuitable: "[부적합]",
+  suitable: "[적합]",
+  "very-suitable": "[매우 적합]",
 };
 
-const KOREA_TIME_OFFSET_MS = 9 * 60 * 60 * 1_000;
+const ageRows = ["18–24", "18–24", "18–24", "18–24"] as const;
+const regionBars = [44, 96, 77, 73, 96, 62, 84, 78] as const;
+const scrollRows = [
+  [25, "57s"],
+  [50, "43s"],
+  [75, "34s"],
+  [90, "43s"],
+  [100, "12s"],
+] as const;
 
-export function formatReservationTime(reservedAt: string): string {
-  const timestamp = Date.parse(reservedAt);
-  if (Number.isNaN(timestamp)) return "시간 확인 필요";
-
-  const koreaTime = new Date(timestamp + KOREA_TIME_OFFSET_MS);
-  const month = koreaTime.getUTCMonth() + 1;
-  const day = koreaTime.getUTCDate();
-  const hour = String(koreaTime.getUTCHours()).padStart(2, "0");
-  const minute = String(koreaTime.getUTCMinutes()).padStart(2, "0");
-  return `${month}. ${day}. ${hour}:${minute}`;
-}
-
-export function buildReservationTrendGeometry(
-  source: readonly ReservationRecord[],
-  width = 720,
-  baseline = 148,
-  top = 24,
-): ReservationTrendGeometry {
-  const records = [...source].sort((a, b) => a.reservedAt.localeCompare(b.reservedAt));
-  if (records.length === 0) {
-    const line = `M24 ${baseline} H${width - 24}`;
-    return { area: `${line} Z`, line, points: [] };
-  }
-
-  const timestamps = records.map((record) => new Date(record.reservedAt).getTime());
-  const firstTimestamp = Math.min(...timestamps);
-  const lastTimestamp = Math.max(...timestamps);
-  const timeRange = lastTimestamp - firstTimestamp;
-  const heightRange = baseline - top;
-  const points = records.map((record, index) => ({
-    id: record.id,
-    x: timeRange === 0
-      ? width / 2
-      : 24 + ((timestamps[index] - firstTimestamp) / timeRange) * (width - 48),
-    y: baseline - ((index + 1) / records.length) * heightRange,
-  }));
-  const [firstPoint, ...remainingPoints] = points;
-  const line = remainingPoints.reduce(
-    (path, point) => `${path} H${point.x} V${point.y}`,
-    `M${firstPoint.x} ${baseline} V${firstPoint.y}`,
-  );
-  return {
-    area: `${line} L${points.at(-1)?.x ?? firstPoint.x} ${baseline} Z`,
-    line,
-    points,
-  };
-}
-
-function ReservationTrend({ summary }: { summary: ReservationSummary }) {
-  const records = [...summary.recent].sort((a, b) => a.reservedAt.localeCompare(b.reservedAt));
-  const width = 720;
-  const height = 180;
-  const baseline = 148;
-  const geometry = buildReservationTrendGeometry(records, width, baseline);
+function MetricCards({ metrics }: { metrics: MarketReportMetrics }) {
   return (
-    <article className="reservation-trend-card">
-      <div className="trend-heading">
-        <div><span>예약 접수 추이</span><strong>{summary.total}<small>건 누적</small></strong></div>
-        <em>저장된 예약 기준</em>
-      </div>
-      <svg className="reservation-trend" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`예약이 ${summary.total}건까지 누적된 추이`}>
-        <defs>
-          <linearGradient id="reservation-area" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#8969EA" stopOpacity=".42" />
-            <stop offset="1" stopColor="#8969EA" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <path className="trend-grid-line" d={`M24 ${baseline} H${width - 24}`} />
-        <path className="trend-area" d={geometry.area} />
-        <path className="trend-line" d={geometry.line} />
-        {records.map((record, index) => (
-          <circle key={record.id} cx={geometry.points[index].x} cy={geometry.points[index].y} r="4" />
+    <section className="report-metric-cards" aria-label="핵심 광고 지표">
+      <article className="report-impression-card">
+        <strong>{metrics.impressions.toLocaleString("ko-KR")}회</strong>
+        <span>노출 수</span>
+        <svg viewBox="0 0 190 110" aria-hidden="true">
+          <path d="M0 104 C36 96 48 78 67 46 C86 15 103 46 132 53 C156 59 155 24 190 18 L190 110 L0 110 Z" />
+          <path d="M0 104 C36 96 48 78 67 46 C86 15 103 46 132 53 C156 59 155 24 190 18" />
+          <circle cx="67" cy="46" r="3" />
+          <circle cx="132" cy="53" r="3" />
+          <circle cx="190" cy="18" r="3" />
+        </svg>
+      </article>
+      <article>
+        <strong>{metrics.ctr}%</strong>
+        <span>CTR</span>
+        <p>업계 평균 대비 15%p 높음</p>
+      </article>
+      <article>
+        <strong>{metrics.reservationRate}%</strong>
+        <span>예약률</span>
+        <p>업계 평균 대비 15%p 높음</p>
+      </article>
+    </section>
+  );
+}
+
+function FunnelAnalysis({ metrics }: { metrics: MarketReportMetrics }) {
+  const funnel = metrics.funnel;
+  const steps = [
+    ["노출", funnel.impressions.toLocaleString("ko-KR")],
+    ["클릭", funnel.clicks.toLocaleString("ko-KR")],
+    ["랜딩 페이지 방문", funnel.landingVisits.toLocaleString("ko-KR")],
+    ["예약", funnel.reservations.toLocaleString("ko-KR")],
+  ] as const;
+
+  return (
+    <section className="figma-report-card funnel-card">
+      <h2>퍼널 분석</h2>
+      <div className="funnel-grid">
+        {steps.map(([label, value], index) => (
+          <div className="funnel-step" key={label}>
+            <div className="funnel-value"><span>{label}</span><strong>{value}</strong></div>
+            <div className="funnel-bar"><i /></div>
+            {index < steps.length - 1 ? <span className="funnel-arrow">10%<b>→</b></span> : null}
+          </div>
         ))}
-      </svg>
-      <div className="trend-axis">
-        <span>{records[0] ? formatReservationTime(records[0].reservedAt) : "예약 대기 중"}</span>
-        <span>{records.at(-1) ? formatReservationTime(records.at(-1)!.reservedAt) : ""}</span>
       </div>
-    </article>
+      <p className="report-insight">예약 전환율이 가장 큰 하락 구간입니다</p>
+    </section>
+  );
+}
+
+function DemographicInsights() {
+  return (
+    <section className="figma-report-card demographic-card">
+      <h2>인구통계학적 인사이트</h2>
+      <div className="demographic-layout">
+        <div className="gender-chart">
+          <h3>성별</h3>
+          <div className="gender-chart-body">
+            <span className="gender-label gender-male">남<br />123</span>
+            <div className="gender-donut"><span>전체<strong>432</strong></span></div>
+            <span className="gender-label gender-female">여<br />000</span>
+          </div>
+        </div>
+        <div className="age-chart">
+          <h3>연령대</h3>
+          {ageRows.map((label, index) => (
+            <div className="age-row" key={`${label}-${index}`}>
+              <span>{label}</span>
+              <div><i /></div>
+              <b>00%</b>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function RegionInsights() {
+  return (
+    <section className="figma-report-card region-card">
+      <h2>거주지</h2>
+      <div className="region-chart">
+        {regionBars.map((height, index) => (
+          <div key={`${height}-${index}`}><i style={{ height }} /><span>지역명</span></div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function BehaviorInsights() {
+  return (
+    <section className="figma-report-card behavior-card">
+      <h2>사용자 행동 패턴</h2>
+      <div className="behavior-layout">
+        <div className="average-time"><span>평균 체류시간</span><strong>42s</strong></div>
+        <div className="scroll-time-list">
+          <h3>스크롤 뎁스별 체류 시간</h3>
+          {scrollRows.map(([depth, time]) => <div key={depth}><span>{depth}</span><b>{time}</b></div>)}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ReservationList({ records, onDownload }: { records: readonly ReservationRecord[]; onDownload: () => void }) {
+  return (
+    <section className="report-reservations">
+      <div className="report-section-title">
+        <h2>예약자 리스트</h2>
+        <button type="button" onClick={onDownload}><DownloadIcon size={18} />다운로드</button>
+      </div>
+      <div className="reservation-table-wrap">
+        <table className="reservation-table">
+          <thead><tr><th>No</th><th>이름</th><th>이메일</th></tr></thead>
+          <tbody>
+            {records.length ? records.map((record, index) => (
+              <tr key={record.id}><td>{index + 1}</td><td>{record.name}</td><td>{maskEmail(record.email)}</td></tr>
+            )) : <tr><td colSpan={3}>아직 예약이 없어요.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -145,7 +187,7 @@ type CampaignReportProps = {
   publicSlug: string;
   initialSpec: CampaignSpec;
   initialSummary: ReservationSummary;
-  initialNextAction: NextAction | null;
+  metrics?: MarketReportMetrics;
 };
 
 export function CampaignReport({
@@ -153,41 +195,29 @@ export function CampaignReport({
   publicSlug,
   initialSpec,
   initialSummary,
-  initialNextAction,
+  metrics = demoMarketReportMetrics,
 }: CampaignReportProps) {
-  const [summary, setSummary] = useState<ReservationSummary>(initialSummary);
-  const [nextAction, setNextAction] = useState<NextAction | null>(initialNextAction);
+  const [summary, setSummary] = useState(initialSummary);
   const [notice, setNotice] = useState("");
   const [loadError, setLoadError] = useState("");
-  const [mutationError, setMutationError] = useState("");
   const [exporting, setExporting] = useState(false);
-  const [pendingAction, setPendingAction] = useState<NextAction | null>(null);
-  const [resetting, setResetting] = useState(false);
   const cardRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const refreshSequenceRef = useRef(0);
   const refreshInFlightRef = useRef(false);
-  const mutationInFlightRef = useRef(false);
   const spec = initialSpec;
   const publicPath = `/p/${encodeURIComponent(publicSlug)}`;
-  const state = useMemo(() => createNextActionState(nextAction), [nextAction]);
+  const fit = classifyMarketFitByCtr(metrics.ctr);
 
-  const refresh = useCallback(async (): Promise<boolean> => {
-    if (mutationInFlightRef.current || refreshInFlightRef.current) return false;
+  const refresh = useCallback(async () => {
+    if (refreshInFlightRef.current) return;
     refreshInFlightRef.current = true;
-    const requestSequence = ++refreshSequenceRef.current;
     try {
       const response = await fetch(`/api/campaigns?id=${encodeURIComponent(campaignId)}`, { cache: "no-store" });
       if (!response.ok) throw new Error("report_request_failed");
       const body = await response.json() as CampaignResponse;
-      if (requestSequence !== refreshSequenceRef.current || mutationInFlightRef.current) return false;
       setSummary(body.summary);
-      setNextAction(body.nextAction);
       setLoadError("");
-      return true;
     } catch {
-      if (requestSequence !== refreshSequenceRef.current || mutationInFlightRef.current) return false;
       setLoadError("최신 리포트를 불러오지 못했어요. 잠시 후 다시 시도해주세요.");
-      return false;
     } finally {
       refreshInFlightRef.current = false;
     }
@@ -198,33 +228,24 @@ export function CampaignReport({
     const refreshWhenVisible = () => {
       if (document.visibilityState === "visible") refreshReport();
     };
-    const animationFrame = window.requestAnimationFrame(refreshReport);
-    const refreshInterval = window.setInterval(refreshReport, 2_000);
+    const frame = window.requestAnimationFrame(refreshReport);
+    const interval = window.setInterval(refreshReport, 2_000);
     window.addEventListener("focus", refreshReport);
     document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
-      window.cancelAnimationFrame(animationFrame);
-      window.clearInterval(refreshInterval);
+      window.cancelAnimationFrame(frame);
+      window.clearInterval(interval);
       window.removeEventListener("focus", refreshReport);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [refresh]);
-
-  async function copyText(text: string, label: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-      setNotice(`${label} 복사를 완료했어요.`);
-    } catch {
-      setNotice("복사 권한을 확인한 뒤 다시 시도해주세요.");
-    }
-  }
 
   async function renderCards() {
     await document.fonts.ready;
     const coverAsset = carouselCoverAssets[spec.templates.carouselCover];
     if (coverAsset) {
       await new Promise<void>((resolve, reject) => {
-        const image = new Image();
+        const image = new window.Image();
         image.onload = () => resolve();
         image.onerror = () => reject(new Error("carousel_cover_asset_failed"));
         image.src = coverAsset;
@@ -236,196 +257,85 @@ export function CampaignReport({
     }));
   }
 
-  async function downloadZip() {
+  async function downloadCards() {
     setExporting(true);
     setNotice("");
     try {
       const images = await renderCards();
       const zip = new JSZip();
       images.forEach((dataUrl, index) => zip.file(carouselFileNames[index], dataUrl.split(",")[1], { base64: true }));
-      const blob = await zip.generateAsync({ type: "blob" });
-      triggerDownload(blob, `${campaignId}-carousel.zip`);
-      setNotice("캐러셀 PNG 5장을 ZIP으로 만들었어요.");
+      triggerDownload(await zip.generateAsync({ type: "blob" }), `${campaignId}-carousel.zip`);
+      setNotice("카드뉴스 저장을 완료했어요.");
     } catch {
-      setNotice("PNG 생성에 실패했어요. 브라우저를 새로고침한 뒤 다시 시도해주세요.");
+      setNotice("카드뉴스 저장에 실패했어요. 잠시 후 다시 시도해주세요.");
     } finally {
       setExporting(false);
     }
   }
 
-  async function downloadMetaPackage() {
-    setExporting(true);
-    setNotice("");
-    const destinationUrl = new URL(publicPath, window.location.origin).toString();
-    const text = [
-      "[Meta 게시 준비 — 실제 게시 아님]",
-      `상품명: ${spec.project.name}`,
-      `핵심 특징: ${spec.landing.benefits.map((benefit) => benefit.title).join(" · ")}`,
-      `기본 문구: ${spec.messaging.caption}`,
-      `Headline: ${spec.messaging.hooks[0]}`,
-      `CTA: ${spec.validation.signal.ctaLabel}`,
-      `대상 고객 가설: ${spec.validation.customer}`,
-      `Destination URL: ${destinationUrl}`,
-      `Hashtags: ${spec.messaging.hashtags.join(" ")}`,
-      `Visual direction: ${spec.brand.visualDirection}`,
-      `Carousel cover template: ${spec.templates.carouselCover}`,
-      `Landing intro template: ${spec.templates.landingIntro}`,
-      `Media files: ${carouselFileNames.join(", ")}`,
-    ].join("\n\n");
-    try {
-      const images = await renderCards();
-      const zip = new JSZip();
-      images.forEach((dataUrl, index) => zip.file(carouselFileNames[index], dataUrl.split(",")[1], { base64: true }));
-      zip.file("meta-ready.txt", text);
-      const blob = await zip.generateAsync({ type: "blob" });
-      triggerDownload(blob, `${campaignId}-meta-ready.zip`);
-      setNotice("PNG와 문구를 Meta 게시 준비 ZIP으로 만들었어요. 실제 광고는 등록되지 않았습니다.");
-    } catch {
-      setNotice("Meta 게시 준비 파일 생성에 실패했어요. 브라우저를 새로고침한 뒤 다시 시도해주세요.");
-    } finally {
-      setExporting(false);
-    }
+  function downloadReservations() {
+    const rows = ["No,이름,이메일", ...summary.recent.map((record, index) => (
+      `${index + 1},${record.name},${record.email}`
+    ))];
+    triggerDownload(new Blob([`\uFEFF${rows.join("\n")}`], { type: "text/csv;charset=utf-8" }), `${campaignId}-reservations.csv`);
+    setNotice("예약자 리스트 다운로드를 완료했어요.");
   }
 
-  async function chooseAction(action: NextAction) {
-    if (mutationInFlightRef.current) return;
-    const draftId = getCampaignDraftId(campaignId) ?? (campaignId === "demo" ? "demo" : null);
-    if (!draftId) {
-      setMutationError("이 브라우저에서 만든 광고만 다음 행동을 저장할 수 있어요.");
-      return;
-    }
-    mutationInFlightRef.current = true;
-    refreshSequenceRef.current += 1;
-    setPendingAction(action);
-    setNotice("");
-    setMutationError("");
+  async function shareReport() {
     try {
-      const response = await fetch("/api/campaigns", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ campaignId, draftId, nextAction: action }),
-      });
-      if (!response.ok) throw new Error("next_action_request_failed");
-      const body = await response.json() as { nextAction: NextAction };
-      if (body.nextAction !== action) throw new Error("next_action_response_invalid");
-
-      setNextAction(action);
-      setNotice("다음 행동을 저장했어요.");
+      await navigator.clipboard.writeText(window.location.href);
+      setNotice("리포트 링크를 복사했어요.");
     } catch {
-      setMutationError("다음 행동을 저장하지 못했어요. 다시 시도해주세요.");
-    } finally {
-      mutationInFlightRef.current = false;
-      setPendingAction(null);
-    }
-  }
-
-  async function reset() {
-    if (mutationInFlightRef.current) return;
-    const draftId = getCampaignDraftId(campaignId) ?? (campaignId === "demo" ? "demo" : null);
-    if (!draftId) {
-      setMutationError("이 브라우저에서 만든 광고만 초기화할 수 있어요.");
-      return;
-    }
-    mutationInFlightRef.current = true;
-    refreshSequenceRef.current += 1;
-    setResetting(true);
-    setNotice("");
-    setMutationError("");
-    try {
-      const response = await fetch("/api/campaigns/reset", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ campaignId, draftId }),
-      });
-      if (!response.ok) throw new Error("reset_request_failed");
-      const body = await response.json() as CampaignResponse;
-      setSummary(body.summary);
-      setNextAction(body.nextAction);
-      setLoadError("");
-      setNotice("발표용 응답과 판단을 초기화했어요.");
-    } catch {
-      setMutationError("데모 데이터를 초기화하지 못했어요. 다시 시도해주세요.");
-    } finally {
-      mutationInFlightRef.current = false;
-      setResetting(false);
+      setNotice("리포트 링크를 복사하지 못했어요.");
     }
   }
 
   return (
-    <main className="report-page page-container">
-      <div className="report-intro">
-        <span className="report-check"><CheckIcon /></span>
-        <div><span className="eyebrow">{spec.project.name} · DEMO AD</span><h1>검증 리포트를 보여드릴게요</h1><p>저장된 예약자명단과 사전에 정한 판단 기준만 표시합니다.</p></div>
+    <main className="figma-report-page" data-market-fit={fit}>
+      <div className="figma-report-container">
+        <header className="report-result-heading">
+          <span className="report-result-check"><CheckIcon size={20} /></span>
+          <p>검증 결과</p>
+          <h1>{fitCopy[fit]}</h1>
+        </header>
+
+        <div className="report-divider" />
+        <MetricCards metrics={metrics} />
+        <FunnelAnalysis metrics={metrics} />
+        <DemographicInsights />
+        <RegionInsights />
+        <BehaviorInsights />
+
+        <section className="report-creative-grid">
+          <article className="figma-report-card creative-card">
+            <h2>광고 카드뉴스 소재</h2>
+            <Image src="/report/card-news.png" width={300} height={408} alt="광고 카드뉴스 소재" unoptimized />
+            <button className="report-outline-button" type="button" onClick={downloadCards} disabled={exporting}>
+              {exporting ? "저장 중..." : "카드뉴스 저장"}
+            </button>
+          </article>
+          <article className="figma-report-card landing-preview-card">
+            <h2>랜딩페이지</h2>
+            <Image src="/report/landing-page.png" width={700} height={410} alt="랜딩페이지 미리보기" unoptimized />
+            <Link className="report-outline-button" href={publicPath} target="_blank">서비스 바로가기</Link>
+          </article>
+        </section>
+
+        <ReservationList records={summary.recent} onDownload={downloadReservations} />
+
+        <div className="report-bottom-actions">
+          <CampaignEntryLink className="button button-primary">다른 아이템 가설 검증하기</CampaignEntryLink>
+          <button className="button button-secondary" type="button" onClick={shareReport}>리포트 공유하기</button>
+        </div>
       </div>
 
-      <section className="metric-grid">
-        <article className="metric-primary"><span>예약자 수</span><strong>{summary.total}<small>명</small></strong><p>현재 저장소의 예약자명단 기준</p></article>
-        <article><span>사전 판단 기준</span><strong>{summary.total}<small> / {spec.validation.decisionRule.minimumResponses}명</small></strong><p>{summary.total >= spec.validation.decisionRule.minimumResponses ? "최소 표본 도달" : "표본 수집 중"}</p></article>
-        <article><span>사람에게 남은 판단</span><strong className="metric-copy">{nextAction ? state.options.find((option) => option.selected)?.label : "선택 전"}</strong><p>AI가 시장성을 판정하지 않음</p></article>
-        <ReservationTrend summary={summary} />
-      </section>
-
-      <section className="report-section response-section">
-        <div className="section-heading"><div><span className="eyebrow">RESERVATIONS</span><h2>예약자명단</h2></div><Link className="button button-secondary" href={publicPath} target="_blank">공개 랜딩 열기 <ExternalIcon size={17} /></Link></div>
-        {summary.recent.length === 0 ? (
-          <p className="data-note">아직 예약이 없어요.</p>
-        ) : (
-          <div className="reservation-table-wrap">
-            <table className="reservation-table">
-              <thead><tr><th>No</th><th>이름</th><th>이메일</th></tr></thead>
-              <tbody>
-                {summary.recent.map((reservation, index) => (
-                  <tr key={reservation.id}><td>{index + 1}</td><td>{reservation.name}</td><td>{maskEmail(reservation.email)}</td></tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <div className="measurement-boundary" aria-label="아직 연결하지 않은 지표">
-          <strong>계측 연결 전</strong>
-          <span>방문 수</span><span>Meta CTR</span><span>체류시간</span><span>스크롤 깊이</span><span>성별·연령·지역</span>
-        </div>
-        <p className="data-note">서버에 준비된 seed 예약과 공개 랜딩에서 실제 제출한 예약만 목록과 그래프에 반영합니다. 방문 이벤트와 Meta Insights를 연결하기 전에는 전환율·CTR·인구 통계를 만들지 않습니다.</p>
-      </section>
-
-      <section className="report-section deliverables-section">
-        <div className="section-heading"><div><span className="eyebrow">READY TO USE</span><h2>광고 결과물</h2></div><span className="safe-label">외부 계정·광고비 사용 없음</span></div>
-        <div className="deliverable-grid">
-          <article><div className="deliverable-icon landing-icon">↗</div><div><h3>공개 랜딩페이지</h3><p>같은 광고 초안으로 렌더링되는 발표용 공개 경로</p><code>{publicPath}</code></div><Link className="icon-button" href={publicPath} target="_blank" aria-label="공개 랜딩 열기"><ExternalIcon /></Link></article>
-          <article className="carousel-deliverable">
-            <div className="deliverable-icon carousel-icon">05</div>
-            <div><h3>Instagram 캐러셀</h3><p>1080×1350 PNG 5장 · 결정적 React/CSS 렌더러</p><code>01-hook.png — 05-cta.png</code></div>
-            <button className="icon-button" type="button" onClick={downloadZip} disabled={exporting} aria-label="캐러셀 ZIP 다운로드"><DownloadIcon /></button>
-            <div className="carousel-preview-gallery" role="list" aria-label="생성된 Instagram 카드뉴스 5장">
-              {[0, 1, 2, 3, 4].map((index) => <CarouselPreviewCard key={index} spec={spec} index={index} />)}
-            </div>
-            <p className="carousel-preview-note">화면 미리보기와 다운로드 PNG는 같은 디자인으로 만들어집니다.</p>
-          </article>
-          <article><div className="deliverable-icon meta-icon">M</div><div><h3>Meta 게시 준비</h3><p>PNG 5장·문구·CTA·대상 고객 가설·절대 URL을 ZIP 하나로</p><code>실제 게시 또는 집행 아님</code></div><button className="icon-button" type="button" onClick={downloadMetaPackage} disabled={exporting} aria-busy={exporting} aria-label="Meta 게시 준비 다운로드"><DownloadIcon /></button></article>
-        </div>
-        <div className="copy-grid">
-          <div><span>게시 문구</span><p>{spec.messaging.caption}</p><button type="button" onClick={() => copyText(spec.messaging.caption, "게시 문구")}><CopyIcon size={16} /> 복사</button></div>
-          <div><span>후킹 문구 3개</span><p>{spec.messaging.hooks.join("\n")}</p><button type="button" onClick={() => copyText(spec.messaging.hooks.join("\n"), "후킹 문구")}><CopyIcon size={16} /> 복사</button></div>
-          <div><span>CTA</span><p>{spec.validation.signal.ctaLabel}</p><button type="button" onClick={() => copyText(spec.validation.signal.ctaLabel, "CTA")}><CopyIcon size={16} /> 복사</button></div>
-          <div><span>해시태그</span><p>{spec.messaging.hashtags.join(" ")}</p><button type="button" onClick={() => copyText(spec.messaging.hashtags.join(" "), "해시태그")}><CopyIcon size={16} /> 복사</button></div>
-        </div>
-      </section>
-
-      <section className="report-section decision-section">
-        <div className="section-heading"><div><span className="eyebrow">HUMAN DECISION</span><h2>다음 행동은 직접 선택해주세요</h2></div></div>
-        <p>AI가 시장성을 판정하지 않습니다. 사전 기준과 현재 표본을 보고 사람이 다음 행동을 남깁니다.</p>
-        <div className="decision-grid">
-          {state.options.map((option) => <button className={option.selected ? "selected" : ""} type="button" key={option.action} onClick={() => chooseAction(option.action)} disabled={pendingAction !== null || resetting} aria-busy={pendingAction === option.action} aria-pressed={option.selected}><span>{option.label}</span><p>{option.description}</p>{option.selected && <CheckIcon size={18} />}</button>)}
-        </div>
-      </section>
-
-      <div className="report-footer-actions"><button className="text-button danger" type="button" onClick={reset} disabled={resetting || pendingAction !== null}>{resetting ? "초기화 중..." : "데모 데이터 초기화"}</button><CampaignEntryLink className="button button-secondary">새 광고 만들기</CampaignEntryLink></div>
-      {mutationError || loadError
-        ? <div className="toast toast-error" role="alert">{mutationError || loadError}</div>
-        : notice && <div className="toast" role="status">{notice}</div>}
+      {loadError ? <div className="toast toast-error" role="alert">{loadError}</div> : null}
+      {!loadError && notice ? <div className="toast" role="status">{notice}</div> : null}
 
       <div className="export-stage" aria-hidden="true">
-        {[0, 1, 2, 3, 4].map((index) => <CarouselCard key={index} spec={spec} index={index} exportRef={(node) => { cardRefs.current[index] = node; }} />)}
+        {[0, 1, 2, 3, 4].map((index) => (
+          <CarouselCard key={index} spec={spec} index={index} exportRef={(node) => { cardRefs.current[index] = node; }} />
+        ))}
       </div>
     </main>
   );

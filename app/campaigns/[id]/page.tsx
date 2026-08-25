@@ -18,7 +18,6 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
         publicSlug={published.slug}
         initialSpec={published.spec}
         initialSummary={initialSummary}
-        initialNextAction={published.nextAction}
       />
     </div>
   );
