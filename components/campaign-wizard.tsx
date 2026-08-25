@@ -10,7 +10,7 @@ const example = {
   background:
     "동네에서 작은 카페를 운영합니다. 마감 시간이 가까워지면 멀쩡한 디저트와 샌드위치가 남지만, 이웃에게 알릴 방법이 없어 폐기하는 날이 많습니다. 매번 인스타그램 게시물을 새로 만들고 문의를 확인하는 일도 부담입니다.",
   solution:
-    "서비스 이름은 ‘마감한입’입니다. 핵심 특징은 남은 메뉴 한 번 입력, 공개 페이지와 게시 카드 동시 생성, 개인정보 없는 구매 의향 수집입니다. 카페 사장님이 남은 메뉴와 마감 시간을 입력하면 가까운 이웃이 볼 수 있는 캠페인이 자동으로 만들어집니다.",
+    "서비스 이름은 ‘마감한입’입니다. 핵심 특징은 남은 메뉴 한 번 입력, 공개 페이지와 게시 카드 동시 생성, 개인정보 없는 구매 의향 수집입니다. 카페 사장님이 남은 메뉴와 마감 시간을 입력하면 가까운 이웃이 볼 수 있는 광고가 자동으로 만들어집니다.",
 };
 
 type Step = 1 | 2;
@@ -93,7 +93,7 @@ export function CampaignWizard() {
 
       router.push(`/campaigns/${campaignId}/progress`);
     } catch {
-      setError("캠페인 생성에 실패했어요. 다시 시도해주세요.");
+      setError("광고 생성에 실패했어요. 다시 시도해주세요.");
     } finally {
       setSubmitting(false);
     }
@@ -129,7 +129,7 @@ export function CampaignWizard() {
         <div className="wizard-actions">
           {step === 2 && <button className="button button-secondary" type="button" onClick={() => setStep(1)}>이전</button>}
           <button className="button button-primary" type="button" onClick={next} disabled={submitting}>
-            {step === 1 ? <>다음 <ArrowRightIcon size={17} /></> : submitting ? "만드는 중..." : <>캠페인 만들기 <ArrowRightIcon size={17} /></>}
+            {step === 1 ? <>다음 <ArrowRightIcon size={17} /></> : submitting ? "만드는 중..." : <>광고 만들기 <ArrowRightIcon size={17} /></>}
           </button>
         </div>
       </section>

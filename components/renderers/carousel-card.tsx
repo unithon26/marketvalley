@@ -19,7 +19,7 @@ function cardCopy(spec: CampaignSpec, index: number) {
     case 0: return { kicker: "첫 시장 반응 전에", headline: spec.messaging.hooks[0], body: spec.carousel.hookBody };
     case 1: return { kicker: "반복되는 제작 업무", headline: spec.carousel.problem.headline, body: spec.carousel.problem.body };
     case 2: return { kicker: "검증의 핵심", headline: spec.carousel.insight.headline, body: spec.carousel.insight.body };
-    case 3: return { kicker: "하나의 캠페인", headline: spec.messaging.valueProposition, body: spec.carousel.solutionBody };
+    case 3: return { kicker: "하나의 광고", headline: spec.messaging.valueProposition, body: spec.carousel.solutionBody };
     default: return { kicker: "다음 판단은 사람이", headline: spec.validation.signal.ctaLabel, body: spec.carousel.ctaBody };
   }
 }

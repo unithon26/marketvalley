@@ -109,19 +109,22 @@ test("fixture 생성부터 산출물, 응답, 판단, 초기화까지 실제 API
   await page.goto("/");
   await page.evaluate(() => window.localStorage.clear());
 
-  await page.getByRole("link", { name: "새 캠페인" }).click();
+  await expect(page.locator("body")).not.toContainText(/캠페인|CampaignSpec/u);
+  await page.getByRole("link", { name: "새 광고" }).click();
   await page.getByRole("button", { name: "예시 불러오기" }).click();
   await page.getByRole("button", { name: "다음" }).click();
-  await page.getByRole("button", { name: /캠페인 만들기/ }).click();
+  await page.getByRole("button", { name: /광고 만들기/ }).click();
 
   await expect(page).toHaveURL(/\/campaigns\/[^/]+\/progress$/);
   const campaignId = decodeURIComponent(page.url().match(/\/campaigns\/([^/]+)\/progress$/)?.[1] ?? "");
   expect(campaignId).not.toBe("");
   const reportLink = page.getByRole("link", { name: /검증 리포트 확인하기/ });
   await expect(reportLink).toBeVisible({ timeout: 5_000 });
+  await expect(page.locator("body")).not.toContainText(/캠페인|CampaignSpec/u);
   await reportLink.click();
 
   await expect(page).toHaveURL(new RegExp(`/campaigns/${campaignId}$`));
+  await expect(page.locator("body")).not.toContainText(/캠페인|CampaignSpec/u);
   await expect(responseMetric(page)).toHaveText("4건");
   await expect(page.getByText("긍정 2 / 전체 4", { exact: true })).toBeVisible();
   await expect(page.getByText("표본 수 부족", { exact: true })).toBeVisible();
@@ -236,13 +239,13 @@ test("fixture 생성부터 산출물, 응답, 판단, 초기화까지 실제 API
 
 test("입력한 상품명과 특징이 랜딩과 카드뉴스에 자동으로 이어진다", async ({ page, request }) => {
   const background = "예약 취소가 생길 때마다 동네 공방 빈자리 안내를 여러 채널에 다시 만들어 올리는 일이 반복됩니다.";
-  const solution = "서비스 이름은 ‘공방온’입니다. 핵심 특징은 빈자리 한 번 입력, 이웃 대상 공개 페이지, 개인정보 없는 참여 의향 수집입니다. 공방 운영자의 안내 캠페인을 자동으로 만듭니다.";
+  const solution = "서비스 이름은 ‘공방온’입니다. 핵심 특징은 빈자리 한 번 입력, 이웃 대상 공개 페이지, 개인정보 없는 참여 의향 수집입니다. 공방 운영자의 안내 광고를 자동으로 만듭니다.";
 
   await page.goto("/new");
   await page.getByRole("textbox", { name: "제품 배경" }).fill(background);
   await page.getByRole("button", { name: "다음" }).click();
   await page.getByRole("textbox", { name: "솔루션 설명" }).fill(solution);
-  await page.getByRole("button", { name: /캠페인 만들기/ }).click();
+  await page.getByRole("button", { name: /광고 만들기/ }).click();
   await expect(page).toHaveURL(/\/campaigns\/[^/]+\/progress$/);
 
   const campaignId = decodeURIComponent(page.url().match(/\/campaigns\/([^/]+)\/progress$/)?.[1] ?? "");
@@ -675,17 +678,17 @@ test("게시 응답이 유실돼도 같은 draft와 생성 결과로 재시도�
   await page.goto("/new");
   await page.getByRole("button", { name: "예시 불러오기" }).click();
   await page.getByRole("button", { name: "다음" }).click();
-  await page.getByRole("button", { name: /캠페인 만들기/ }).click();
-  await expect(page.locator(".form-error")).toHaveText("캠페인 생성에 실패했어요. 다시 시도해주세요.");
+  await page.getByRole("button", { name: /광고 만들기/ }).click();
+  await expect(page.locator(".form-error")).toHaveText("광고 생성에 실패했어요. 다시 시도해주세요.");
   expect(firstPublishedId).not.toBe("");
 
   await page.unroute("**/api/campaigns");
-  await page.getByRole("button", { name: /캠페인 만들기/ }).click();
+  await page.getByRole("button", { name: /광고 만들기/ }).click();
   await expect(page).toHaveURL(new RegExp(`/campaigns/${firstPublishedId}/progress$`));
   expect(generateRequests).toBe(1);
 });
 
-test("새 캠페인을 게시해도 이미 열린 공개 랜딩의 상태가 섞이지 않는다", async ({ page, request }) => {
+test("새 광고를 게시해도 이미 열린 공개 랜딩의 상태가 섞이지 않는다", async ({ page, request }) => {
   const first = await publishFixtureCampaign(request, {
     background: "마감 뒤 남은 메뉴와 폐기를 줄이려는 동네 카페 사장님의 반복 업무입니다.",
     solution: "서비스 이름은 ‘마감한입’입니다. 핵심 특징은 남은 메뉴 한 번 입력, 공개 안내 구성, 익명 구매 의향 수집입니다.",

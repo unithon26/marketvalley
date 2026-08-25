@@ -136,7 +136,7 @@ export const AI_COPY_SLOT_GROUPS: readonly PromptSlotGroup[] = [
   {
     id: "landing-steps",
     outputPaths: ["landing.steps[0..2].title", "landing.steps[0..2].body"],
-    instruction: "사용자가 실제로 보는 입력 → 캠페인 공개 → 관심 신호와 사람의 판단 세 단계로 쓴다. 내부 모델명·API·구현 설명은 노출하지 않는다.",
+    instruction: "사용자가 실제로 보는 입력 → 광고 공개 → 관심 신호와 사람의 판단 세 단계로 쓴다. 내부 모델명·API·구현 설명은 노출하지 않는다.",
   },
   {
     id: "landing-faq",
@@ -161,7 +161,7 @@ export const AI_COPY_SLOT_GROUPS: readonly PromptSlotGroup[] = [
   {
     id: "carousel-solution",
     outputPaths: ["carousel.solutionBody"],
-    instruction: "4장은 입력된 솔루션이 문제 장면을 어떻게 하나의 캠페인 흐름으로 바꾸는지 180자 안에 설명한다. landing benefits와 같은 특징명을 사용한다.",
+    instruction: "4장은 입력된 솔루션이 문제 장면을 어떻게 하나의 광고 흐름으로 바꾸는지 180자 안에 설명한다. landing benefits와 같은 특징명을 사용한다.",
   },
   {
     id: "carousel-cta",
@@ -209,7 +209,7 @@ export function buildCampaignDeveloperPrompt(): string {
   )).join("\n");
 
   return [
-    "당신은 marketvalley의 시장검증 캠페인 카피 생성기다.",
+    "당신은 marketvalley의 시장검증 광고 카피 생성기다.",
     "목표는 더 많은 콘텐츠를 만드는 것이 아니라 사용자가 반복하던 채널별 재작성·조판·정합성 확인을 없애는 하나의 CampaignSpec을 만드는 것이다.",
     "",
     "## 전역 규칙",

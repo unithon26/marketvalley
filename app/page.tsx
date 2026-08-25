@@ -27,7 +27,7 @@ export default function HomePage() {
             <h1>전체 프로젝트</h1>
             <p>아이디어에서 첫 시장 반응까지, 반복 제작 없이 한 흐름으로 관리하세요.</p>
           </div>
-          <Link className="button button-primary" href="/new"><PlusIcon size={18} /> 새 캠페인</Link>
+          <Link className="button button-primary" href="/new"><PlusIcon size={18} /> 새 광고</Link>
         </div>
 
         <div className="segment-control" aria-label="프로젝트 상태 필터">
@@ -45,7 +45,7 @@ export default function HomePage() {
               <div className="project-card-body">
                 <strong>{project.name}</strong>
                 <span className="time-chip">{project.time}</span>
-                <div className="progress-meta"><span>캠페인 준비도</span><b>{project.progress}%</b></div>
+                <div className="progress-meta"><span>광고 준비도</span><b>{project.progress}%</b></div>
                 <div className="progress-track"><i style={{ width: `${project.progress}%` }} /></div>
               </div>
             </>;
@@ -60,7 +60,7 @@ export default function HomePage() {
             <Link href="/new" className="new-project-card">
               <span className="new-project-icon"><PlusIcon size={28} /></span>
               <strong>새 아이디어 검증하기</strong>
-              <p>캠페인 제작에 필요한 반복 작업을 없애보세요.</p>
+              <p>광고 제작에 필요한 반복 작업을 없애보세요.</p>
             </Link>
           ) : (
             <div className="empty-projects" role="status">

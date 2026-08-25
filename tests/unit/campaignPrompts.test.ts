@@ -34,6 +34,7 @@ describe("campaign prompts", () => {
     }
 
     expect(prompt).toContain("같은 고객·문제·상품명·핵심 특징·CTA");
+    expect(prompt).toContain("시장검증 광고 카피 생성기");
     expect(prompt).toContain("Structured Outputs의 CampaignSpec JSON만 반환한다");
     expect(prompt).toContain("validation.decisionRule");
     expect(prompt).toContain("서버가 최종 덮어쓴다");

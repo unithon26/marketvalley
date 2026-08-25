@@ -23,7 +23,7 @@ export async function GET(request: Request): Promise<Response> {
     const campaign = await campaignRepository.getById(id);
     if (!campaign) {
       return jsonResponse(
-        { error: { code: "campaign_not_found", message: "캠페인을 찾을 수 없습니다." } },
+        { error: { code: "campaign_not_found", message: "광고를 찾을 수 없습니다." } },
         { status: 404 },
       );
     }

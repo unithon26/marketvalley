@@ -183,7 +183,7 @@ export function CampaignReport({
     if (mutationInFlightRef.current) return;
     const draftId = getCampaignDraftId(campaignId) ?? (campaignId === "demo" ? "demo" : null);
     if (!draftId) {
-      setMutationError("이 브라우저에서 만든 캠페인만 다음 행동을 저장할 수 있어요.");
+      setMutationError("이 브라우저에서 만든 광고만 다음 행동을 저장할 수 있어요.");
       return;
     }
     mutationInFlightRef.current = true;
@@ -215,7 +215,7 @@ export function CampaignReport({
     if (mutationInFlightRef.current) return;
     const draftId = getCampaignDraftId(campaignId) ?? (campaignId === "demo" ? "demo" : null);
     if (!draftId) {
-      setMutationError("이 브라우저에서 만든 캠페인만 초기화할 수 있어요.");
+      setMutationError("이 브라우저에서 만든 광고만 초기화할 수 있어요.");
       return;
     }
     mutationInFlightRef.current = true;
@@ -247,7 +247,7 @@ export function CampaignReport({
     <main className="report-page page-container">
       <div className="report-intro">
         <span className="report-check"><CheckIcon /></span>
-        <div><span className="eyebrow">{spec.project.name} · DEMO CAMPAIGN</span><h1>검증 리포트를 보여드릴게요</h1><p>모든 수치는 발표 흐름을 확인하기 위한 목데이터입니다.</p></div>
+        <div><span className="eyebrow">{spec.project.name} · DEMO AD</span><h1>검증 리포트를 보여드릴게요</h1><p>모든 수치는 발표 흐름을 확인하기 위한 목데이터입니다.</p></div>
       </div>
 
       <section className="status-banner">
@@ -277,9 +277,9 @@ export function CampaignReport({
       </section>
 
       <section className="report-section deliverables-section">
-        <div className="section-heading"><div><span className="eyebrow">READY TO USE</span><h2>캠페인 결과물</h2></div><span className="safe-label">외부 계정·광고비 사용 없음</span></div>
+        <div className="section-heading"><div><span className="eyebrow">READY TO USE</span><h2>광고 결과물</h2></div><span className="safe-label">외부 계정·광고비 사용 없음</span></div>
         <div className="deliverable-grid">
-          <article><div className="deliverable-icon landing-icon">↗</div><div><h3>공개 랜딩페이지</h3><p>같은 CampaignSpec으로 렌더링되는 발표용 공개 경로</p><code>{publicPath}</code></div><Link className="icon-button" href={publicPath} target="_blank" aria-label="공개 랜딩 열기"><ExternalIcon /></Link></article>
+          <article><div className="deliverable-icon landing-icon">↗</div><div><h3>공개 랜딩페이지</h3><p>같은 광고 초안으로 렌더링되는 발표용 공개 경로</p><code>{publicPath}</code></div><Link className="icon-button" href={publicPath} target="_blank" aria-label="공개 랜딩 열기"><ExternalIcon /></Link></article>
           <article><div className="deliverable-icon carousel-icon">05</div><div><h3>Instagram 캐러셀</h3><p>1080×1350 PNG 5장 · 결정적 React/CSS 렌더러</p><code>01-hook.png — 05-cta.png</code></div><button className="icon-button" type="button" onClick={downloadZip} disabled={exporting} aria-label="캐러셀 ZIP 다운로드"><DownloadIcon /></button></article>
           <article><div className="deliverable-icon meta-icon">M</div><div><h3>Meta 게시 준비</h3><p>PNG 5장·문구·CTA·대상 고객 가설·절대 URL을 ZIP 하나로</p><code>실제 게시 또는 집행 아님</code></div><button className="icon-button" type="button" onClick={downloadMetaPackage} disabled={exporting} aria-busy={exporting} aria-label="Meta 게시 준비 다운로드"><DownloadIcon /></button></article>
         </div>
@@ -299,7 +299,7 @@ export function CampaignReport({
         </div>
       </section>
 
-      <div className="report-footer-actions"><button className="text-button danger" type="button" onClick={reset} disabled={resetting || pendingAction !== null}>{resetting ? "초기화 중..." : "데모 데이터 초기화"}</button><Link className="button button-secondary" href="/new">새 캠페인 만들기</Link></div>
+      <div className="report-footer-actions"><button className="text-button danger" type="button" onClick={reset} disabled={resetting || pendingAction !== null}>{resetting ? "초기화 중..." : "데모 데이터 초기화"}</button><Link className="button button-secondary" href="/new">새 광고 만들기</Link></div>
       {mutationError || loadError
         ? <div className="toast toast-error" role="alert">{mutationError || loadError}</div>
         : notice && <div className="toast" role="status">{notice}</div>}

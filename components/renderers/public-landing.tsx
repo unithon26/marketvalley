@@ -228,7 +228,7 @@ export function PublicLanding({ spec, campaignId }: { spec: CampaignSpec; campai
         </section>
       </main>
 
-      <footer className="landing-footer"><strong>{spec.project.name}</strong><p>이 페이지는 marketvalley로 만든 발표용 목캠페인입니다.</p><a href="/">Made with marketvalley</a></footer>
+      <footer className="landing-footer"><strong>{spec.project.name}</strong><p>이 페이지는 marketvalley로 만든 발표용 광고 시안입니다.</p><a href="/">Made with marketvalley</a></footer>
     </div>
   );
 }

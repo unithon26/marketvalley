@@ -13,7 +13,7 @@ describe("FixtureCampaignGenerator", () => {
     const generator = new FixtureCampaignGenerator();
     const spec = await generator.generate({ background: `${background} ${longEnough}`, solution: longEnough });
 
-    expect(spec.project.name).toBe("새 시장검증 캠페인");
+    expect(spec.project.name).toBe("새 광고 초안");
     expect(spec.templates).toEqual({ carouselCover, landingIntro });
   });
 
@@ -29,13 +29,13 @@ describe("FixtureCampaignGenerator", () => {
     first.project.name = "변경된 이름";
     const second = await generator.generate({ background: longEnough, solution: longEnough });
 
-    expect(second.project.name).toBe("새 시장검증 캠페인");
+    expect(second.project.name).toBe("새 광고 초안");
   });
 
   it("입력에 적은 상품명과 핵심 특징을 모든 산출물의 단일 spec에 보존한다", async () => {
     const generator = new FixtureCampaignGenerator();
     const background = "일회용 용기를 줄이고 싶지만 가까운 리필 매장과 가능한 품목을 매번 따로 찾아야 합니다.";
-    const solution = "서비스 이름은 ‘리필루프’입니다. 핵심 특징은 용기 정보 한 번 입력, 가까운 리필 스테이션 안내, 개인정보 없는 재사용 의향 수집입니다. 하나의 공개 캠페인으로 연결합니다.";
+    const solution = "서비스 이름은 ‘리필루프’입니다. 핵심 특징은 용기 정보 한 번 입력, 가까운 리필 스테이션 안내, 개인정보 없는 재사용 의향 수집입니다. 하나의 공개 광고로 연결합니다.";
     const spec = await generator.generate({ background, solution });
 
     expect(spec.project.name).toBe("리필루프");
@@ -79,7 +79,7 @@ describe("FixtureCampaignGenerator", () => {
       solution: "이름 없이 하나의 공개 목록을 가족과 공유하고 익명 사용 의향을 모으며 필요한 기능과 정보를 제공합니다.",
     });
 
-    expect(spec.project.name).toBe("새 시장검증 캠페인");
+    expect(spec.project.name).toBe("새 광고 초안");
     expect(spec.project.name).not.toContain("사용 의향");
     expect(spec.landing.benefits.map((benefit) => benefit.title)).toEqual([
       "개인정보 없는 관심 신호",
@@ -118,11 +118,11 @@ describe("FixtureCampaignGenerator", () => {
     const generator = new FixtureCampaignGenerator();
     const spec = await generator.generate({
       background: "고객 안내 내용을 채널마다 다시 정리하고 같은 질문에 반복해서 답하는 일이 계속됩니다.",
-      solution: "서비스명: 안내온. 핵심 기능은 정보 한 번 입력, 공개 안내 자동 구성, 익명 사용 의향 수집입니다. 고객에게 필요한 안내를 하나의 캠페인으로 자동 구성합니다.",
+      solution: "서비스명: 안내온. 핵심 기능은 정보 한 번 입력, 공개 안내 자동 구성, 익명 사용 의향 수집입니다. 고객에게 필요한 안내를 하나의 광고로 자동 구성합니다.",
     });
 
     expect(spec.project.name).toBe("안내온");
-    expect(spec.project.oneLiner).toBe("안내온: 고객에게 필요한 안내를 하나의 캠페인으로 자동 구성합니다");
+    expect(spec.project.oneLiner).toBe("안내온: 고객에게 필요한 안내를 하나의 광고로 자동 구성합니다");
     expect(spec.project.oneLiner).not.toContain("핵심 기능은");
   });
 

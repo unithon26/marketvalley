@@ -27,7 +27,7 @@ const featurePatterns: ReadonlyArray<{
   {
     pattern: /한\s*번\s*입력|한번\s*입력|입력하면/,
     title: "한 번 입력으로 시작",
-    body: "핵심 정보를 한 번 입력하면 캠페인에 필요한 문구와 화면을 함께 구성합니다.",
+    body: "핵심 정보를 한 번 입력하면 광고에 필요한 문구와 화면을 함께 구성합니다.",
   },
   {
     pattern: /랜딩|소개\s*페이지|공개\s*(?:페이지|안내)|상세\s*페이지/,
@@ -59,7 +59,7 @@ const featurePatterns: ReadonlyArray<{
 const genericFeatureFallbacks: readonly DerivedFeature[] = [
   {
     title: "문제·솔루션 한 번 입력",
-    body: "검증하려는 문제와 제안을 한 번 적으면 모든 캠페인 문구의 기준으로 사용합니다.",
+    body: "검증하려는 문제와 제안을 한 번 적으면 모든 광고 문구의 기준으로 사용합니다.",
   },
   {
     title: "랜딩·카드뉴스 동시 구성",
@@ -178,11 +178,11 @@ function applyNeutralSemanticScaffold(spec: CampaignSpec, problem: string): void
   ];
   spec.landing.steps = [
     { title: "배경과 솔루션을 적습니다", body: "검증하려는 문제와 상품명, 핵심 특징을 한 번 입력합니다." },
-    { title: "캠페인을 구성합니다", body: "같은 정보로 공개 랜딩과 카드뉴스, 게시 문구를 만듭니다." },
+    { title: "광고를 구성합니다", body: "같은 정보로 공개 랜딩과 카드뉴스, 게시 문구를 만듭니다." },
     { title: "관심 신호를 확인합니다", body: "개인정보 없는 선택형 응답을 보고 사람이 다음 행동을 판단합니다." },
   ];
   spec.landing.faq = [
-    { question: "개인정보를 받나요?", answer: "아니요. 이 캠페인은 선택형 관심 응답만 기록합니다." },
+    { question: "개인정보를 받나요?", answer: "아니요. 이 광고는 선택형 관심 응답만 기록합니다." },
     { question: "제품 효과가 보장되나요?", answer: "아니요. 응답은 초기 관심 신호일 뿐 구매나 성과를 보장하지 않습니다." },
     { question: "광고가 자동으로 게시되나요?", answer: "아니요. 게시 자료만 준비하며 공개와 운영 판단은 사람이 합니다." },
   ];
@@ -243,7 +243,7 @@ export function selectReferenceCampaignTemplate(input: IdeaInput): ReferenceCamp
 
 function personalizeCampaign(input: IdeaInput, match: TemplateMatch): CampaignSpec {
   const spec = structuredClone(match.template.spec);
-  const productName = extractProductName(input, "새 시장검증 캠페인");
+  const productName = extractProductName(input, "새 광고 초안");
   const features = deriveFeatures(input, productName);
   const problem = limit(input.background, 240);
   const solution = limit(input.solution, 240);

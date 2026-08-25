@@ -49,8 +49,8 @@ export function aggregateSignals(
 
 export const nextActionCopy: Record<NextAction, { label: string; description: string }> = {
   continue: { label: "계속 검증", description: "현재 가설로 더 많은 반응을 확인합니다." },
-  revise: { label: "메시지 수정", description: "입력으로 돌아가 새 캠페인을 만듭니다." },
-  pause: { label: "보류", description: "현재 캠페인을 멈추고 판단을 보류합니다." },
+  revise: { label: "메시지 수정", description: "입력으로 돌아가 새 광고를 만듭니다." },
+  pause: { label: "보류", description: "현재 광고를 멈추고 판단을 보류합니다." },
 };
 
 export type NextActionState = {

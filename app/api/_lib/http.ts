@@ -89,16 +89,16 @@ export function routeErrorResponse(error: unknown): Response {
     return errorResponse(error.status, error.code, error.message);
   }
   if (error instanceof CampaignNotFoundError || hasErrorName(error, "CampaignNotFoundError")) {
-    return errorResponse(404, "campaign_not_found", "캠페인을 찾을 수 없습니다.");
+    return errorResponse(404, "campaign_not_found", "광고를 찾을 수 없습니다.");
   }
   if (error instanceof DraftConflictError || hasErrorName(error, "DraftConflictError")) {
-    return errorResponse(409, "draft_conflict", "이미 다른 내용으로 게시된 캠페인 초안입니다.");
+    return errorResponse(409, "draft_conflict", "이미 다른 내용으로 게시된 광고 초안입니다.");
   }
   if (error instanceof DraftOwnershipError || hasErrorName(error, "DraftOwnershipError")) {
-    return errorResponse(403, "draft_mismatch", "이 캠페인을 변경할 수 없는 초안입니다.");
+    return errorResponse(403, "draft_mismatch", "이 광고를 변경할 수 없는 초안입니다.");
   }
   if (error instanceof InvalidSignalOptionError || hasErrorName(error, "InvalidSignalOptionError")) {
-    return errorResponse(400, "invalid_signal_option", "이 캠페인에서 선택할 수 없는 응답입니다.");
+    return errorResponse(400, "invalid_signal_option", "이 광고에서 선택할 수 없는 응답입니다.");
   }
   return errorResponse(500, "internal_error", "요청을 처리하지 못했습니다.");
 }
