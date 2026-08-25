@@ -67,7 +67,7 @@ mock 저장소의 `Map`은 한 Node.js 프로세스 안에서 브라우저 간 �
 
 ## 진행 상황 화면
 
-신규 생성은 `/new`의 입력 제출 직후 같은 화면 영역을 진행 UI로 교체한다. 아직 연결하지 않은 `시장 조사 준비`만 정확히 2초 뒤 통과하고, `AI 문구 생성`은 `/api/generate`, `광고 구성`은 `/api/campaigns` 응답 경계에 연결한다. 게시 완료 뒤에만 결과 도착을 표시하고 `/campaigns/[id]`로 자동 이동한다. 실패하면 입력 UI로 돌아가 같은 draft와 이미 생성된 spec을 재사용한다. 화면 이탈 시 `AbortController`가 2초 delay와 두 fetch를 취소하며, `/api/generate`의 `Request.signal`은 generator 계약과 Anthropic SDK 요청 옵션까지 전달된다.
+신규 생성은 `/new`의 입력 제출 직후 같은 화면 영역을 Figma의 `접수 → 준비 중 → 수집 중 → 결과 도착` UI로 교체한다. `준비 중`은 `/api/generate`, `수집 중`은 `/api/campaigns` 게시와 발표용 2초 수집 표현에 연결한다. 게시와 수집 표현이 끝난 뒤에만 결과 도착을 표시하고 `/campaigns/[id]`로 자동 이동한다. 실패하면 입력 UI로 돌아가 같은 draft와 이미 생성된 spec을 재사용한다. 화면 이탈 시 `AbortController`가 단계 delay와 두 fetch를 취소하며, `/api/generate`의 `Request.signal`은 generator 계약과 Anthropic SDK 요청 옵션까지 전달된다.
 
 기존 `/campaigns/[id]/progress`는 이미 게시된 광고의 직접 접근 호환을 위한 결정적 애니메이션으로 유지한다. Supabase adapter를 선택하면 신규 생성 진행 화면의 게시 단계가 실제 live 저장소 완료를 기다린다.
 

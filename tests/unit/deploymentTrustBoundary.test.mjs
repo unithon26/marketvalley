@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-const repositoryRoot = new URL("../..", import.meta.url).pathname;
+const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
 const readRepositoryFile = (path) => readFileSync(join(repositoryRoot, path), "utf8");
 
 describe("production deployment trust boundary", () => {

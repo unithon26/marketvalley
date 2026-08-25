@@ -12,10 +12,6 @@ function captureRuntimeErrors(page: Page, runtimeErrors: string[]) {
   });
 }
 
-function reservationCountMetric(page: Page) {
-  return page.locator(".metric-grid article").filter({ hasText: "예약자 수" }).locator("strong");
-}
-
 async function downloadBytes(download: Download): Promise<Buffer> {
   const path = await download.path();
   expect(path).not.toBeNull();
@@ -49,6 +45,16 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
     content: document.documentElement.scrollWidth,
   }));
   expect(sizes.content).toBeLessThanOrEqual(sizes.viewport);
+}
+
+async function openCompletedCampaign(page: Page, campaignId?: string): Promise<void> {
+  await page.getByRole("button", { name: "다음 단계로" }).click();
+  await expect(page.getByRole("heading", { name: "시장 검증이 완료되었습니다" })).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("link", { name: "시장 검증 리포트 확인하기" }).click();
+  await expect(page).toHaveURL(
+    campaignId ? new RegExp(`/campaigns/${campaignId}$`) : /\/campaigns\/[^/]+$/,
+    { timeout: 5_000 },
+  );
 }
 
 async function computedContrastRatio(
@@ -88,26 +94,33 @@ async function publishFixtureCampaign(
   return publishResponse.json();
 }
 
-test.beforeEach(async ({ request }) => {
+test.beforeEach(async ({ page, request }) => {
   const response = await request.delete("/api/campaigns");
   expect(response.ok()).toBe(true);
+  await page.goto("/auth/google?next=%2F");
+  await expect(page).toHaveURL(/\/$/);
 });
 
-test("Supabase 미설정 GNB는 인증 요청 없이 준비 상태를 표시한다", async ({ page }) => {
-  const authRequests: string[] = [];
-  page.on("request", (request) => {
-    if (request.url().includes("/api/auth/session")) authRequests.push(request.url());
-  });
+test("발표용 GNB는 비로그인 상태에서 Google 로그인을 제공한다", async ({ context, page }) => {
+  await context.clearCookies();
   await page.goto("/");
-  await expect(page.getByRole("button", { name: "로그인 준비 중" })).toBeDisabled();
-  expect(authRequests).toEqual([]);
+  await expect(page.getByRole("link", { name: "Google로 로그인" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /마감한입/ })).toHaveCount(0);
+  await expect(page.getByText("동네공방 빈자리", { exact: true })).toBeVisible();
+  await expect(page.getByText("클래스 문의함", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "검증 완료" }).click();
+  await expect(page.getByRole("link", { name: /마감한입/ })).toBeVisible();
 });
 
 test("서비스 루트는 Figma 메인 프로젝트 화면과 제품 플로우를 보여준다", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "전체 프로젝트" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "프로젝트" })).toHaveAttribute("href", "/");
-  await expect(page.getByRole("link", { name: "새 광고" })).toHaveAttribute("href", "/new");
+  await expect(page.getByText("마켓밸리 데모", { exact: true })).toBeVisible();
+  await expect(page.locator(".site-header")).toHaveClass(/site-header-compact/);
+  await expect(page.getByRole("navigation", { name: "주요 메뉴" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "광고 만들기" })).toHaveAttribute("href", "/new");
+  await expect(page.getByText("새 아이디어 검증하기")).toHaveCount(0);
+  await page.getByRole("button", { name: "검증 완료" }).click();
   await expect(page.getByRole("link", { name: /마감한입/ })).toHaveAttribute("href", "/campaigns/demo");
   await expect(page.locator("main")).not.toContainText(/THE PROBLEM|THE METHOD|START VALIDATION/u);
   await expectNoHorizontalOverflow(page);
@@ -117,12 +130,36 @@ test("서비스 루트는 Figma 메인 프로젝트 화면과 제품 플로우�
   await expect(page.getByRole("heading", { name: "전체 프로젝트" })).toBeVisible();
 });
 
-test("로그인 화면은 확정 로고와 Google 인증 진입점을 보여준다", async ({ page }) => {
+test("로그인 화면의 Google 목 로그인은 로그인된 메인으로 돌아온다", async ({ context, page }) => {
+  await context.clearCookies();
   await page.goto("/login?next=%2Fnew");
   await expect(page.getByRole("img", { name: "market valley" }).first()).toBeVisible();
   await expect(page.getByRole("heading", { name: /시장 검증을 시작하려면/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: "로그인 준비 중" })).toBeDisabled();
-  await expect(page).toHaveURL(/\/login\?next=%2Fnew$/);
+  await page.getByRole("link", { name: "Google 계정으로 로그인" }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("heading", { name: "전체 프로젝트" })).toBeVisible();
+  await expect(page.getByText("마켓밸리 데모", { exact: true })).toBeVisible();
+});
+
+test("비로그인 메인의 광고 만들기는 로그인 모달을 열고 Google 목 로그인 뒤 메인으로 돌아온다", async ({ context, page }) => {
+  await context.clearCookies();
+  await page.goto("/");
+  await page.getByRole("link", { name: "광고 만들기" }).click();
+  await expect(page.getByRole("dialog", { name: /시장 검증을 시작하려면/ })).toBeVisible();
+  await expect(page.getByText("동네공방 빈자리", { exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "Google 계정으로 로그인" }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByText("마켓밸리 데모", { exact: true })).toBeVisible();
+
+  await page.getByRole("link", { name: "광고 만들기" }).click();
+  await expect(page).toHaveURL(/\/new$/);
+  await expect(page.getByRole("heading", { name: "제품을 만들게 된 배경을 입력해주세요" })).toBeVisible();
+});
+
+test("발표용 로그아웃은 목 세션만 지우고 메인으로 돌아온다", async ({ page }) => {
+  await page.getByRole("button", { name: "로그아웃" }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("link", { name: "Google로 로그인" })).toBeVisible();
 });
 
 test("광고 입력 2단계는 브라우저 뒤로가기로 입력값을 보존한 1단계에 돌아간다", async ({ page }) => {
@@ -149,7 +186,7 @@ test("광고 입력 2단계는 브라우저 뒤로가기로 입력값을 보존�
   await expect(page.getByRole("textbox", { name: "제품 배경" })).toHaveValue(background);
 });
 
-test("미구현 단계만 2초 통과하고 실제 생성·게시는 API 완료까지 기다린다", async ({ page }) => {
+test("접수 뒤 실제 광고 제작을 기다리고 게시 후 시장 데이터 수집을 보여준다", async ({ page }) => {
   let generateStarted = false;
   let publishStarted = false;
   let releaseGenerate = () => {};
@@ -177,24 +214,25 @@ test("미구현 단계만 2초 통과하고 실제 생성·게시는 API 완료�
   await page.getByRole("button", { name: "다음" }).click();
   await page.getByRole("button", { name: /광고 만들기/ }).click();
 
-  await expect(page.getByRole("heading", { name: "시장 조사 연결 전 단계를 확인하고 있어요" })).toBeVisible();
-  await page.waitForTimeout(1_200);
+  await expect(page.getByRole("heading", { name: "제출 내용을 검토하고 있습니다" })).toBeVisible();
+  await page.waitForTimeout(350);
   expect(generateStarted).toBe(false);
 
-  await expect(page.getByRole("heading", { name: "AI가 광고 문구를 만들고 있어요" })).toBeVisible({ timeout: 4_000 });
+  await expect(page.getByRole("heading", { name: "광고 검증을 준비하고 있습니다" })).toBeVisible({ timeout: 2_000 });
   expect(generateStarted).toBe(true);
   expect(publishStarted).toBe(false);
 
   releaseGenerate();
-  await expect(page.getByRole("heading", { name: "랜딩·카드뉴스 결과를 저장하고 있어요" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "시장 반응 데이터를 수집하고 있습니다" })).toBeVisible();
   expect(publishStarted).toBe(true);
 
   releasePublish();
-  await expect(page.getByRole("heading", { name: "랜딩·캐러셀·게시 준비가 끝났어요" })).toBeVisible();
-  await expect(page).toHaveURL(/\/campaigns\/[^/]+$/, { timeout: 5_000 });
+  await page.waitForTimeout(1_000);
+  await expect(page.getByRole("heading", { name: "시장 반응 데이터를 수집하고 있습니다" })).toBeVisible();
+  await openCompletedCampaign(page);
 });
 
-test("시장 조사 준비 중 화면을 이탈하면 유료 생성을 시작하지 않는다", async ({ page }) => {
+test("접수 확인 중 화면을 이탈하면 유료 생성을 시작하지 않는다", async ({ page }) => {
   let generateRequests = 0;
   page.on("request", (request) => {
     if (request.method() === "POST" && new URL(request.url()).pathname === "/api/generate") {
@@ -206,11 +244,11 @@ test("시장 조사 준비 중 화면을 이탈하면 유료 생성을 시작하
   await page.getByRole("button", { name: "예시 불러오기" }).click();
   await page.getByRole("button", { name: "다음" }).click();
   await page.getByRole("button", { name: /광고 만들기/ }).click();
-  await expect(page.getByRole("heading", { name: "시장 조사 연결 전 단계를 확인하고 있어요" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "제출 내용을 검토하고 있습니다" })).toBeVisible();
 
-  await page.getByRole("link", { name: "프로젝트" }).click();
+  await page.getByRole("link", { name: "메인으로" }).click();
   await expect(page).toHaveURL(/\/$/);
-  await page.waitForTimeout(2_200);
+  await page.waitForTimeout(900);
   expect(generateRequests).toBe(0);
 });
 
@@ -251,11 +289,11 @@ test("AI 생성 실패 뒤 두 입력을 보존하고 새 생성 요청으로 �
   await expect(page.getByRole("textbox", { name: "솔루션 설명" })).toHaveValue(solution);
 
   await page.getByRole("button", { name: /광고 만들기/ }).click();
-  await expect(page).toHaveURL(/\/campaigns\/[^/]+$/, { timeout: 10_000 });
+  await openCompletedCampaign(page);
   expect(generateRequests).toBe(2);
 });
 
-test("fixture 생성부터 산출물, 예약, 판단, 초기화까지 실제 API 경계로 이어진다", async ({ context, page, request }) => {
+test("fixture 생성부터 Figma 리포트, 산출물과 예약까지 실제 API 경계로 이어진다", async ({ context, page, request }) => {
   const runtimeErrors: string[] = [];
   captureRuntimeErrors(page, runtimeErrors);
   const visitorEmail = "e2e-flow@example.com";
@@ -268,21 +306,25 @@ test("fixture 생성부터 산출물, 예약, 판단, 초기화까지 실제 API
   await page.evaluate(() => window.localStorage.clear());
 
   await expect(page.locator("body")).not.toContainText(/캠페인|CampaignSpec/u);
-  await page.getByRole("link", { name: "새 광고" }).click();
+  await page.getByRole("link", { name: "광고 만들기" }).click();
   await page.getByRole("button", { name: "예시 불러오기" }).click();
   await page.getByRole("button", { name: "다음" }).click();
   await page.getByRole("button", { name: /광고 만들기/ }).click();
 
-  await expect(page.getByRole("heading", { name: "시장검증 광고를 준비하고 있어요" })).toBeVisible();
-  await expect(page).toHaveURL(/\/campaigns\/[^/]+$/, { timeout: 10_000 });
+  await expect(page.getByRole("heading", { name: "제출 내용을 검토하고 있습니다" })).toBeVisible();
+  await openCompletedCampaign(page);
   const campaignId = decodeURIComponent(page.url().match(/\/campaigns\/([^/]+)$/)?.[1] ?? "");
   expect(campaignId).not.toBe("");
   await expect(page.locator("body")).not.toContainText(/캠페인|CampaignSpec/u);
   await expect(page.locator("body")).not.toContainText(/캠페인|CampaignSpec/u);
-  await expect(reservationCountMetric(page)).toHaveText("4명");
-  await expect(page.locator(".reservation-trend circle")).toHaveCount(4);
-  await expect(page.getByText("저장된 예약 기준")).toBeVisible();
-  await expect(page.locator("body")).not.toContainText(/예시 지표|업계 평균|4,312/u);
+  await expect(page.locator(".figma-report-page")).toHaveAttribute("data-market-fit", "very-suitable");
+  await expect(page.getByRole("heading", { name: "[매우 적합]" })).toBeVisible();
+  await expect(page.locator(".report-metric-cards")).toHaveClass(/is-visible/);
+  await page.locator(".region-card").scrollIntoViewIfNeeded();
+  await expect(page.locator(".region-card")).toHaveClass(/is-visible/);
+  await expect(page.getByText("1,800,820회", { exact: true })).toBeVisible();
+  await expect(page.getByText("12.6%", { exact: true })).toBeVisible();
+  await expect(page.locator(".reservation-table tbody tr")).toHaveCount(4);
 
   const campaignResponse = await request.get(`/api/campaigns?id=${campaignId}`);
   expect(campaignResponse.ok()).toBe(true);
@@ -299,33 +341,15 @@ test("fixture 생성부터 산출물, 예약, 판단, 초기화까지 실제 API
   );
   await expect(page.locator(".carousel-card-1")).toHaveAttribute("data-product-name", "마감한입");
   await expect(page.locator(".carousel-card-3")).toContainText("공개 페이지와 게시 카드 동시 생성");
-  const carouselDownloadButton = page.getByRole("button", { name: "캐러셀 ZIP 다운로드" });
-  const carouselPreviewGallery = page.getByRole("list", { name: "생성된 Instagram 카드뉴스 5장" });
-  await expect(carouselPreviewGallery.locator(".carousel-preview-item")).toHaveCount(5);
-  await expect(carouselPreviewGallery.locator(".carousel-preview-render")).toHaveCount(5);
-  await expect(carouselPreviewGallery.getByText("01-hook.png")).toBeVisible();
-  await expect(page.getByText("카드뉴스 디자인 이미지가 들어갈 자리입니다.")).toHaveCount(0);
-  const [downloadButtonBox, previewGalleryBox] = await Promise.all([
-    carouselDownloadButton.boundingBox(),
-    carouselPreviewGallery.boundingBox(),
-  ]);
-  expect(downloadButtonBox).not.toBeNull();
-  expect(previewGalleryBox).not.toBeNull();
-  expect(previewGalleryBox!.y).toBeGreaterThan(downloadButtonBox!.y + downloadButtonBox!.height);
-  const copyCases = [
-    { cardLabel: "게시 문구", noticeLabel: "게시 문구", value: campaign.spec.messaging.caption },
-    { cardLabel: "후킹 문구 3개", noticeLabel: "후킹 문구", value: campaign.spec.messaging.hooks.join("\n") },
-    { cardLabel: "CTA", noticeLabel: "CTA", value: campaign.spec.validation.signal.ctaLabel },
-    { cardLabel: "해시태그", noticeLabel: "해시태그", value: campaign.spec.messaging.hashtags.join(" ") },
-  ];
-  for (const copyCase of copyCases) {
-    const copyCard = page.locator(".copy-grid > div").filter({ hasText: copyCase.cardLabel });
-    await copyCard.getByRole("button", { name: "복사" }).click();
-    await expect(page.getByRole("status")).toHaveText(`${copyCase.noticeLabel} 복사를 완료했어요.`);
-    await expect.poll(async () => (
-      await page.evaluate(() => navigator.clipboard.readText())
-    ).replace(/\r\n/g, "\n")).toBe(copyCase.value);
-  }
+  const carouselDownloadButton = page.getByRole("button", { name: "카드뉴스 저장" });
+  const cardNewsPreview = page.getByRole("region", { name: "AI가 생성한 광고 카드뉴스 소재" });
+  await expect(cardNewsPreview).toBeVisible();
+  await expect(cardNewsPreview.locator(".carousel-preview-render")).toHaveCount(5);
+  await page.getByRole("button", { name: "다음 카드뉴스" }).click();
+  await expect.poll(() => cardNewsPreview.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+  await expect(page.getByRole("button", { name: "이전 카드뉴스" })).toBeEnabled();
+  await expect(page.getByTitle("AI가 생성한 랜딩페이지 미리보기")).toHaveAttribute("src", `/p/${campaign.slug}`);
+  await expect(page.frameLocator('iframe[title="AI가 생성한 랜딩페이지 미리보기"]').locator(".public-landing")).toHaveAttribute("data-product-name", "마감한입");
 
   const [download] = await Promise.all([
     page.waitForEvent("download"),
@@ -336,27 +360,9 @@ test("fixture 생성부터 산출물, 예약, 판단, 초기화까지 실제 API
   expect(Object.keys(carouselZip.files).sort()).toEqual([...carouselFileNames].sort());
   await expectCarouselEntries(carouselZip);
 
-  const [metaDownload] = await Promise.all([
-    page.waitForEvent("download"),
-    page.getByRole("button", { name: "Meta 게시 준비 다운로드" }).click(),
-  ]);
-  expect(metaDownload.suggestedFilename()).toBe(`${campaignId}-meta-ready.zip`);
-  const metaZip = await JSZip.loadAsync(await downloadBytes(metaDownload));
-  expect(Object.keys(metaZip.files).sort()).toEqual([...carouselFileNames, "meta-ready.txt"].sort());
-  await expectCarouselEntries(metaZip);
-  const metaText = await metaZip.file("meta-ready.txt")!.async("string");
-  expect(metaText).toContain("[Meta 게시 준비 — 실제 게시 아님]");
-  expect(metaText).toContain("상품명: 마감한입");
-  expect(metaText).toContain("핵심 특징: 남은 메뉴 한 번 입력 · 공개 페이지와 게시 카드 동시 생성 · 동의 기반 예약자명단");
-  expect(metaText).toContain(`Destination URL: ${new URL(page.url()).origin}/p/${campaign.slug}`);
-  expect(metaText).toContain(`Media files: ${carouselFileNames.join(", ")}`);
-  expect(metaText).toContain(campaign.spec.brand.visualDirection);
-  expect(metaText).toContain(`Carousel cover template: ${campaign.spec.templates.carouselCover}`);
-  expect(metaText).toContain(`Landing intro template: ${campaign.spec.templates.landingIntro}`);
-
   const [landingPage] = await Promise.all([
     context.waitForEvent("page"),
-    page.getByRole("link", { name: "공개 랜딩 열기" }).first().click(),
+    page.getByRole("link", { name: "서비스 바로가기" }).click(),
   ]);
   captureRuntimeErrors(landingPage, runtimeErrors);
   await landingPage.waitForLoadState("domcontentloaded");
@@ -373,8 +379,6 @@ test("fixture 생성부터 산출물, 예약, 판단, 초기화까지 실제 API
   await expect(landingPage.getByRole("heading", { name: "예약이 접수됐어요" })).toBeVisible();
 
   await page.bringToFront();
-  await expect(reservationCountMetric(page)).toHaveText("5명");
-  await expect(page.locator(".reservation-trend circle")).toHaveCount(5);
   await expect(page.locator(".reservation-table tbody tr")).toHaveCount(5);
   await expect(page.locator(".reservation-table tbody tr").first()).toContainText("예약테스트");
 
@@ -387,27 +391,7 @@ test("fixture 생성부터 산출물, 예약, 판단, 초기화까지 실제 API
   await expect(landingPage.getByRole("heading", { name: "이미 예약했어요" })).toBeVisible();
 
   await page.bringToFront();
-  await expect(reservationCountMetric(page)).toHaveText("5명");
-  await page.getByRole("button", { name: /계속 검증/ }).click();
-  await expect(page.getByRole("status")).toHaveText("다음 행동을 저장했어요.");
-  await page.reload();
-  await expect(page.locator(".decision-grid button.selected")).toContainText("계속 검증");
-
-  await page.getByRole("button", { name: "데모 데이터 초기화" }).click();
-  await expect(page.getByRole("status")).toHaveText("발표용 응답과 판단을 초기화했어요.");
-  await expect(reservationCountMetric(page)).toHaveText("4명");
-  await expect(page.locator(".decision-grid button.selected")).toHaveCount(0);
-  await page.reload();
-  await expect(reservationCountMetric(page)).toHaveText("4명");
-  await expect(page.locator(".decision-grid button.selected")).toHaveCount(0);
-
-  await landingPage.bringToFront();
-  await landingPage.reload();
-  await landingPage.getByRole("textbox", { name: "이름" }).fill("초기화테스트");
-  await landingPage.getByRole("textbox", { name: "이메일" }).fill(visitorEmail);
-  await landingPage.getByRole("checkbox", { name: "이름과 이메일 수집에 동의합니다" }).check();
-  await landingPage.getByRole("button", { name: "사전예약하기" }).click();
-  await expect(landingPage.getByRole("heading", { name: "예약이 접수됐어요" })).toBeVisible();
+  await expect(page.locator(".reservation-table tbody tr")).toHaveCount(5);
 
   expect(runtimeErrors.filter((message) => !message.includes("status of 409 (Conflict)"))).toEqual([]);
   expect(runtimeErrors.filter((message) => message.includes("status of 409 (Conflict)"))).toHaveLength(1);
@@ -422,8 +406,8 @@ test("입력한 상품명과 특징이 랜딩과 카드뉴스에 자동으로 �
   await page.getByRole("button", { name: "다음" }).click();
   await page.getByRole("textbox", { name: "솔루션 설명" }).fill(solution);
   await page.getByRole("button", { name: /광고 만들기/ }).click();
-  await expect(page.getByRole("heading", { name: "시장검증 광고를 준비하고 있어요" })).toBeVisible();
-  await expect(page).toHaveURL(/\/campaigns\/[^/]+$/, { timeout: 10_000 });
+  await expect(page.getByRole("heading", { name: "제출 내용을 검토하고 있습니다" })).toBeVisible();
+  await openCompletedCampaign(page);
 
   const campaignId = decodeURIComponent(page.url().match(/\/campaigns\/([^/]+)$/)?.[1] ?? "");
 
@@ -443,7 +427,7 @@ test("입력한 상품명과 특징이 랜딩과 카드뉴스에 자동으로 �
 
   const [carouselDownload] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: "캐러셀 ZIP 다운로드" }).click(),
+    page.getByRole("button", { name: "카드뉴스 저장" }).click(),
   ]);
   const carouselZip = await JSZip.loadAsync(await downloadBytes(carouselDownload));
   expect(Object.keys(carouselZip.files).sort()).toEqual([...carouselFileNames].sort());
@@ -451,15 +435,6 @@ test("입력한 상품명과 특징이 랜딩과 카드뉴스에 자동으로 �
     const bytes = await carouselZip.file(fileName)!.async("uint8array");
     expect(pngDimensions(bytes)).toEqual({ width: 1080, height: 1350 });
   }
-
-  const [metaDownload] = await Promise.all([
-    page.waitForEvent("download"),
-    page.getByRole("button", { name: "Meta 게시 준비 다운로드" }).click(),
-  ]);
-  const metaZip = await JSZip.loadAsync(await downloadBytes(metaDownload));
-  const metaText = await metaZip.file("meta-ready.txt")!.async("string");
-  expect(metaText).toContain("상품명: 공방온");
-  expect(metaText).toContain("핵심 특징: 빈자리 한 번 입력 · 이웃 대상 공개 페이지 · 동의 기반 예약자명단");
 
   await page.goto(`/p/${campaign.slug}`);
   await expect(page.locator(".public-landing")).toHaveAttribute("data-product-name", "공방온");
@@ -526,18 +501,16 @@ test("예약자명단이 비어있거나 채워진 상태를 실제 데이터로
   });
 
   await page.goto("/campaigns/demo");
-  await expect(reservationCountMetric(page)).toHaveText("0명");
   await expect(page.getByText("아직 예약이 없어요.", { exact: true })).toBeVisible();
 
   state = "populated";
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await expect(reservationCountMetric(page)).toHaveText("3명");
   await expect(page.locator(".reservation-table tbody tr")).toHaveCount(3);
   await expect(page.locator(".reservation-table tbody tr").first()).toContainText("박세번째");
   await expect(page.locator(".reservation-table tbody tr").first()).toContainText("th****@example.com");
 });
 
-test("375px과 키보드에서 필터, 생성, 공개 응답과 사람 판단을 조작할 수 있다", async ({ page }) => {
+test("375px과 키보드에서 필터, 생성, 리포트와 공개 응답을 조작할 수 있다", async ({ page }) => {
   const runtimeErrors: string[] = [];
   captureRuntimeErrors(page, runtimeErrors);
   await page.setViewportSize({ width: 375, height: 812 });
@@ -547,8 +520,9 @@ test("375px과 키보드에서 필터, 생성, 공개 응답과 사람 판단을
   const completedFilter = page.getByRole("button", { name: /검증 완료/ });
   await completedFilter.click();
   await expect(completedFilter).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByText("완료된 검증이 아직 없어요.")).toBeVisible();
-  await page.getByRole("button", { name: "진행 중 프로젝트 보기" }).click();
+  await expect(page.getByRole("link", { name: /마감한입/ })).toBeVisible();
+  await page.getByRole("button", { name: "진행 중" }).click();
+  await expect(page.getByText("동네공방 빈자리", { exact: true })).toBeVisible();
 
   await page.goto("/new");
   await expectNoHorizontalOverflow(page);
@@ -560,10 +534,18 @@ test("375px과 키보드에서 필터, 생성, 공개 응답과 사람 판단을
 
   await page.goto("/campaigns/demo");
   await expectNoHorizontalOverflow(page);
-  const continueButton = page.getByRole("button", { name: /계속 검증/ });
-  await continueButton.focus();
-  await page.keyboard.press("Enter");
-  await expect(continueButton).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("heading", { name: "[매우 적합]" })).toBeVisible();
+  const regionChart = page.getByRole("region", { name: "거주지 비율 그래프" });
+  const cardNews = page.getByRole("region", { name: "AI가 생성한 광고 카드뉴스 소재" });
+  expect(await regionChart.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+  expect(await cardNews.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+  await regionChart.evaluate((element) => element.scrollTo({ left: element.scrollWidth }));
+  await cardNews.evaluate((element) => element.scrollTo({ left: element.scrollWidth }));
+  expect(await regionChart.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+  expect(await cardNews.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+  const shareButton = page.getByRole("button", { name: "리포트 공유하기" });
+  await shareButton.focus();
+  await expect(shareButton).toBeFocused();
 
   await page.goto("/p/demo#reserve");
   await expectNoHorizontalOverflow(page);
@@ -666,7 +648,7 @@ test("Figma 표지 3종과 랜딩 도입부 7종만 결정적으로 렌더링한
     if (!exportedCovers.has(carouselCover)) {
       const [download] = await Promise.all([
         page.waitForEvent("download"),
-        page.getByRole("button", { name: "캐러셀 ZIP 다운로드" }).click(),
+        page.getByRole("button", { name: "카드뉴스 저장" }).click(),
       ]);
       const zip = await JSZip.loadAsync(await downloadBytes(download));
       const coverBytes = await zip.file("01-hook.png")!.async("uint8array");
@@ -765,46 +747,9 @@ test("공개 예약 저장 실패를 성공으로 표시하지 않고 재시도�
   await expect(page.getByRole("heading", { name: "예약이 접수됐어요" })).toBeVisible();
 });
 
-test("리포트 조회, 저장과 초기화 실패를 성공으로 표시하지 않는다", async ({ page }) => {
+test("리포트 조회 실패를 성공으로 표시하지 않고 복구한다", async ({ page }) => {
   await page.goto("/campaigns/demo");
-  await expect(reservationCountMetric(page)).toHaveText("4명");
-
-  await page.route("**/api/campaigns*", async (route) => {
-    if (route.request().method() === "PATCH") {
-      await route.fulfill({
-        status: 500,
-        contentType: "application/json",
-        body: JSON.stringify({ error: { code: "test_failure", message: "test failure" } }),
-      });
-      return;
-    }
-    await route.continue();
-  });
-  await page.getByRole("button", { name: /계속 검증/ }).click();
-  await expect(page.locator(".toast-error")).toHaveText("다음 행동을 저장하지 못했어요. 다시 시도해주세요.");
-  await expect(page.locator(".decision-grid button.selected")).toHaveCount(0);
-  await expect(page.getByText("다음 행동을 저장했어요.", { exact: true })).toHaveCount(0);
-
-  await page.unroute("**/api/campaigns*");
-  await page.getByRole("button", { name: /계속 검증/ }).click();
-  await expect(page.getByRole("status")).toHaveText("다음 행동을 저장했어요.");
-
-  await page.route("**/api/campaigns/reset", async (route) => {
-    await route.fulfill({
-      status: 500,
-      contentType: "application/json",
-      body: JSON.stringify({ error: { code: "test_failure", message: "test failure" } }),
-    });
-  });
-  await page.getByRole("button", { name: "데모 데이터 초기화" }).click();
-  await expect(page.locator(".toast-error")).toHaveText("데모 데이터를 초기화하지 못했어요. 다시 시도해주세요.");
-  await expect(page.locator(".decision-grid button.selected")).toContainText("계속 검증");
-  await expect(page.getByText("발표용 응답과 판단을 초기화했어요.", { exact: true })).toHaveCount(0);
-
-  await page.unroute("**/api/campaigns/reset");
-  await page.getByRole("button", { name: "데모 데이터 초기화" }).click();
-  await expect(page.getByRole("status")).toHaveText("발표용 응답과 판단을 초기화했어요.");
-  await expect(page.locator(".decision-grid button.selected")).toHaveCount(0);
+  await expect(page.locator(".reservation-table tbody tr")).toHaveCount(4);
 
   await page.route("**/api/campaigns*", async (route) => {
     if (route.request().method() === "GET") {
@@ -852,7 +797,7 @@ test("게시 응답이 유실돼도 같은 draft와 생성 결과로 재시도�
 
   await page.unroute("**/api/campaigns");
   await page.getByRole("button", { name: /광고 만들기/ }).click();
-  await expect(page).toHaveURL(new RegExp(`/campaigns/${firstPublishedId}$`), { timeout: 10_000 });
+  await openCompletedCampaign(page, firstPublishedId);
   expect(generateRequests).toBe(1);
 });
 
@@ -883,37 +828,6 @@ test("새 광고를 게시해도 이미 열린 공개 랜딩의 상태가 섞이
   expect(secondReport.summary.total).toBe(4);
 });
 
-test("늦게 도착한 polling 응답이 저장한 판단을 되돌리지 않는다", async ({ page }) => {
-  await page.goto("/campaigns/demo");
-  await expect(reservationCountMetric(page)).toHaveText("4명");
-
-  let releaseDelayedResponse!: () => void;
-  let markRequestStarted!: () => void;
-  const delayedResponseReleased = new Promise<void>((resolve) => { releaseDelayedResponse = resolve; });
-  const delayedRequestStarted = new Promise<void>((resolve) => { markRequestStarted = resolve; });
-  let delayed = false;
-  await page.route("**/api/campaigns*", async (route) => {
-    const request = route.request();
-    if (!delayed && request.method() === "GET") {
-      delayed = true;
-      const staleResponse = await route.fetch();
-      markRequestStarted();
-      await delayedResponseReleased;
-      await route.fulfill({ response: staleResponse });
-      return;
-    }
-    await route.continue();
-  });
-
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await delayedRequestStarted;
-  await page.getByRole("button", { name: /계속 검증/ }).click();
-  await expect(page.getByRole("status")).toHaveText("다음 행동을 저장했어요.");
-  releaseDelayedResponse();
-  await page.waitForTimeout(250);
-  await expect(page.locator(".decision-grid button.selected")).toContainText("계속 검증");
-});
-
 test("2초보다 느린 polling 응답도 겹치지 않고 화면에 반영한다", async ({ page }) => {
   let inFlight = 0;
   let maxInFlight = 0;
@@ -938,12 +852,18 @@ test("2초보다 느린 polling 응답도 겹치지 않고 화면에 반영한�
         summary: {
           ...body.summary,
           total: 9,
+          recent: Array.from({ length: 9 }, (_, index) => ({
+            id: `slow-${index}`,
+            name: `예약자${index + 1}`,
+            email: `slow-${index}@example.com`,
+            reservedAt: `2026-08-25T09:${String(index).padStart(2, "0")}:00.000Z`,
+          })),
         },
       },
     });
   });
 
   await page.goto("/campaigns/demo");
-  await expect(reservationCountMetric(page)).toHaveText("9명", { timeout: 6_000 });
+  await expect(page.locator(".reservation-table tbody tr")).toHaveCount(9, { timeout: 6_000 });
   expect(maxInFlight).toBe(1);
 });

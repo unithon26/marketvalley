@@ -34,13 +34,13 @@ pnpm dev
 - `/campaigns/[id]/progress`: 이미 게시된 광고의 직접 접근 호환용 결정적 진행 화면
 - `/campaigns/[id]`: 예약자명단 리포트, PNG ZIP, PNG·문구·절대 URL이 든 Meta 게시 준비 ZIP과 다음 판단
 - `/p/[slug]`: 동의 후 이름·이메일 사전예약을 받는 공개 랜딩
-- `/auth/google`: Google 로그인을 시작하는 서버 endpoint
+- `/auth/google`: 제품에서는 Google OAuth를, 발표 mock 모드에서는 HttpOnly 데모 세션을 시작하는 endpoint
 - `/api/auth/session`: 토큰을 노출하지 않고 현재 로그인 상태를 반환하는 endpoint
 - `/login`: 비로그인 사용자가 광고 생성을 시작할 때 soft navigation은 현재 화면 위 로그인 모달, 직접 접근·새로고침은 전용 로그인 화면으로 안내하고 인증 뒤 원래 목적지로 복귀시키는 route
 
 서버 시작 시 발표용 `/campaigns/demo`와 `/p/demo`가 준비되며, `/new`에서 만든 광고는 기존 탭과 섞이지 않도록 별도 id와 slug를 받는다.
 
-GNB의 Google 로그인·사용자·로그아웃 UI는 인증 상태 hook과 분리되어 있다. Supabase 설정이 있는 제품 환경에서 광고 생성 CTA는 비로그인 사용자에게 현재 화면을 유지한 로그인 모달을 열고, `/new` 직접 접근은 전용 로그인 화면으로 보낸다. OAuth 완료 뒤에는 입력 화면으로 복귀한다. Supabase 설정이 비어 있으면 `로그인 준비 중`을 표시하며 fixture 데모에는 영향을 주지 않는다.
+GNB의 Google 로그인·사용자·로그아웃 UI는 인증 상태 hook과 분리되어 있다. `NEXT_PUBLIC_AUTH_MODE=mock`인 발표 환경에서는 비로그인 상태의 `새 광고`가 메인 위 로그인 모달을 열고, Google 버튼이 외부 계정 없이 `마켓밸리 데모` HttpOnly 세션을 만든 뒤 메인으로 돌아온다. 로그인된 상태에서 `새 광고`를 다시 누르면 `/new`로 이동한다. `NEXT_PUBLIC_AUTH_MODE=supabase`인 제품 환경에서는 기존 Google OAuth와 PKCE callback을 그대로 사용한다.
 
 ## 문서 안내
 

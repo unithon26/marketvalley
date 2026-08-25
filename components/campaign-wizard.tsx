@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { ArrowRightIcon } from "@/components/icons";
 import {
   GenerationProgressView,
@@ -48,8 +47,7 @@ type CampaignWizardProps = {
   generatorStatus: CampaignGeneratorStatus;
 };
 
-const unimplementedMarketResearchDelayMs = 2_000;
-const completedStageDelayMs = 700;
+const submissionAcknowledgementDelayMs = 700;
 
 function delay(milliseconds: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -108,13 +106,13 @@ async function responseErrorCode(response: Response): Promise<string | null> {
 }
 
 export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
-  const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [background, setBackground] = useState("");
   const [solution, setSolution] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [progressStage, setProgressStage] = useState<GenerationProgressStage>(0);
+  const [completedCampaignId, setCompletedCampaignId] = useState<string | null>(null);
   const publishAttemptRef = useRef<PublishAttempt | null>(null);
   const requestControllerRef = useRef<AbortController | null>(null);
 
@@ -135,7 +133,7 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
   const usesLiveAI = generatorStatus.mode !== "fixture";
   const generatorNotice = usesLiveAI
     ? generatorStatus.ready
-      ? "AI가 랜딩·카드뉴스 문구를 생성해요"
+      ? null
       : "AI 문구 생성 · 회전된 API 키 설정 필요"
     : "안전 데모 · AI 호출 없음";
 
@@ -165,6 +163,7 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
     requestControllerRef.current = requestController;
     setSubmitting(true);
     setProgressStage(0);
+    setCompletedCampaignId(null);
     try {
       const input = { background: background.trim(), solution: solution.trim() };
       const fingerprint = JSON.stringify(input);
@@ -177,7 +176,7 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
       }
       const attempt = publishAttemptRef.current;
 
-      await delay(unimplementedMarketResearchDelayMs, requestController.signal);
+      await delay(submissionAcknowledgementDelayMs, requestController.signal);
       setProgressStage(1);
 
       if (!attempt.spec) {
@@ -208,11 +207,11 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
       const published: unknown = await publishResponse.json();
       const campaignId = publishedCampaignId(published);
       saveCampaignDraftId(campaignId, attempt.draftId);
-
-      setProgressStage(3);
-      await delay(completedStageDelayMs, requestController.signal);
+      setCompletedCampaignId(campaignId);
       requestControllerRef.current = null;
-      router.replace(`/campaigns/${campaignId}`);
+
+      // 발표용 fixture만 사용자가 다음 단계로 넘긴다. 실제 모드는 Meta 시장 데이터의
+      // 수집 완료 신호를 서버에서 확인한 뒤에만 결과 단계로 전환해야 한다.
     } catch (caught) {
       if (requestController.signal.aborted) return;
       setError(generationErrorMessage(caught instanceof Error ? caught.message : null));
@@ -226,16 +225,25 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
   }
 
   if (submitting) {
-    return <GenerationProgressView current={progressStage} />;
+    return (
+      <GenerationProgressView
+        current={progressStage}
+        reportHref={completedCampaignId ? `/campaigns/${completedCampaignId}` : "/"}
+        demoMode={!usesLiveAI}
+        onDemoAdvance={() => setProgressStage(3)}
+      />
+    );
   }
 
   return (
     <main className="wizard-page page-container">
       <div className="wizard-topline">
         <button type="button" className="text-button" onClick={loadExample}>예시 불러오기</button>
-        <span className="mock-notice" role="status">
-          <i /> {generatorNotice}
-        </span>
+        {generatorNotice ? (
+          <span className="mock-notice" role="status">
+            <i /> {generatorNotice}
+          </span>
+        ) : null}
       </div>
 
       <section className="wizard-panel">

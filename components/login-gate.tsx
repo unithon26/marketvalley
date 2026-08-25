@@ -5,8 +5,8 @@ import {
   AuthenticationRequiredError,
   requireVerifiedIdentity,
 } from "@/lib/auth/authorization";
+import { resolveAuthMode } from "@/lib/auth/mode";
 import { sanitizeNextPath } from "@/lib/auth/security";
-import { getOptionalSupabaseConfig } from "@/lib/supabase/config";
 
 export type LoginSearchParams = Promise<{
   error?: string | string[];
@@ -26,12 +26,15 @@ export async function LoginGate({
 }) {
   const params = await searchParams;
   const nextPath = sanitizeNextPath(first(params.next));
+  let loginNextPath = nextPath;
   let errorCode = first(params.error);
   let authEnabled = false;
   let authenticated = false;
 
   try {
-    authEnabled = getOptionalSupabaseConfig() !== null;
+    const authMode = resolveAuthMode();
+    authEnabled = authMode !== "disabled";
+    if (authMode === "mock") loginNextPath = "/";
   } catch {
     errorCode ??= "auth_not_configured";
   }
@@ -52,6 +55,7 @@ export async function LoginGate({
     <LoginPanel
       authenticated={authenticated}
       enabled={authEnabled}
+      loginNextPath={loginNextPath}
       nextPath={nextPath}
       errorCode={errorCode}
       modal={modal}

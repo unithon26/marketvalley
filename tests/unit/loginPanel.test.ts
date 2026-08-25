@@ -40,6 +40,7 @@ describe("LoginPanel", () => {
   it("모달에서는 별도 미리보기 대신 현재 화면 위 대화상자를 렌더링한다", () => {
     const html = renderToStaticMarkup(createElement(LoginPanel, {
       enabled: true,
+      loginNextPath: "/",
       nextPath: "/new",
       modal: true,
     }));
@@ -47,6 +48,8 @@ describe("LoginPanel", () => {
     expect(html).toContain('role="dialog"');
     expect(html).toContain('aria-modal="true"');
     expect(html).toContain("login-modal-backdrop");
+    expect(html).toContain('href="/auth/google?next=%2F"');
+    expect(html).toContain("로그인 후 메인 화면으로 돌아갑니다.");
     expect(html).not.toContain("login-dashboard-preview");
   });
 

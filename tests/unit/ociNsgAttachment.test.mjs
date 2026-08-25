@@ -1,12 +1,15 @@
 import { execFileSync } from "node:child_process";
 import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
-const repositoryRoot = new URL("../..", import.meta.url).pathname;
+const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
 const scriptPath = join(repositoryRoot, "infra/terraform/oci-nlb/attach-backend-nsg.sh");
 const detachScriptPath = join(repositoryRoot, "infra/terraform/oci-nlb/detach-backend-nsg.sh");
+const bashExecutable = process.env.BASH_PATH
+  ?? (process.platform === "win32" ? "C:\\Program Files\\Git\\bin\\bash.exe" : "bash");
 const temporaryDirectories = [];
 
 function createMockOci() {
@@ -53,17 +56,17 @@ afterEach(() => {
   }
 });
 
-describe("OCI backend NSG attachment", () => {
+describe.skipIf(process.platform === "win32")("OCI backend NSG attachment", () => {
   it("VNIC subnet의 VCN을 검증하고 기존 NSG를 보존한 채 backend NSG를 append한다", () => {
     const { directory, logPath } = createMockOci();
     const backupPath = join(directory, "pre-attach-nsgs.json");
 
-    const output = execFileSync("bash", [scriptPath], {
+    const output = execFileSync(bashExecutable, [scriptPath], {
       cwd: repositoryRoot,
       encoding: "utf8",
       env: {
         ...process.env,
-        PATH: `${directory}:${process.env.PATH}`,
+        PATH: `${directory}${delimiter}${process.env.PATH}`,
         MARKETVALLEY_TEST_OCI_LOG: logPath,
         MARKETVALLEY_CONFIRM_ATTACH: "yes",
         MARKETVALLEY_NSG_BACKUP_FILE: backupPath,
@@ -86,12 +89,12 @@ describe("OCI backend NSG attachment", () => {
     const backupPath = join(directory, "pre-attach-nsgs.json");
     writeFileSync(backupPath, '["ocid1.networksecuritygroup.test.existing"]\n', { mode: 0o600 });
 
-    const output = execFileSync("bash", [detachScriptPath], {
+    const output = execFileSync(bashExecutable, [detachScriptPath], {
       cwd: repositoryRoot,
       encoding: "utf8",
       env: {
         ...process.env,
-        PATH: `${directory}:${process.env.PATH}`,
+        PATH: `${directory}${delimiter}${process.env.PATH}`,
         MARKETVALLEY_TEST_OCI_LOG: logPath,
         MARKETVALLEY_TEST_MODE: "detach",
         MARKETVALLEY_CONFIRM_DETACH: "yes",

@@ -23,6 +23,8 @@ export default defineConfig({
       CAMPAIGN_GENERATOR_MODE: "fixture",
       CAMPAIGN_REPOSITORY_MODE: "fixture",
       ANTHROPIC_API_KEY: "",
+      NEXT_PUBLIC_AUTH_MODE: "mock",
+      NEXT_PUBLIC_SITE_URL: baseURL,
       NEXT_PUBLIC_SUPABASE_URL: "",
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "",
       NEXT_PUBLIC_SUPABASE_ANON_KEY: "",
