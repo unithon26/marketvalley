@@ -9,8 +9,10 @@ import { CampaignEntryLink } from "@/components/campaign-entry-link";
 import { CarouselCard, carouselCoverAssets, carouselFileNames } from "@/components/renderers/carousel-card";
 import type { CampaignSpec, NextAction } from "@/lib/contracts/campaign";
 import type { CampaignResponse } from "@/lib/contracts/api";
+import type { MetaDraftClientResponse } from "@/lib/contracts/metaDraft";
 import type { ReservationRecord, ReservationSummary } from "@/lib/contracts/repository";
 import { getCampaignDraftId } from "@/lib/client/demo-store";
+import { createMetaDraftFormData } from "@/lib/client/metaDraft";
 import { createNextActionState } from "@/lib/demo/campaignReservations";
 
 function triggerDownload(blob: Blob, name: string) {
@@ -146,6 +148,12 @@ type CampaignReportProps = {
   initialSpec: CampaignSpec;
   initialSummary: ReservationSummary;
   initialNextAction: NextAction | null;
+  metaAdsEnabled: boolean;
+};
+
+type MetaDraftUiState = {
+  kind: "idle" | "creating" | "completed" | "busy" | "quota" | "reconciliation" | "error";
+  message: string;
 };
 
 export function CampaignReport({
@@ -154,6 +162,7 @@ export function CampaignReport({
   initialSpec,
   initialSummary,
   initialNextAction,
+  metaAdsEnabled,
 }: CampaignReportProps) {
   const [summary, setSummary] = useState<ReservationSummary>(initialSummary);
   const [nextAction, setNextAction] = useState<NextAction | null>(initialNextAction);
@@ -163,6 +172,10 @@ export function CampaignReport({
   const [exporting, setExporting] = useState(false);
   const [pendingAction, setPendingAction] = useState<NextAction | null>(null);
   const [resetting, setResetting] = useState(false);
+  const [metaDraftState, setMetaDraftState] = useState<MetaDraftUiState>({
+    kind: "idle",
+    message: "",
+  });
   const cardRefs = useRef<Array<HTMLDivElement | null>>([]);
   const refreshSequenceRef = useRef(0);
   const refreshInFlightRef = useRef(false);
@@ -287,6 +300,48 @@ export function CampaignReport({
     }
   }
 
+  async function createMetaPausedDraft() {
+    if (!metaAdsEnabled || metaDraftState.kind === "creating") return;
+    setExporting(true);
+    setMetaDraftState({ kind: "creating", message: "PNG 5장을 만들고 PAUSED 초안을 요청하고 있어요." });
+    try {
+      const images = await renderCards();
+      const response = await fetch("/api/meta/drafts", {
+        method: "POST",
+        body: createMetaDraftFormData(campaignId, images),
+      });
+      const body = await response.json() as MetaDraftClientResponse;
+      if (response.ok && "state" in body && body.state === "completed") {
+        setMetaDraftState({
+          kind: "completed",
+          message: "Meta 계정의 Ads Manager에 PAUSED 초안을 만들었어요. 실제 노출·광고비 지출은 없습니다.",
+        });
+        return;
+      }
+      if ("state" in body && body.state === "reconciliation_required") {
+        setMetaDraftState({
+          kind: "reconciliation",
+          message: "자동 재시도를 중단했어요. 운영자가 Ads Manager와 작업 기록을 확인해야 합니다.",
+        });
+        return;
+      }
+      const code = "error" in body ? body.error.code : "meta_draft_failed";
+      if (code === "meta_operation_busy") {
+        setMetaDraftState({ kind: "busy", message: "다른 PAUSED 초안 요청이 진행 중이에요. 잠시 후 직접 다시 확인해주세요." });
+      } else if (code === "meta_quota_exceeded") {
+        setMetaDraftState({ kind: "quota", message: "오늘의 PAUSED 초안 생성 한도에 도달했어요." });
+      } else if (code === "meta_disabled") {
+        setMetaDraftState({ kind: "error", message: "Meta 초안 기능이 현재 비활성화되어 있어요." });
+      } else {
+        setMetaDraftState({ kind: "error", message: "PAUSED 초안을 만들지 못했어요. 자동 재시도하지 않았습니다." });
+      }
+    } catch {
+      setMetaDraftState({ kind: "error", message: "PAUSED 초안을 만들지 못했어요. 자동 재시도하지 않았습니다." });
+    } finally {
+      setExporting(false);
+    }
+  }
+
   async function chooseAction(action: NextAction) {
     if (mutationInFlightRef.current) return;
     const draftId = getCampaignDraftId(campaignId) ?? (campaignId === "demo" ? "demo" : null);
@@ -389,7 +444,7 @@ export function CampaignReport({
       </section>
 
       <section className="report-section deliverables-section">
-        <div className="section-heading"><div><span className="eyebrow">READY TO USE</span><h2>광고 결과물</h2></div><span className="safe-label">외부 계정·광고비 사용 없음</span></div>
+        <div className="section-heading"><div><span className="eyebrow">READY TO USE</span><h2>광고 결과물</h2></div><span className="safe-label">{metaAdsEnabled ? "Meta 계정에 PAUSED 초안 생성 · 실제 노출·광고비 지출 없음" : "외부 계정·광고비 사용 없음"}</span></div>
         <div className="deliverable-grid">
           <article><div className="deliverable-icon landing-icon">↗</div><div><h3>공개 랜딩페이지</h3><p>같은 광고 초안으로 렌더링되는 발표용 공개 경로</p><code>{publicPath}</code></div><Link className="icon-button" href={publicPath} target="_blank" aria-label="공개 랜딩 열기"><ExternalIcon /></Link></article>
           <article className="carousel-deliverable">
@@ -401,7 +456,7 @@ export function CampaignReport({
             </div>
             <p className="carousel-preview-note">화면 미리보기와 다운로드 PNG는 같은 디자인으로 만들어집니다.</p>
           </article>
-          <article><div className="deliverable-icon meta-icon">M</div><div><h3>Meta 게시 준비</h3><p>PNG 5장·문구·CTA·대상 고객 가설·절대 URL을 ZIP 하나로</p><code>실제 게시 또는 집행 아님</code></div><button className="icon-button" type="button" onClick={downloadMetaPackage} disabled={exporting} aria-busy={exporting} aria-label="Meta 게시 준비 다운로드"><DownloadIcon /></button></article>
+          <article className="meta-deliverable"><div className="deliverable-icon meta-icon">M</div><div><h3>Meta 게시 준비</h3><p>PNG 5장·문구·CTA·대상 고객 가설·절대 URL을 ZIP 하나로</p><code>{metaAdsEnabled ? "Meta 계정의 Ads Manager에 PAUSED 초안 생성 · 실제 노출·광고비 지출 없음" : "실제 게시 또는 집행 아님"}</code></div><div className="deliverable-actions"><button className="icon-button" type="button" onClick={downloadMetaPackage} disabled={exporting} aria-busy={exporting} aria-label="Meta 게시 준비 다운로드"><DownloadIcon /></button>{metaAdsEnabled && <button className="button button-secondary meta-draft-button" type="button" onClick={createMetaPausedDraft} disabled={exporting || ["completed", "quota", "reconciliation"].includes(metaDraftState.kind)} aria-busy={metaDraftState.kind === "creating"}>Ads Manager PAUSED 초안 만들기</button>}</div>{metaAdsEnabled && metaDraftState.message && <p className={`meta-draft-status meta-draft-status-${metaDraftState.kind}`} role={metaDraftState.kind === "completed" ? "status" : "alert"}>{metaDraftState.message}</p>}</article>
         </div>
         <div className="copy-grid">
           <div><span>게시 문구</span><p>{spec.messaging.caption}</p><button type="button" onClick={() => copyText(spec.messaging.caption, "게시 문구")}><CopyIcon size={16} /> 복사</button></div>
