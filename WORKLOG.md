@@ -18,7 +18,7 @@
 - 결정: service-role 단일 repository 계획을 기각하고 사용자 JWT가 적용된 client와 DB RLS를 함께 사용한다. 선택과 기각 대안은 ADR-0016에 기록했다.
 - 실패와 해결: E2E에서 내부 `request.url`의 `localhost`와 실제 `Host/Origin`의 `127.0.0.1` 차이를 교차 출처로 오판해 예약 4개 시나리오가 실패했다. 실제 Host·forwarded authority 기준으로 수정하고 `TROUBLESHOOTING.md`에 재현·원인·회귀 방지를 기록했다. 다른 로컬 서버가 기본 E2E 포트를 점유한 경우를 위해 포트를 환경변수로 분리했고, clipboard 권한도 고정 포트가 아닌 실제 페이지 origin을 사용하게 했다.
 - 검증: 코드 단계에서는 focused Supabase·route 보안 테스트, `pnpm check`의 lint·typecheck·단위 테스트 24파일 106개, production build, server-secret bundle smoke, Chromium E2E 16개, coverage·high audit·peer·diff 검사가 통과했다. 운영 단계에서는 `supabase db lint --linked` 오류 0건과 migration up-to-date를 확인했다. 합성 사용자 A/B로 직접 RLS, anon 차단, 예약 원문 격리, HMAC 중복, reset, service-only quota를 검증하고 실제 repository adapter와 Supabase 모드 production Route Handler의 생성·게시·공개 조회·예약·리포트·판단·초기화·삭제까지 통과했다. 검증 뒤 5개 테이블과 합성 Auth 사용자가 모두 0건임을 확인했다.
-- 전달: 기능 커밋 `6cd0b07`과 GitHub Actions run `32818491564` 통과 뒤, 2026-08-25 사용자의 운영 변경 승인에 따라 migration `202608250001`을 연결된 운영 Supabase 프로젝트에 적용했다. 서버 키와 검증용 HMAC은 프로세스 메모리에서만 사용하고 파일·Git에는 남기지 않았다.
+- 전달: 기능 커밋 `6cd0b07`과 GitHub Actions run `32818491564` 통과 뒤, 2026-08-25 사용자의 운영 변경 승인에 따라 migration `202608250001`을 연결된 운영 Supabase 프로젝트에 적용했다. 운영 기록 커밋 `bf827bd`를 비공개 `main`에 push했고 GitHub Actions run `32820632053`의 전체 gate가 통과했다. 서버 키와 검증용 HMAC은 프로세스 메모리에서만 사용하고 파일·Git에는 남기지 않았다.
 - 남은 일: Supabase DB 작업은 없다. 현재 인증된 Vercel 계정에는 연결할 프로젝트가 없으므로 배포 환경의 `CAMPAIGN_REPOSITORY_MODE=supabase`, server key와 고정 `SIGNAL_HASH_SECRET` 등록은 실제 배포 프로젝트 생성·연결 시 수행한다. production OAuth·Anthropic spend limit은 별도 배포 운영 범위다.
 
 ## 2026-08-25 — 문구 생성 공급자를 Anthropic으로 교체
