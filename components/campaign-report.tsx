@@ -40,8 +40,26 @@ const fitCopy: Record<MarketFit, string> = {
   "very-suitable": "[매우 적합]",
 };
 
-const ageRows = ["18–24", "18–24", "18–24", "18–24"] as const;
-const regionBars = [44, 96, 77, 73, 96, 62, 84, 78] as const;
+const genderData = { male: 185, female: 247 } as const;
+const genderTotal = genderData.male + genderData.female;
+const maleRatio = (genderData.male / genderTotal) * 100;
+const ageRows = [
+  { label: "18–24", ratio: 16 },
+  { label: "25–34", ratio: 37 },
+  { label: "35–44", ratio: 29 },
+  { label: "45–54", ratio: 18 },
+] as const;
+const regionBars = [
+  { label: "서울", ratio: 32 },
+  { label: "인천", ratio: 13 },
+  { label: "경기", ratio: 25 },
+  { label: "부산", ratio: 10 },
+  { label: "대구", ratio: 7 },
+  { label: "대전", ratio: 5 },
+  { label: "광주", ratio: 5 },
+  { label: "울산", ratio: 3 },
+] as const;
+const maxRegionRatio = Math.max(...regionBars.map(({ ratio }) => ratio));
 const scrollRows = [
   [25, "57s"],
   [50, "43s"],
@@ -56,12 +74,12 @@ function MetricCards({ metrics }: { metrics: MarketReportMetrics }) {
       <article className="report-impression-card">
         <strong>{metrics.impressions.toLocaleString("ko-KR")}회</strong>
         <span>노출 수</span>
-        <svg viewBox="0 0 190 110" aria-hidden="true">
-          <path d="M0 104 C36 96 48 78 67 46 C86 15 103 46 132 53 C156 59 155 24 190 18 L190 110 L0 110 Z" />
-          <path d="M0 104 C36 96 48 78 67 46 C86 15 103 46 132 53 C156 59 155 24 190 18" />
-          <circle cx="67" cy="46" r="3" />
-          <circle cx="132" cy="53" r="3" />
-          <circle cx="190" cy="18" r="3" />
+        <svg viewBox="0 0 384 230" aria-hidden="true">
+          <path d="M48 229 C84 229 124 140 156 140 C184 140 212 159 240 159 C270 159 276 61 309 61 C335 61 359 54 384 54 L384 230 L48 230 Z" />
+          <path d="M48 229 C84 229 124 140 156 140 C184 140 212 159 240 159 C270 159 276 61 309 61 C335 61 359 54 384 54" />
+          <circle cx="156" cy="140" r="4" />
+          <circle cx="240" cy="159" r="4" />
+          <circle cx="309" cy="61" r="4" />
         </svg>
       </article>
       <article>
@@ -112,18 +130,24 @@ function DemographicInsights() {
         <div className="gender-chart">
           <h3>성별</h3>
           <div className="gender-chart-body">
-            <span className="gender-label gender-male">남<br />123</span>
-            <div className="gender-donut"><span>전체<strong>432</strong></span></div>
-            <span className="gender-label gender-female">여<br />000</span>
+            <span className="gender-label gender-male">남<br />{genderData.male}</span>
+            <div
+              className="gender-donut"
+              aria-label={`남성 ${genderData.male}명, 여성 ${genderData.female}명`}
+              style={{ background: `conic-gradient(var(--report-purple) 0 ${maleRatio}%, #f1effb ${maleRatio}% 100%)` }}
+            >
+              <span>전체<strong>{genderTotal}</strong></span>
+            </div>
+            <span className="gender-label gender-female">여<br />{genderData.female}</span>
           </div>
         </div>
         <div className="age-chart">
           <h3>연령대</h3>
-          {ageRows.map((label, index) => (
-            <div className="age-row" key={`${label}-${index}`}>
+          {ageRows.map(({ label, ratio }) => (
+            <div className="age-row" key={label}>
               <span>{label}</span>
-              <div><i /></div>
-              <b>00%</b>
+              <div><i style={{ width: `${ratio}%` }} /></div>
+              <b>{ratio}%</b>
             </div>
           ))}
         </div>
@@ -138,10 +162,10 @@ function RegionInsights() {
       <h2>거주지</h2>
       <div className="region-chart-scroll" role="region" aria-label="거주지 비율 그래프" tabIndex={0}>
         <div className="region-chart">
-          {regionBars.map((ratio, index) => (
-            <div key={`${ratio}-${index}`} aria-label={`지역명 ${ratio}%`}>
-              <span className="region-bar-slot"><i style={{ height: `${Math.min(100, Math.max(0, ratio))}%` }} /></span>
-              <span>지역명</span>
+          {regionBars.map(({ label, ratio }) => (
+            <div key={label} aria-label={`${label} ${ratio}%`}>
+              <span className="region-bar-slot"><i style={{ height: `${(ratio / maxRegionRatio) * 100}%` }} /></span>
+              <span>{label}</span>
             </div>
           ))}
         </div>
