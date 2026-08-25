@@ -43,9 +43,13 @@ function stepState(index: number, current: ValidationProgressStage): "done" | "a
 export function ValidationProgress({
   current,
   reportHref,
+  demoMode = false,
+  onDemoAdvance,
 }: {
   current: ValidationProgressStage;
   reportHref: string;
+  demoMode?: boolean;
+  onDemoAdvance?: () => void;
 }) {
   const activeStage = progressStages[current];
   const lineProgress = current <= 1 ? 1 : 2;
@@ -86,6 +90,8 @@ export function ValidationProgress({
       <div className="progress-actions">
         {current === 3 ? (
           <Link className="button button-primary" href={reportHref}>시장 검증 리포트 확인하기</Link>
+        ) : demoMode && current === 2 ? (
+          <button className="button button-secondary" type="button" onClick={onDemoAdvance}>다음 단계로</button>
         ) : (
           <Link className="button button-secondary" href="/">메인으로</Link>
         )}

@@ -48,7 +48,6 @@ type CampaignWizardProps = {
 };
 
 const submissionAcknowledgementDelayMs = 700;
-const marketDataCollectionDelayMs = 2_000;
 
 function delay(milliseconds: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -209,10 +208,10 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
       const campaignId = publishedCampaignId(published);
       saveCampaignDraftId(campaignId, attempt.draftId);
       setCompletedCampaignId(campaignId);
-
-      await delay(marketDataCollectionDelayMs, requestController.signal);
-      setProgressStage(3);
       requestControllerRef.current = null;
+
+      // 발표용 fixture만 사용자가 다음 단계로 넘긴다. 실제 모드는 Meta 시장 데이터의
+      // 수집 완료 신호를 서버에서 확인한 뒤에만 결과 단계로 전환해야 한다.
     } catch (caught) {
       if (requestController.signal.aborted) return;
       setError(generationErrorMessage(caught instanceof Error ? caught.message : null));
@@ -230,6 +229,8 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
       <GenerationProgressView
         current={progressStage}
         reportHref={completedCampaignId ? `/campaigns/${completedCampaignId}` : "/"}
+        demoMode={!usesLiveAI}
+        onDemoAdvance={() => setProgressStage(3)}
       />
     );
   }

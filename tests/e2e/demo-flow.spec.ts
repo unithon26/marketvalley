@@ -48,6 +48,7 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 }
 
 async function openCompletedCampaign(page: Page, campaignId?: string): Promise<void> {
+  await page.getByRole("button", { name: "다음 단계로" }).click();
   await expect(page.getByRole("heading", { name: "시장 검증이 완료되었습니다" })).toBeVisible({ timeout: 10_000 });
   await page.getByRole("link", { name: "시장 검증 리포트 확인하기" }).click();
   await expect(page).toHaveURL(
