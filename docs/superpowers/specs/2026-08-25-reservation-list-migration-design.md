@@ -2,13 +2,13 @@
 
 상태: 설계 확정, 구현 대기
 작성일: 2026-08-25
-관련 결정: `docs/decisions/0012-switch-anonymous-signal-to-named-reservation.md`
+관련 결정: `docs/decisions/0013-switch-anonymous-signal-to-named-reservation.md`
 
 ## 0. 이 문서를 읽는 사람에게
 
 이 문서는 개발자 A(Claude Code 세션)와 개발자 B(Codex 세션)가 각자 독립적으로 작업을 시작할 수 있도록 계약과 순서를 고정한 것이다. 구현 중 이 문서와 다른 판단이 필요하면, 임의로 다르게 구현하지 말고 이 문서를 먼저 갱신한 뒤 진행한다.
 
-**중요**: 이 문서가 뒤집는 기존 결정이 있다. `docs/decisions/0001-close-the-validation-loop.md`와 `docs/validation.md`는 "이름·이메일·전화번호를 받지 않는다"를 원칙으로 명시했고, `WORKLOG.md`(2026-08-25)에는 이 정확한 방향(이메일 수집 + 고정 광고 지표)을 제안한 다른 브랜치를 개발자 B가 반려한 기록이 있다. 이번엔 제품 책임자가 레퍼런스(`proo-landing.vercel.app`)를 보고 방향을 의도적으로 재확정했다 — `docs/decisions/0012-...md`를 반드시 먼저 읽을 것. 참고로 `docs/superpowers/specs/2026-08-24-figma-alignment-and-dependency-split-design.md` §2에 따르면 디자이너의 원본 Figma 리포트 화면도 원래 노출수·CTR·예약률·이메일 리스트 구성이었고, 어제 감사에서 "개인정보 비수집 원칙과 충돌"을 이유로 의도적으로 이탈했던 것 — 이번 전환은 그 Figma 원안으로 되돌아가는 결정이기도 하다.
+**중요**: 이 문서가 뒤집는 기존 결정이 있다. `docs/decisions/0001-close-the-validation-loop.md`와 `docs/validation.md`는 "이름·이메일·전화번호를 받지 않는다"를 원칙으로 명시했고, `WORKLOG.md`(2026-08-25)에는 이 정확한 방향(이메일 수집 + 고정 광고 지표)을 제안한 다른 브랜치를 개발자 B가 반려한 기록이 있다. 이번엔 제품 책임자가 레퍼런스(`proo-landing.vercel.app`)를 보고 방향을 의도적으로 재확정했다 — `docs/decisions/0013-switch-anonymous-signal-to-named-reservation.md`를 반드시 먼저 읽을 것. (참고: B가 같은 날 병렬로 `docs/decisions/0012-use-supabase-pkce-auth-behind-server-routes.md`를 먼저 만들어 0012 번호를 선점했으므로 이 문서는 0013을 쓴다.) 참고로 `docs/superpowers/specs/2026-08-24-figma-alignment-and-dependency-split-design.md` §2에 따르면 디자이너의 원본 Figma 리포트 화면도 원래 노출수·CTR·예약률·이메일 리스트 구성이었고, 어제 감사에서 "개인정보 비수집 원칙과 충돌"을 이유로 의도적으로 이탈했던 것 — 이번 전환은 그 Figma 원안으로 되돌아가는 결정이기도 하다.
 
 ## 1. 데이터 계약
 
@@ -89,7 +89,7 @@ create table campaign_reservation (
 - **랜딩 UTM 캡처**: 페이지 로드시 쿼리 파라미터(`utm_source`, `utm_medium`, `utm_campaign`, `utm_content`)를 읽어 폼 제출 시 함께 전송한다. 분석/집계 화면은 이번 스코프에 없다 — 필드 저장까지만 한다.
 - **리포트** (`components/campaign-report.tsx`): 3지선다 지표 카드 제거 → 예약자 수·리스트·예시 지표 블록으로 교체.
 - **신뢰 문구**: `lib/ai/campaignPrompts.ts`의 trust-copy 규칙과 랜딩 FAQ의 "개인정보를 받나요? 아니요" 계열 문구를 "이름과 이메일은 동의 후에만 예약자명단에 포함됩니다"류로 전면 교체.
-- **문서**: `docs/spec.md`(P0-4, 지표 정의, Supabase 스키마), `docs/validation.md`(안전성과 진실성)는 이미 ADR-0012 기준으로 갱신됨 — 추가로 손댈 필요 없음, 참고만 할 것.
+- **문서**: `docs/spec.md`(P0-4, 지표 정의, Supabase 스키마), `docs/validation.md`(안전성과 진실성)는 이미 ADR-0013 기준으로 갱신됨 — 추가로 손댈 필요 없음, 참고만 할 것.
 
 ## 4. 작업 순서 및 A/B 분담
 
