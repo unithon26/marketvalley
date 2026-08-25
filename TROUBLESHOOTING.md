@@ -1,5 +1,33 @@
 # Troubleshooting
 
+## 2026-08-26 — Instagram 충전 잔액이 Meta 자동화 광고계정의 결제수단으로 인식되지 않음
+
+### 맥락과 기대 동작
+
+운영 제품이 이미지, 캠페인, 광고 세트와 크리에이티브에 이어 마지막 광고 객체를 `PAUSED`로 만들고 Ads Manager에서 지출 `₩0`을 확인해야 했다. 사용자는 Instagram 앱의 청구 계정에 소액을 충전했으므로 같은 잔액을 회사 Business Portfolio의 자동화 광고계정이 사용할 수 있을 것으로 예상했다.
+
+### 실제 동작과 영향
+
+마지막 광고 생성은 Meta code `100`, subcode `1359188`, `No Payment Method`로 거절됐다. 이미지 5장, 캠페인, 광고 세트와 크리에이티브는 생성됐고 캠페인·광고 세트는 `PAUSED`지만 광고 객체는 없다. operation은 성공 checkpoint를 유지한 `RECONCILIATION_REQUIRED`의 `ad` 단계이며 노출과 지출은 없다.
+
+### 재현과 증거
+
+- 자동화 광고계정 `1026341707121609`는 활성, `KRW`, `Asia/Seoul`이지만 balance·amount spent·spend cap이 모두 0이고 funding source가 없다.
+- Ads Manager 청구 화면도 현재 잔액 `₩0`, 결제수단 없음, 비즈니스 이름 `-`, 주소 `대한민국`만 표시한다.
+- 결제수단 추가 흐름은 `광고 계정의 국가를 변경할 수 없음`으로 중단되고, 비즈니스 정보 수정 화면에는 실제 법적 이름·주소·우편번호가 비어 있다.
+- Instagram 앱 화면의 별도 청구 계정에는 `₩4,761`이 남아 있지만, 해당 식별자는 System User token의 `ads_read`·`ads_management` 대상이 아니며 Business Settings의 Instagram 연결 가능 광고 자산 목록에도 나타나지 않는다.
+- Ads Manager에서 자동 생성 캠페인 `Market Valley 시장검증 [68218af0fb]`이 꺼짐, 지출 `₩0`으로 표시된다.
+
+### 원인과 대안
+
+현재 확인된 직접 원인은 자동화 광고계정에 funding source가 없다는 것이다. Instagram 앱의 프로모션 잔액은 별도 청구 경계에 있고, 현재 UI와 Graph 권한에서는 회사 광고계정으로 연결하거나 이전할 경로가 노출되지 않았다. 다른 개인 광고계정으로 바꾸면 회사 System User·durable ledger·고정 Page/Instagram 검증 경계를 잃으므로 선택하지 않는다. 실제 법적 정보나 주소를 임의로 입력하는 방법도 청구·세무 정보의 진실성을 해치므로 기각한다.
+
+### 해결, 회귀 방지와 남은 위험
+
+계정 소유자가 자동화 광고계정의 실제 법적 청구 정보를 완성하고 유효한 결제수단을 등록한 뒤 같은 operation의 `ad` 단계만 재개한다. provider는 계속 모든 객체를 `PAUSED`로 고정하고, 성공 checkpoint를 재사용하며, 실패 응답을 자동 재시도하지 않는다. 최종 검증은 광고 ID 존재, 모든 상태 `PAUSED`, 직접 광고 수 1개, 지출 `₩0`을 함께 확인한다. 그 전까지 제품과 발표에서는 `Meta 광고 초안 자동 생성`만 주장하고 실제 게재 완료로 표현하지 않는다.
+
+면접에서는 Instagram 프로모션 잔액과 Business Manager 광고계정 funding source의 경계를 어떻게 증명했는지, 외부 쓰기 일부 성공 뒤 왜 처음부터 재시도하지 않았는지, 결제 정보가 없는 상태를 왜 fail-closed로 유지했는지 설명할 수 있다.
+
 ## 2026-08-26 — Meta v26 캠페인·크리에이티브 생성이 신규 필수 계약에서 거절됨
 
 ### 맥락과 영향
