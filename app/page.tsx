@@ -42,7 +42,6 @@ export default function HomePage() {
             <div className="empty-projects" role="status"><strong>완료된 검증이 아직 없어요.</strong><p>충분한 실제 신호를 확인하고 사람이 검증을 마치면 이곳에 표시됩니다.</p><button type="button" onClick={() => setActiveGroup("ongoing")}>진행 중 프로젝트 보기</button></div>
           )}
         </section>
-        <section className="disappear-panel"><div><span className="eyebrow">BEFORE</span><strong>기획 → 재작성 → 조판 → 배포 → 취합</strong></div><span className="flow-arrow">→</span><div><span className="eyebrow accent-text">AFTER</span><strong>아이디어 → 사람의 판단</strong></div><p>사라진 일은 속도가 아니라 단계로 보여드립니다.</p></section>
       </main>
     </div>
   );

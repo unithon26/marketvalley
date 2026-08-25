@@ -127,12 +127,6 @@ body:has(.login-modal-layer) > :not(.login-modal-layer) { filter: blur(3px); }
 .new-project-icon { display: grid; place-items: center; width: 60px; height: 60px; margin-bottom: 16px; border-radius: 18px; background: var(--purple-soft); color: var(--purple); }
 .new-project-card strong { font-size: 18px; }
 .new-project-card p { max-width: 230px; margin: 8px 0 0; color: var(--muted); }
-.disappear-panel { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 26px; margin-top: 72px; padding: 30px 34px; border-radius: 20px; background: #191f28; color: #fff; }
-.disappear-panel div { display: flex; flex-direction: column; }
-.disappear-panel p { grid-column: 1 / -1; margin: 0; color: #adb5bd; }
-.flow-arrow { color: var(--purple); font-size: 30px; }
-.accent-text { color: #b8a0ff; }
-
 /* Wizard */
 .wizard-page { padding: 52px 0 100px; }
 .wizard-topline { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }
@@ -466,8 +460,6 @@ body:has(.login-modal-layer) > :not(.login-modal-layer) { filter: blur(3px); }
 @media (max-width: 900px) {
   .header-nav { display: none; }
   .project-grid, .metric-grid { grid-template-columns: 1fr 1fr; }
-  .disappear-panel { grid-template-columns: 1fr; }
-  .disappear-panel .flow-arrow { transform: rotate(90deg); justify-self: start; }
   .response-layout { grid-template-columns: 1fr; }
   .landing-section-heading, .signal-panel { grid-template-columns: 1fr; }
   .landing-card-grid, .how-track { grid-template-columns: 1fr; }
@@ -503,7 +495,6 @@ body:has(.login-modal-layer) > :not(.login-modal-layer) { filter: blur(3px); }
   .metric-grid .reservation-trend-card { grid-column: auto; padding-inline: 18px; }
   .reservation-trend { height: 150px; }
   .hypothesis-grid article.wide { grid-column: auto; }
-  .disappear-panel { margin-top: 45px; padding: 24px; }
   .wizard-topline { align-items: flex-start; flex-direction: column-reverse; }
   .wizard-panel h1, .approval-panel h1 { font-size: 28px; }
   .textarea-wrap textarea { min-height: 300px; padding: 20px 20px 48px; }
