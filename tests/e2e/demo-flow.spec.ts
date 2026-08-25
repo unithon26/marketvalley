@@ -339,8 +339,14 @@ test("fixture 생성부터 Figma 리포트, 산출물과 예약까지 실제 API
   await expect(page.locator(".carousel-card-1")).toHaveAttribute("data-product-name", "마감한입");
   await expect(page.locator(".carousel-card-3")).toContainText("공개 페이지와 게시 카드 동시 생성");
   const carouselDownloadButton = page.getByRole("button", { name: "카드뉴스 저장" });
-  await expect(page.getByRole("img", { name: "광고 카드뉴스 소재" })).toBeVisible();
-  await expect(page.getByRole("img", { name: "랜딩페이지 미리보기" })).toBeVisible();
+  const cardNewsPreview = page.getByRole("region", { name: "AI가 생성한 광고 카드뉴스 소재" });
+  await expect(cardNewsPreview).toBeVisible();
+  await expect(cardNewsPreview.locator(".carousel-preview-render")).toHaveCount(5);
+  await page.getByRole("button", { name: "다음 카드뉴스" }).click();
+  await expect.poll(() => cardNewsPreview.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+  await expect(page.getByRole("button", { name: "이전 카드뉴스" })).toBeEnabled();
+  await expect(page.getByTitle("AI가 생성한 랜딩페이지 미리보기")).toHaveAttribute("src", `/p/${campaign.slug}`);
+  await expect(page.frameLocator('iframe[title="AI가 생성한 랜딩페이지 미리보기"]').locator(".public-landing")).toHaveAttribute("data-product-name", "마감한입");
 
   const [download] = await Promise.all([
     page.waitForEvent("download"),
@@ -526,6 +532,14 @@ test("375px과 키보드에서 필터, 생성, 리포트와 공개 응답을 조
   await page.goto("/campaigns/demo");
   await expectNoHorizontalOverflow(page);
   await expect(page.getByRole("heading", { name: "[매우 적합]" })).toBeVisible();
+  const regionChart = page.getByRole("region", { name: "거주지 비율 그래프" });
+  const cardNews = page.getByRole("region", { name: "AI가 생성한 광고 카드뉴스 소재" });
+  expect(await regionChart.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+  expect(await cardNews.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+  await regionChart.evaluate((element) => element.scrollTo({ left: element.scrollWidth }));
+  await cardNews.evaluate((element) => element.scrollTo({ left: element.scrollWidth }));
+  expect(await regionChart.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+  expect(await cardNews.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
   const shareButton = page.getByRole("button", { name: "리포트 공유하기" });
   await shareButton.focus();
   await expect(shareButton).toBeFocused();

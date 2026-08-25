@@ -1,13 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import JSZip from "jszip";
 
 import { CampaignEntryLink } from "@/components/campaign-entry-link";
-import { CheckIcon, DownloadIcon } from "@/components/icons";
+import { ArrowRightIcon, CheckIcon, DownloadIcon } from "@/components/icons";
 import { CarouselCard, carouselCoverAssets, carouselFileNames } from "@/components/renderers/carousel-card";
 import type { CampaignResponse } from "@/lib/contracts/api";
 import type { CampaignSpec } from "@/lib/contracts/campaign";
@@ -137,10 +136,15 @@ function RegionInsights() {
   return (
     <section className="figma-report-card region-card">
       <h2>거주지</h2>
-      <div className="region-chart">
-        {regionBars.map((height, index) => (
-          <div key={`${height}-${index}`}><i style={{ height }} /><span>지역명</span></div>
-        ))}
+      <div className="region-chart-scroll" role="region" aria-label="거주지 비율 그래프" tabIndex={0}>
+        <div className="region-chart">
+          {regionBars.map((ratio, index) => (
+            <div key={`${ratio}-${index}`}>
+              <span className="region-bar-slot"><i style={{ height: `${Math.min(100, Math.max(0, ratio))}%` }} /></span>
+              <span>지역명</span>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -201,7 +205,9 @@ export function CampaignReport({
   const [notice, setNotice] = useState("");
   const [loadError, setLoadError] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [activeCardIndex, setActiveCardIndex] = useState(0);
   const cardRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const cardPreviewRef = useRef<HTMLDivElement | null>(null);
   const refreshInFlightRef = useRef(false);
   const spec = initialSpec;
   const publicPath = `/p/${encodeURIComponent(publicSlug)}`;
@@ -290,6 +296,23 @@ export function CampaignReport({
     }
   }
 
+  function moveCardPreview(direction: -1 | 1) {
+    const scroller = cardPreviewRef.current;
+    const slide = scroller?.querySelector<HTMLElement>(".creative-carousel-slide");
+    if (!scroller || !slide) return;
+    const gap = Number.parseFloat(window.getComputedStyle(scroller).columnGap) || 0;
+    scroller.scrollBy({ left: direction * (slide.offsetWidth + gap), behavior: "smooth" });
+  }
+
+  function syncActiveCard() {
+    const scroller = cardPreviewRef.current;
+    const slide = scroller?.querySelector<HTMLElement>(".creative-carousel-slide");
+    if (!scroller || !slide) return;
+    const gap = Number.parseFloat(window.getComputedStyle(scroller).columnGap) || 0;
+    const step = slide.offsetWidth + gap;
+    setActiveCardIndex(Math.min(4, Math.max(0, Math.round(scroller.scrollLeft / step))));
+  }
+
   return (
     <main className="figma-report-page" data-market-fit={fit}>
       <div className="figma-report-container">
@@ -309,14 +332,54 @@ export function CampaignReport({
         <section className="report-creative-grid">
           <article className="figma-report-card creative-card">
             <h2>광고 카드뉴스 소재</h2>
-            <Image src="/report/card-news.png" width={300} height={408} alt="광고 카드뉴스 소재" unoptimized />
+            <div className="creative-carousel-shell">
+              <button
+                className="creative-carousel-button creative-carousel-previous"
+                type="button"
+                aria-label="이전 카드뉴스"
+                disabled={activeCardIndex === 0}
+                onClick={() => moveCardPreview(-1)}
+              >
+                <ArrowRightIcon size={18} />
+              </button>
+              <div
+                ref={cardPreviewRef}
+                className="creative-carousel-scroll"
+                role="region"
+                aria-label="AI가 생성한 광고 카드뉴스 소재"
+                tabIndex={0}
+                onScroll={syncActiveCard}
+              >
+                {[0, 1, 2, 3, 4].map((index) => (
+                  <div className="creative-carousel-slide" key={index} aria-label={`${index + 1}번째 카드뉴스`}>
+                    <div className="creative-carousel-scale">
+                      <CarouselCard spec={spec} index={index} preview />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button
+                className="creative-carousel-button creative-carousel-next"
+                type="button"
+                aria-label="다음 카드뉴스"
+                disabled={activeCardIndex === 4}
+                onClick={() => moveCardPreview(1)}
+              >
+                <ArrowRightIcon size={18} />
+              </button>
+              <div className="creative-carousel-pagination" aria-label={`${activeCardIndex + 1}번째 카드뉴스 표시 중`}>
+                {[0, 1, 2, 3, 4].map((index) => <i className={index === activeCardIndex ? "active" : ""} key={index} />)}
+              </div>
+            </div>
             <button className="report-outline-button" type="button" onClick={downloadCards} disabled={exporting}>
               {exporting ? "저장 중..." : "카드뉴스 저장"}
             </button>
           </article>
           <article className="figma-report-card landing-preview-card">
             <h2>랜딩페이지</h2>
-            <Image src="/report/landing-page.png" width={700} height={410} alt="랜딩페이지 미리보기" unoptimized />
+            <div className="landing-live-preview">
+              <iframe src={publicPath} title="AI가 생성한 랜딩페이지 미리보기" loading="lazy" />
+            </div>
             <Link className="report-outline-button" href={publicPath} target="_blank">서비스 바로가기</Link>
           </article>
         </section>
