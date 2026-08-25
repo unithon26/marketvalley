@@ -38,6 +38,7 @@ export const recordReservationRequestSchema = z.object({
   name: z.string().trim().min(1).max(80),
   email: z.string().trim().toLowerCase().email().max(200),
   consent: z.literal(true),
+  turnstileToken: z.string().trim().min(1).max(2_048).optional(),
   utm: z.object({
     source: utmFieldSchema,
     medium: utmFieldSchema,

@@ -65,7 +65,7 @@ http://localhost:3000/auth/callback\?sb_flow_id=*
 https://<production-domain>/auth/callback\?sb_flow_id=*
 ```
 
-동시 로그인 흐름을 안전하게 분리하기 위해 Supabase SDK가 callback에 예약 query `sb_flow_id`를 붙인다. Supabase allow-list는 query까지 포함한 전체 URL을 비교하므로 query 없는 exact callback만 등록하면 Site URL로 fallback할 수 있다. 위 패턴의 `\?`는 실제 물음표를, 마지막 `*`는 영문·숫자·밑줄·하이픈으로 구성된 flow ID를 허용한다. production Site URL은 반드시 같은 production origin으로 설정한다. Vercel preview에서 실제 로그인을 검증할 때만 팀 slug가 제한된 preview origin과 같은 callback query 패턴을 별도로 추가하고, 해당 배포의 `NEXT_PUBLIC_SITE_URL`도 일치시킨다.
+동시 로그인 흐름을 안전하게 분리하기 위해 Supabase SDK가 callback에 예약 query `sb_flow_id`를 붙인다. Supabase allow-list는 query까지 포함한 전체 URL을 비교하므로 query 없는 exact callback만 등록하면 Site URL로 fallback할 수 있다. 위 패턴의 `\?`는 실제 물음표를, 마지막 `*`는 영문·숫자·밑줄·하이픈으로 구성된 flow ID를 허용한다. production Site URL과 `NEXT_PUBLIC_SITE_URL`은 반드시 Oracle 배포의 같은 HTTPS origin으로 설정한다.
 
 ## 보안 불변조건
 
@@ -95,7 +95,7 @@ https://<production-domain>/auth/callback\?sb_flow_id=*
 - Supabase Google provider, local Site URL, flow ID가 포함된 Redirect URL 패턴과 publishable key를 연결했다.
 - 실제 Google 동의, Supabase callback, HttpOnly 세션 생성, GNB 사용자 표시, 현재 세션 POST 로그아웃과 익명 상태 복귀를 확인했다.
 - Supabase Authentication에 Google provider 사용자 한 명이 생성된 것을 확인했다.
-- production origin·Redirect URL과 Vercel 환경변수는 배포 시점에 별도로 설정해야 한다.
+- production origin·Redirect URL과 Oracle 런타임 환경변수는 실제 도메인 배포 시점에 별도로 설정해야 한다.
 - 동시 flow 역순 callback과 토큰 갱신은 자동 회귀 테스트로 검증했으며, production 다중 탭 수동 검증은 배포 뒤 남아 있다.
 
 ## 공식 참고 자료

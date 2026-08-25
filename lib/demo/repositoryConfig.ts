@@ -6,6 +6,10 @@ import {
   getSupabaseConfig,
   SupabaseConfigurationError,
 } from "@/lib/supabase/config";
+import {
+  ReservationProtectionConfigError,
+  resolveReservationProtectionConfig,
+} from "@/lib/security/reservationProtection";
 
 export type CampaignRepositoryMode = "fixture" | "supabase";
 
@@ -37,10 +41,12 @@ export function resolveCampaignRepositoryMode(
   try {
     getSupabaseConfig(environment);
     getSupabaseServiceConfig(environment);
+    resolveReservationProtectionConfig("supabase", environment);
   } catch (error) {
     if (
       error instanceof SupabaseConfigurationError
       || error instanceof SupabaseServiceConfigError
+      || error instanceof ReservationProtectionConfigError
     ) {
       throw new CampaignRepositoryConfigError(error.message);
     }

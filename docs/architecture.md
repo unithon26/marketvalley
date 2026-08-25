@@ -61,7 +61,7 @@ AI가 채우는 문구는 상품 요약, 검증 가설, 동의 기반 사전예�
 
 생성 모드는 서버 전용 `CAMPAIGN_GENERATOR_MODE`로 바꾼다. 값이 없으면 제품 경로인 `anthropic`을 선택하고, 키가 없거나 upstream이 실패하면 성공으로 대체하지 않고 503으로 반환한다. `/new`는 요청 시점의 서버 환경을 읽어 키 준비 상태를 표시한다. Anthropic 생성 요청은 JSON Content-Type과 same-origin, Google `getClaims()`를 확인한다. Supabase 모드는 원자 DB RPC로 사용자 분당 3회·일일 30회·전체 일일 300회를 기본 제한한다. production Anthropic이 fixture 메모리 제한으로 실행되려 하면 503으로 닫는다. 자동 테스트와 비상 발표는 `fixture`를 명시한다.
 
-mock 저장소의 `Map`은 한 Node.js 프로세스 안에서 브라우저 간 상태를 공유하지만 서버 재시작과 serverless 인스턴스 전환에는 유지되지 않는다. 따라서 로컬 발표와 단일 프로세스 QA에는 사용할 수 있고, Vercel에서 여러 기기의 실제 응답을 받을 때는 먼저 Supabase adapter로 교체해야 한다.
+mock 저장소의 `Map`은 한 Node.js 프로세스 안에서 브라우저 간 상태를 공유하지만 서버 재시작과 다중 인스턴스 전환에는 유지되지 않는다. 따라서 로컬 발표와 단일 프로세스 QA에만 사용하며 Oracle production의 실제 응답은 Supabase adapter에 저장한다.
 
 캐러셀 ZIP에는 선택된 Figma 표지와 같은 시각 규칙을 잇는 후속 카드로 구성된 1080×1350 PNG 5장을 넣는다. `Meta 게시 준비` ZIP에는 동일한 PNG 5장과 상품명·핵심 특징, 기본 문구, headline, CTA, 대상 고객 가설, 시각 방향, 표지·랜딩 템플릿 ID, 파일 목록과 절대 destination URL을 적은 `meta-ready.txt`를 함께 넣는다. 두 ZIP 모두 같은 숨은 React/CSS 렌더러를 사용하며 실제 Meta 계정에는 쓰지 않는다.
 
@@ -73,4 +73,4 @@ mock 저장소의 `Map`은 한 Node.js 프로세스 안에서 브라우저 간 �
 
 ## 배포 모델
 
-Vercel에는 Next.js 앱 하나만 배포한다. live 단계에서 캠페인을 공개하는 행위는 새 앱을 배포하는 작업이 아니라 Supabase snapshot에 slug를 발급하고 기존 `/p/[slug]`가 읽게 하는 작업이다. 실제 배포, 외부 계정 연결과 행사 제출은 현재 수행하지 않았다.
+기존 Oracle Compute VM의 Kubernetes와 분리된 rootless Docker에서 Next.js standalone 앱 한 인스턴스와 Caddy를 Compose로 실행한다. Caddy는 사설 고포트만 bind하고 OCI public NLB가 별도 IP의 80·443을 전달하므로 기존 Traefik은 바꾸지 않는다. live 단계에서 캠페인을 공개하는 행위는 새 앱을 배포하는 작업이 아니라 Supabase snapshot에 slug를 발급하고 기존 `/p/[slug]`가 읽게 하는 작업이다. 개인 owner-only GitHub Actions는 사용자가 검토한 source SHA와 성공한 품질 gate를 확인하고 강제 명령 SSH gateway로 health가 확인된 release만 전환하며 실패 시 직전 이미지를 복구한다. 실제 서버 적용과 외부 계정 production 검증, 행사 제출은 아직 수행하지 않았다. 상세 운영 경계는 [ADR-0019](decisions/0019-self-host-on-oracle-with-verified-ssh-releases.md)와 [배포 가이드](deployment.md)를 따른다.

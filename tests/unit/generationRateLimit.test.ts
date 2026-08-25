@@ -16,6 +16,9 @@ const liveEnvironment = {
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
   SUPABASE_SECRET_KEY: "sb_secret_test",
   SIGNAL_HASH_SECRET: "0123456789abcdef0123456789abcdef",
+  NEXT_PUBLIC_SITE_URL: "https://marketvalley.example.com",
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: "turnstile-site-test-key",
+  TURNSTILE_SECRET_KEY: "turnstile-secret-test-key",
 };
 
 describe("generation quota config", () => {

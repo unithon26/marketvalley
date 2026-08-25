@@ -1,6 +1,8 @@
 # ADR-0008: Figma 2단계 흐름과 서버 fixture 저장소를 통합한다
 
 상태: 채택
+
+배포 대상에 관한 결정은 [ADR-0019](0019-self-host-on-oracle-with-verified-ssh-releases.md)로 대체했다. 실제 응답에 Supabase가 필요하다는 경계는 유지한다.
 날짜: 2026-08-25
 
 ## 배경
@@ -22,7 +24,7 @@
 
 ### 제거된 승인 화면을 유지한다
 
-사전 검토에는 유리하지만 확정된 Figma 흐름과 발표 단계 수에 맞지 않는다. live 생성의 사실 검토 정책은 OpenAI adapter를 연결할 때 별도 실패·안전 요구로 검증한다.
+사전 검토에는 유리하지만 확정된 Figma 흐름과 발표 단계 수에 맞지 않는다. live 생성의 사실 검토 정책은 Anthropic adapter의 별도 실패·안전 요구로 검증한다.
 
 ### 브라우저 저장소를 계속 사용한다
 
@@ -36,5 +38,5 @@
 
 - 외부 키 없이도 생성, 게시, 공개 조회, 중복 응답, 집계, 판단, 초기화와 ZIP 다운로드가 실제 내부 API를 통과한다.
 - 같은 Node.js 프로세스에서는 여러 브라우저가 상태를 공유하지만 재시작과 serverless 인스턴스 전환에는 유지되지 않는다.
-- Vercel에서 여러 기기의 응답을 받기 전에는 `CampaignRepository`를 Supabase로 교체해야 한다.
+- 운영 배포에서 여러 기기의 응답을 받기 전에는 `CampaignRepository`를 Supabase로 교체해야 한다.
 - 발표용 reset은 live 환경에서 팀 소유 테스트 캠페인으로 제한한다.

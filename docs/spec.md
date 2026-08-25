@@ -1,10 +1,10 @@
 # marketvalley 해커톤 MVP 스펙
 
-상태: 기능 구현 기준 v0.8, Claude 문구 생성 제품 경로와 fixture fallback 구현 완료
+상태: 기능 구현 기준 v0.9, Claude·Supabase 제품 경로와 별도 fixture 발표 snapshot 구현 완료
 마지막 갱신: 2026-08-25
 목표: 별도 랜딩 저장소의 시각 요소와 디자인 담당자의 메인 웹사이트 디자인을 반영해 2026 UNITHON 발표용 종단 흐름을 구현한다. 구조와 기능은 이 스펙을 따른다.
 
-현재 저장소에는 Figma 디자인을 반영한 화면, Anthropic 문구 생성 adapter, 검증된 fixture, 결정적 렌더러와 테스트가 있다. Claude는 제품 기본 생성 경로이며 fixture는 자동 테스트와 비상 발표 fallback으로만 명시한다. Supabase API와 실제 Meta 계정은 아직 연결하지 않았으며 live 연동의 완료 기준은 이 문서를 따른다.
+현재 저장소에는 Figma 디자인을 반영한 화면, Anthropic 문구 생성 adapter, 운영 migration을 적용·검증한 Supabase repository, Google OAuth, 검증된 fixture, 결정적 렌더러와 테스트가 있다. Claude는 제품 기본 생성 경로이며 fixture는 자동 테스트와 별도 발표 snapshot에서만 명시한다. Meta 계정·광고 자동화는 이번 범위에서 제외했고 Oracle production 서버 적용과 실제 도메인 종단 검증은 남아 있다.
 
 ## 1. 우승 전략
 
@@ -14,7 +14,7 @@
 
 > 아이디어 하나만 남기세요. 첫 시장 반응을 얻기 전까지의 제작 업무는 marketvalley가 지웁니다.
 
-제품은 `배경·솔루션 입력 → 광고 자동 구성·게시 → 공개·내보내기 → 관심 응답 회수 → 사람의 다음 판단`이라는 한 경로만 깊게 완성한다. 자유도, 채널 수, 템플릿 수보다 메시지 일관성, 실제 URL, 실제 응답 한 건, 시각적 완성도와 실패 복구를 우선한다.
+제품은 `배경·솔루션 입력 → 광고 자동 구성·게시 → 공개·내보내기 → 동의 기반 예약 회수 → 사람의 다음 판단`이라는 한 경로만 깊게 완성한다. 자유도, 채널 수, 템플릿 수보다 메시지 일관성, 실제 URL, 실제 예약 한 건, 시각적 완성도와 실패 복구를 우선한다.
 
 내부 데이터 계약과 route는 기존 `CampaignSpec`, `/campaigns/[id]` 이름을 유지한다. 사용자에게 보이는 제품 문구에서는 이 내부 이름을 노출하지 않고 결과 단위를 `광고` 또는 `광고 초안`이라고 부른다.
 
@@ -65,10 +65,10 @@ Figma가 정의한 레이아웃, 타이포·색상 조합, 섹션 순서와 상�
 
 - Zod 스키마 검증을 통과한 결과만 저장한다.
 - 타깃, 문제, 해결, 기대 신호, 반증 조건이 각각 한 문장으로 나온다.
-- 개인정보가 필요 없는 선택형 질문 1개와 선택지 3개가 나온다.
+- 공개 CTA는 서버가 고정한 사전예약 문구를 사용하고 이름·이메일·동의 폼으로 이어진다.
 - 이 가설을 약화시키는 관찰 결과가 `invalidationEvidence` 한 문장으로 나온다.
-- 판단 기준은 모델이 임의로 만들지 않고 시스템 기본값 `응답 5개 중 긍정 3개`를 사용하며 리포트에서 실제 응답과 함께 표시한다.
-- `schemaVersion`, 생성 모델·시각, Figma 색상, 판단 기준, 캠페인 ID·slug·공개 URL과 실제 응답은 서버가 기록하거나 모델 결과 위에 덮어쓴다.
+- 판단 기준은 모델이 임의로 만들지 않고 시스템 기본 최소 표본 5명을 사용하며 리포트에서 실제 예약자 수와 함께 표시한다. `minimumPositiveResponses`는 v2 호환 필드일 뿐 현재 예약자 리포트나 자동 판정에는 사용하지 않는다.
+- `schemaVersion`, 생성 모델·시각, Figma 색상, 판단 기준, 캠페인 ID·slug·공개 URL과 실제 예약은 서버가 기록하거나 모델 결과 위에 덮어쓴다.
 - 확인되지 않은 숫자, 고객 후기, 인증, 효능을 만들어내지 않는다.
 - 사실 검토가 필요한 표현은 `claimsToReview`에 별도로 표시한다.
 - 빈 구조화 응답을 포함한 전송·timeout·스키마 오류는 자동 재호출 없이 실패를 명시한 뒤 사용자가 재시도하거나 데모 샘플로 전환할 수 있다.
@@ -85,8 +85,8 @@ Figma 발표 흐름은 별도 가설 승인 화면을 두지 않는다. `/new`�
 - 생성·게시 요청은 중복 실행되지 않으며 실패를 성공으로 표시하지 않고 입력을 보존한다.
 - 미구현 단계와 실제 실행 단계를 화면 문구로 구분하며 실제 API가 끝나기 전에 완료 상태를 표시하지 않는다.
 - 진행 화면에서 이탈하면 2초 대기와 브라우저 요청을 취소하고, 생성 취소 신호는 서버의 Anthropic 요청까지 전달한다.
-- `/campaigns/[id]`는 실제 공개 URL, PNG·ZIP 다운로드, 게시 문구 복사, 응답 분포, 사전 기준과 사람의 다음 행동만 제공한다.
-- 결과 화면은 현재 응답이 사전 기준에 충분한지 사실만 보여주고, `계속 검증`, `메시지 수정`, `보류` 선택은 사용자가 한다.
+- `/campaigns/[id]`는 실제 공개 URL, PNG·ZIP 다운로드, 게시 문구 복사, 예약자 수·접수 추이, 사전 기준과 사람의 다음 행동만 제공한다.
+- 결과 화면은 현재 예약자 수가 사전 최소 표본에 충분한지 사실만 보여주고, `계속 검증`, `메시지 수정`, `보류` 선택은 사용자가 한다.
 - 선택한 다음 행동은 저장되어 새로고침 뒤에도 유지된다.
 
 ### P0-4. 공개 랜딩페이지
@@ -104,13 +104,13 @@ Figma 발표 흐름은 별도 가설 승인 화면을 두지 않는다. `/new`�
 
 `CampaignSpec.templates.landingIntro`가 Figma의 고정 도입부 `intro-1`부터 `intro-7` 중 하나를 선택한다. 선택된 레이아웃만 달라지고 이후 섹션, CTA 질문과 응답 계약은 모두 같은 렌더러를 재사용한다. 자유 배치나 임의 HTML 생성은 하지 않는다.
 
-CTA를 누르면 이름·이메일과 개인정보 동의 체크박스를 받는 예약자명단 폼을 보여준다. 제출된 답은 `campaign_reservation`으로 기록한다. 이 절은 ADR-0013로 갱신됐다 — 이전에는 긍정·중립·부정 익명 응답을 받고 개인정보를 받지 않았으나, 지금은 이름·이메일을 받는 예약자명단 모델을 채택한다.
+CTA를 누르면 이름·이메일과 개인정보 동의 체크박스를 받는 예약자명단 폼을 보여준다. 제출된 답은 `campaign_reservations`로 기록한다. 이 절은 ADR-0013로 갱신됐다 — 이전에는 긍정·중립·부정 익명 응답을 받고 개인정보를 받지 않았으나, 지금은 이름·이메일을 받는 예약자명단 모델을 채택한다.
 
 완료 기준:
 
 - 공개 URL을 시크릿 브라우저와 모바일 뷰포트에서 열 수 있다.
-- 같은 브라우저는 같은 캠페인에 한 번만 응답할 수 있고 완료 피드백을 받는다.
-- 실제 응답과 세 선택지의 분포가 `/campaigns/[id]` 결과 화면에 반영된다.
+- 이름·이메일·동의가 모두 유효해야 접수되고 완료 피드백을 받는다.
+- 같은 캠페인의 같은 이메일은 중복 접수되지 않으며 실제 예약자 수·목록·접수 추이가 `/campaigns/[id]` 결과 화면에 반영된다.
 - 랜딩 HTML에 `undefined`, 잘린 핵심 문구, 빈 필수 섹션이 없다.
 
 ### P0-5. 인스타그램 캐러셀, 게시 문구와 광고 등록 패키지
@@ -146,12 +146,12 @@ AI는 문구와 선택적 배경 이미지 프롬프트만 만든다. 모든 텍
 완료 기준:
 
 - 서버 시작 직후 `/campaigns/demo`과 `/p/demo`으로 seed 캠페인에 접근할 수 있고, `/new` 입력은 reference fixture 3종 중 하나의 시각 템플릿을 선택한 뒤 중립 문장 골격에 입력한 상품명·특징·문제·솔루션을 주입한다.
-- Anthropic, 이미지 생성, Supabase 중 하나가 실패해도 샘플 흐름으로 랜딩·캐러셀·응답·사람의 판단·다운로드 시연을 끝낼 수 있다.
+- 발표 전에 fixture 모드를 명시하면 외부 계정 없이 샘플 랜딩·캐러셀·예약·사람의 판단·다운로드 시연을 끝낼 수 있다. live 장애를 fixture 성공으로 자동 치환하지 않는다.
 - 발표 전 데모용 공개 URL과 백업 화면 녹화를 준비한다.
 
-## 3. P1과 중단 기준
+## 3. 향후 P1 후보와 현재 중단 기준
 
-P0와 배포가 모두 안정화된 뒤에만 진행한다.
+아래는 P0와 production 배포가 모두 안정화된 뒤 별도 제품 결정으로 검토할 후보이며 이번 완료 범위에는 포함하지 않는다. 특히 사용자의 최신 지시에 따라 Meta 계정·광고 객체 자동화는 진행하지 않는다.
 
 - 선택한 카드 또는 Hero의 텍스트 없는 배경 이미지 1장 생성
 - 특정 필드 AI 재작성
@@ -211,7 +211,7 @@ P1 때문에 P0 통합이나 발표 준비가 1시간 이상 밀리면 즉시 P1
 - 광고 게시 상태와 실제 공개 URL
 - 캐러셀 PNG·ZIP과 `Meta 게시 준비` ZIP 다운로드
 - 캡션, 후킹 문구, CTA와 해시태그 복사
-- 실제 응답 수·분포, 사전 기준과 표본 부족 상태
+- 실제 예약자 수·접수 추이, 사전 기준과 표본 부족 상태
 - `계속 검증`, `메시지 수정`, `보류` 중 사람의 다음 행동 저장
 - 랜딩·캐러셀·Meta용 시각 결과를 화면 안에 다시 그리지 않음
 
@@ -219,7 +219,7 @@ P1 때문에 P0 통합이나 발표 준비가 1시간 이상 밀리면 즉시 P1
 
 - 모바일 우선 랜딩페이지
 - 동일 CTA를 Hero와 마지막 섹션에 배치
-- CTA 뒤 선택형 질문과 응답 성공·중복 상태 표시
+- CTA 뒤 이름·이메일·동의 예약 폼과 접수 성공·이메일 중복 상태 표시
 - marketvalley 브랜드는 작은 `Made with` 수준으로만 노출
 
 ## 5. 데이터 계약
@@ -338,23 +338,23 @@ Zod에서 배열 길이와 문자열 최대 길이를 제한한다. 한국어 �
 - Next.js App Router, TypeScript, React/CSS 결정적 렌더러
 - Zod
 - Anthropic TypeScript SDK와 Messages API Structured Outputs
-- 제품 생성 기본값은 `anthropic`. 자동 테스트와 비상 발표 fallback만 외부 호출이 없는 `fixture`를 명시하며, 기본 `claude-haiku-4-5-20251001`은 `ANTHROPIC_TEXT_MODEL`로 교체 가능
+- 제품 생성 기본값은 `anthropic`. 자동 테스트와 비상 발표 fallback만 외부 호출이 없는 `fixture`를 명시하며, 기본 `claude-sonnet-4-6`은 `ANTHROPIC_TEXT_MODEL`로 교체 가능
 - 개발·발표에서는 이미지 모델도 비활성화하고 검증된 reference 자산과 결정적 renderer만 사용
 - Supabase Postgres
 - `html-to-image`와 JSZip
-- Vercel 배포
+- Oracle Compute의 Next.js standalone·Docker Compose·Caddy HTTPS 배포
 - Vitest 단위 테스트와 Playwright production E2E
 - 패키지 관리자는 `pnpm`
 
-별도 백엔드 서버, 메시지 큐, 워커, 컨테이너, 벡터 데이터베이스는 사용하지 않는다.
+별도 백엔드 애플리케이션, 메시지 큐, 워커와 벡터 데이터베이스는 사용하지 않는다. Next.js 앱과 reverse proxy만 두 컨테이너로 실행한다.
 
 ### 배포 모델
 
-Vercel에는 marketvalley Next.js 애플리케이션 하나를 배포한다. 사용자가 캠페인을 공개할 때마다 별도 서버나 Vercel 프로젝트를 만들거나 다시 배포하지 않는다. `POST /api/campaigns`가 Supabase의 캠페인 row와 slug를 생성하면 이미 배포된 동적 경로 `/p/[slug]`가 그 snapshot을 읽어 즉시 공개한다.
+Oracle Compute VM에는 marketvalley Next.js 애플리케이션 하나와 Caddy reverse proxy를 배포한다. 사용자가 캠페인을 공개할 때마다 별도 서버나 프로젝트를 만들거나 다시 배포하지 않는다. `POST /api/campaigns`가 Supabase의 캠페인 row와 slug를 생성하면 이미 배포된 동적 경로 `/p/[slug]`가 그 snapshot을 읽어 즉시 공개한다.
 
 따라서 제품 용어를 다음처럼 구분한다.
 
-- `앱 배포`: 개발자가 코드 변경을 Vercel에 반영하는 행위
+- `앱 배포`: 검증된 Git SHA를 Oracle VM의 실행 이미지로 전환하는 행위
 - `캠페인 게시`: 사용자가 현재 `CampaignSpec` snapshot을 저장하고 공개 URL을 발급받는 행위
 
 캠페인 게시 성공을 앱 배포 성공으로 표현하지 않는다. 공개 페이지는 승인 당시 snapshot을 사용하며 게시 뒤에는 내용을 바꾸지 않는다. 메시지를 수정하려면 기존 입력을 불러와 새 캠페인을 생성한다.
@@ -371,7 +371,7 @@ app/
   p/[slug]/page.tsx
   api/generate/route.ts
   api/campaigns/route.ts
-  api/signals/route.ts
+  api/reservations/route.ts
   api/auth/session/route.ts
 components/
   auth-controls.tsx
@@ -503,7 +503,7 @@ interface CampaignRepository {
 - 추론한 정보는 `assumptions`, 확인이 필요한 주장은 `claimsToReview`에 넣는다.
 - 모델 결과를 HTML로 직접 실행하지 않는다. 모든 출력은 React 렌더러의 텍스트 데이터로만 사용한다.
 - 프롬프트는 `promptVersion`을 가지며 결과와 함께 기록한다.
-- live 생성은 실측 지연을 반영한 60초 timeout과 SDK·앱 재시도 0회로 제한해 timeout·빈 응답 뒤 중복 생성과 과금을 막는다.
+- live 생성은 Sonnet 대표 입력 실측 지연을 반영한 90초 timeout과 SDK·앱 재시도 0회로 제한해 timeout·빈 응답 뒤 중복 생성과 과금을 막는다.
 - 이미지 모델은 글자, 로고, UI, 카드 완성본을 생성하지 않는다.
 - 판단 기준의 숫자는 AI가 생성하지 않고 시스템 기본값을 넣는다.
 
@@ -515,8 +515,8 @@ Anthropic 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를
 - Anthropic 문법 컴파일 오류: `campaign_generation_schema_error`로 일반 upstream 실패와 구분하고 입력을 보존한다.
 - 모델 출력 스키마 오류: 서버 검증 실패로 처리하고 입력을 보존한 채 실패를 명시
 - 이미지 생성 실패: CSS/SVG 기본 배경 유지
-- 저장소 실패: 현재 입력을 유지하고 생성·게시·응답·판단·초기화 실패를 각각 명시
-- 신호 중복: 최초 응답을 유지하고 이미 참여했다는 상태 표시
+- 저장소 실패: 현재 입력을 유지하고 생성·게시·예약·판단·초기화 실패를 각각 명시
+- 예약 중복: 최초 예약을 유지하고 이미 접수됐다는 상태 표시
 - PNG export 실패: 실패 안내 뒤 브라우저 새로고침과 재시도를 제공하고, 발표에서는 사전 검증한 백업 ZIP으로 전환
 - 공개 URL 실패: `/p/demo`와 사전 캡처 영상으로 발표 지속
 - 긴 문구: UI에서 잘라 숨기지 않고 스키마 오류와 입력 수정·재생성 안내
@@ -534,7 +534,7 @@ Anthropic 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를
 - 공개 랜딩의 표현 컴포넌트, `Meta 게시 준비` ZIP·복사 기능과 결과 UI
 - 동일 렌더러 기반 PNG/ZIP export
 - 로딩·빈 상태·오류·데모 fallback UI
-- 최종 E2E 흐름과 Vercel 앱 배포 책임
+- 최종 E2E 흐름과 Oracle 앱 배포 책임
 
 소유 경로 예시: `app/page.tsx`, `app/campaigns/`, `components/`, `lib/export/`, `tests/e2e/`, 전역 스타일과 앱 scaffold.
 
@@ -543,7 +543,7 @@ Anthropic 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를
 - `CampaignSpec` Zod 계약과 데모 fixture
 - Anthropic 생성 route와 프롬프트
 - Supabase migration과 서버 접근
-- 게시·조회·익명 신호·집계·다음 판단 API
+- 게시·조회·동의 기반 예약·예약자명단 집계·다음 판단 API
 - `/p/[slug]`의 데이터 로딩과 상태 처리 wrapper
 - fixture·Anthropic·Supabase adapter와 단위 테스트
 - 향후 Meta OAuth·token·광고 쓰기·Insights를 담당하는 server-only provider
@@ -581,7 +581,7 @@ Anthropic 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를
 
 외부 API를 먼저 연결하지 않는다. 핵심 의존 순서는 다음으로 고정한다.
 
-`CampaignSpec·fixture → 결정적 렌더러 → 외부 API 없는 종단 흐름 → Supabase 공개·응답 → Anthropic adapter → 안정화 → 선택적 Meta P1`
+`CampaignSpec·fixture → 결정적 렌더러 → 외부 API 없는 종단 흐름 → Supabase 공개·예약 → Anthropic adapter → 안정화 → Oracle production`
 
 ### 0단계: 30~45분 공동 계약
 
@@ -597,7 +597,7 @@ Anthropic 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를
 | Next.js 앱, 디자인 토큰, `/new`, `/campaigns/[id]`, `LandingRenderer`, `CarouselRenderer` | `CampaignSpec`, `demoCampaign`, generator·repository 인터페이스, 외부 키가 필요 없는 fixture adapter와 단위 테스트 |
 
 - Supabase와 Anthropic 계정·키 사용 가능 여부만 확인하되 아직 핵심 흐름에 연결하지 않는다.
-- Vercel 연결은 이 단계에 시작해 코드 배포 경로를 일찍 확인한다.
+- 운영 배포 구조를 이 단계에 정하고 fixture 검증 배포 경로를 일찍 확인한다.
 - 완료 게이트 G1: 같은 fixture가 실제 공개 랜딩과 캐러셀 PNG 5장을 생성한다.
 
 ### 2단계: 이후 4시간, 첫 종단 데모
@@ -607,7 +607,7 @@ Anthropic 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를
 | 공개 랜딩 예약 폼, 결과 화면, `Meta 게시 준비` ZIP·복사 기능, PNG/ZIP | fixture 기반 게시·slug·예약·명단·다음 판단 adapter와 API 형태 고정 |
 
 - 완료 게이트 G2: 외부 API와 실제 계정 없이 `/ → /new 2단계 입력 → 생성·게시 → /campaigns/[id] → /p/[slug] → 예약 → 결과 → 사람의 판단 → PNG/ZIP`이 끝까지 작동한다.
-- 실제 Anthropic 없이도 완성된 흐름을 Vercel 검증 배포에 올리고 디자이너 1차 QA를 받는다.
+- 실제 Anthropic 없이도 완성된 흐름을 fixture production build로 실행하고 디자이너 1차 QA를 받는다.
 - G2가 끝나기 전에는 Meta OAuth나 광고 객체 생성을 시작하지 않는다.
 
 ### 3단계: Supabase 공개·예약 연결
@@ -622,14 +622,14 @@ Anthropic 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를
 
 | 개발자 A | 개발자 B |
 | --- | --- |
-| 생성 중·재시도·검토 경고 UI | Anthropic Messages API Structured Outputs, Zod 재검증, 단일 60초 호출, prompt version과 명시적 fixture 모드 |
+| 생성 중·재시도·검토 경고 UI | Anthropic Messages API Structured Outputs, Zod 재검증, 단일 90초 호출, prompt version과 명시적 fixture 모드 |
 
 - 완료 게이트 G4: 실제 입력 3종이 유효한 `CampaignSpec`을 만들고, 네트워크·스키마 실패 시 입력을 잃지 않은 채 데모 흐름으로 전환된다.
 - AI 연결을 위해 렌더러나 화면별 상태 계약을 바꾸지 않는다. 문제가 생기면 adapter 경계를 먼저 수정한다.
 
 ### 5단계: 기능 동결과 검증
 
-- 입력·로딩·오류·중복 응답·긴 문구·모바일 상태를 완성한다.
+- 입력·로딩·오류·중복 예약·긴 문구·모바일 상태를 완성한다.
 - 자동 검증 전체와 375px 모바일, 발표 노트북, 시크릿 창 smoke test를 수행한다.
 - 데모 데이터, 공개 URL, QR, 백업 영상과 `before/after` 실제 단계 수를 준비한다.
 
@@ -652,7 +652,7 @@ Anthropic 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를
 - `pnpm typecheck`
 - `pnpm test`
 - `pnpm build`
-- Playwright로 fixture 기반 `/ → 2단계 입력 → 생성·게시 → signal → 판단·초기화 → ZIP` 핵심 흐름과 API 실패 상태를 검증한다. 발표 자동 클릭 기능은 만들지 않는다.
+- Playwright로 fixture 기반 `/ → 2단계 입력 → 생성·게시 → 예약 → 판단·초기화 → ZIP` 핵심 흐름과 API 실패 상태를 검증한다. 발표 자동 클릭 기능은 만들지 않는다.
 
 수동 검증:
 
@@ -687,6 +687,7 @@ Anthropic 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를
 - [Anthropic Claude 모델 목록](https://platform.claude.com/docs/en/about-claude/models/overview)
 - [Supabase Next.js Quickstart](https://supabase.com/docs/guides/getting-started/quickstarts/nextjs)
 - [Supabase JSON data](https://supabase.com/docs/guides/database/json)
-- [Vercel Functions](https://vercel.com/docs/functions)
-- [Vercel Git deployments](https://vercel.com/docs/git)
+- [Next.js self-hosting](https://nextjs.org/docs/app/guides/self-hosting)
+- [Docker Compose production](https://docs.docker.com/compose/how-tos/production/)
+- [OCI security rules](https://docs.oracle.com/en-us/iaas/Content/Network/Concepts/securityrules.htm)
 - [`html-to-image`](https://github.com/bubkoo/html-to-image)

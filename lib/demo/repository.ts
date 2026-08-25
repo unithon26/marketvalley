@@ -5,6 +5,7 @@ import { requireVerifiedIdentity } from "@/lib/auth/authorization";
 import { SupabaseCampaignRepository } from "@/lib/supabase/campaignRepository";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseServiceClient } from "@/lib/supabase/serviceClient";
+import { resolveReservationProtectionConfig } from "@/lib/security/reservationProtection";
 
 /**
  * fixture 모드는 서버 프로세스 메모리만 사용한다. 서버 재시작이나 serverless 인스턴스 전환
@@ -28,9 +29,12 @@ export async function getCampaignRepository(
   scope: CampaignRepositoryScope,
   environment: Environment = process.env,
 ): Promise<CampaignRepository> {
-  if (resolveCampaignRepositoryMode(environment) === "fixture") {
+  const mode = resolveCampaignRepositoryMode(environment);
+  if (mode === "fixture") {
     return fixtureCampaignRepository;
   }
+
+  const protection = resolveReservationProtectionConfig(mode, environment);
 
   const ownerClient = scope === "owner" ? await createSupabaseServerClient() : undefined;
   if (ownerClient) await requireVerifiedIdentity(ownerClient);
@@ -39,5 +43,6 @@ export async function getCampaignRepository(
     ownerClient,
     serviceClient: createSupabaseServiceClient(environment),
     hashSecret: environment.SIGNAL_HASH_SECRET!,
+    reservationLimits: protection.mode === "turnstile" ? protection.limits : undefined,
   });
 }

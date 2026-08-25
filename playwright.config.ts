@@ -18,7 +18,7 @@ export default defineConfig({
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
   ],
   webServer: {
-    command: `corepack pnpm build && corepack pnpm exec next start --port ${port}`,
+    command: `corepack pnpm build && node scripts/start-standalone.mjs ${port}`,
     env: {
       CAMPAIGN_GENERATOR_MODE: "fixture",
       CAMPAIGN_REPOSITORY_MODE: "fixture",

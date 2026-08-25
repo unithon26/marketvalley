@@ -15,6 +15,16 @@ test-results/
 .env.local
 .env.*.local
 !.env.example
+/deploy/production.env
+/deploy/production.*.env
+!/deploy/production.env.example
+
+# Terraform local state and real tenancy inputs
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
 
 # Supabase CLI local link and runtime metadata
 supabase/.temp/

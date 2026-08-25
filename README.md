@@ -21,11 +21,13 @@ pnpm test:e2e
 pnpm dev
 ```
 
-개발 서버를 시작하면 `http://localhost:3000`에서 데모를 볼 수 있다. `pnpm check`는 lint, TypeScript와 단위 테스트를 검증한다. `pnpm test:e2e`는 코드를 새로 빌드한 뒤 전용 3100 포트의 `next start`로 실행해 Chromium에서 핵심 발표 흐름, API 오류 경계, 모바일·키보드, SEO·브랜드 대비와 두 ZIP의 실제 내용을 검증한다. 이미 실행 중인 개발 서버는 재사용하지 않는다.
+개발 서버를 시작하면 `http://localhost:3000`에서 데모를 볼 수 있다. `pnpm check`는 lint, TypeScript와 단위 테스트를 검증한다. `pnpm test:e2e`는 코드를 새로 빌드한 뒤 전용 3100 포트의 standalone server로 실행해 Chromium에서 핵심 발표 흐름, API 오류 경계, 모바일·키보드, SEO·브랜드 대비와 두 ZIP의 실제 내용을 검증한다. 이미 실행 중인 개발 서버는 재사용하지 않는다.
 
-실제 AI 문구 생성에는 서버 전용 `ANTHROPIC_API_KEY`와 Google 로그인이 필요하다. `.env.example`처럼 `CAMPAIGN_GENERATOR_MODE=anthropic`을 사용하며, 기본 모델은 현재 활성 Claude 중 가장 저렴한 `claude-haiku-4-5-20251001`이다. 테스트와 비상 발표에서만 `fixture`로 전환한다. Supabase 모드에서는 JSON·same-origin·로그인 검증 뒤 Postgres RPC가 사용자 분당·일일·전체 일일 quota를 원자적으로 적용한다. production Anthropic은 분산 제한 없이 실행되지 않는다.
+실제 AI 문구 생성에는 서버 전용 `ANTHROPIC_API_KEY`와 Google 로그인이 필요하다. `.env.example`처럼 `CAMPAIGN_GENERATOR_MODE=anthropic`을 사용하며, 기본 모델은 대표 입력 품질 검사를 통과한 `claude-sonnet-4-6`이다. 테스트와 비상 발표에서만 `fixture`로 전환한다. Supabase 모드에서는 JSON·same-origin·로그인 검증 뒤 Postgres RPC가 사용자 분당·일일·전체 일일 quota를 원자적으로 적용한다. production Anthropic은 분산 제한 없이 실행되지 않는다.
 
 ## 발표용 경로
+
+발표는 운영 저장소를 pull하지 않고 별도 비공개 저장소 `unithon26/marketvalley-presentation`의 tag `presentation-2026-08-25`를 사용한다. 새 clone에서 `pnpm install --frozen-lockfile && pnpm demo`만 실행하면 외부 계정 없이 fixture 흐름이 열린다. 운영 변경은 이 snapshot에 자동 반영하지 않는다.
 
 - `/`: 프로젝트와 사라지는 업무를 보여주는 홈
 - `/new`: 배경과 상품명·핵심 특징을 받는 2단계 입력과 실제 AI 생성·게시 진행 화면
@@ -54,18 +56,20 @@ GNB의 Google 로그인·사용자·로그아웃 UI는 인증 상태 hook과 분
 - [시장 리서치](docs/market-research.md): 공식 통계, 기관 채널과 TAM·SAM·SOM 원칙
 - [외부 연동 계획](docs/integration-roadmap.md): Anthropic·Supabase 연결 순서
 - [Google 로그인 운영 가이드](docs/authentication.md): redirect URI, Supabase 설정과 서버 인증 계약
+- [Oracle production 배포](docs/deployment.md): 격리 Compose, owner-only 배포 자동화, health와 rollback
 - [목데이터 기준](docs/mock-data.md): fixture와 seed 응답 기준
 - [검증 기록](docs/validation.md): 자동·수동 완료 기준과 확인 결과
 - [결정 기록](docs/decisions/): 제품·아키텍처 선택과 기각 대안
 
 ## 범위 경계
 
-- 예약자 수를 제외한 광고 성과 수치는 발표용 예시다. Claude 문구와 Supabase 데이터 adapter 코드는 연결했고, 운영 Supabase migration·live 종단, Meta와 배포 환경은 아직 연결하지 않았다.
-- Google OAuth는 local Google·Supabase provider와 실제 계정 로그인·로그아웃까지 검증했다. 발표용 mock 로그인은 실제 Google 계정이나 Supabase 세션을 만들지 않으며 제품 배포에서는 `NEXT_PUBLIC_AUTH_MODE=supabase`로 전환해야 한다.
+- 방문 이벤트와 Meta Insights를 연결하기 전에는 예약자 수 이외의 광고 성과 수치를 표시하지 않는다. Claude 문구와 Supabase adapter, 운영 migration·실DB 종단은 검증했다. Meta 자동화는 범위에서 제외한다.
+- Google OAuth는 local Google·Supabase provider와 실제 계정 로그인·로그아웃까지 검증했다. production URL과 Oracle 런타임 환경변수는 아직 설정하지 않았고 기존 fixture 데모에는 로그인을 강제하지 않는다. 발표용 mock 로그인은 실제 Google 계정이나 Supabase 세션을 만들지 않으며 제품 배포에서는 `NEXT_PUBLIC_AUTH_MODE=supabase`로 전환해야 한다.
+- 기존 Oracle A1 4 OCPU·24GB VM의 실제 여유를 확인했다. Kubernetes·Traefik은 그대로 두고 rootless Compose가 사설 고포트만 쓰며 OCI NLB가 별도 public 80·443을 전달하도록 코드와 Terraform을 구성했다. 팀 source에는 운영 비밀을 두지 않고 개인 owner-only 저장소가 검토한 SHA만 강제 명령 gateway로 배포한다. 실제 서버 bootstrap·NLB apply·첫 배포는 아직 수행하지 않았다.
 - P0는 명시적 동의 뒤 예약자명단 목적의 이름·이메일만 수집한다. 목록 화면의 이메일은 마스킹한다.
 - Meta 계정 연결, 광고 활성화와 실제 지출은 해커톤 P0 범위에 넣지 않는다.
 - 기본 fixture에서는 광고·예약자명단·판단이 Node.js 프로세스 메모리에만 남는다. 운영 migration과 server secret을 적용해 `CAMPAIGN_REPOSITORY_MODE=supabase`로 전환하면 계정 소유 RLS와 영속 저장을 사용한다.
-- 응답 결과를 시장성 검증 완료나 매출 가능성으로 해석하지 않는다.
+- 예약 결과를 시장성 검증 완료나 매출 가능성으로 해석하지 않는다.
 - 외부 API가 연결되더라도 광고 공개와 다음 행동 결정에는 사람이 남는다.
 
 자세한 범위와 지표 정의는 [MVP 스펙](docs/spec.md)을 기준으로 한다.

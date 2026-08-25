@@ -1,13 +1,63 @@
 # 작업 기록
 
+## 2026-08-25 — 배포 계약 CI 직렬화·provider lock 복구
+
+- 목적: 운영 Compose 자원 상한과 OCI Terraform을 검사하는 source CI·owner-only 배포 workflow가 로컬과 Linux runner에서 같은 계약을 검증하게 한다.
+- 원인: Compose JSON은 CPU를 숫자로, `mem_limit`·`memswap_limit`을 바이트 문자열로 직렬화했지만 `jq`가 메모리를 JSON 숫자와 직접 비교했다. 이를 고친 다음 run에서는 OCI provider lockfile에 macOS ARM 해시만 있어 Linux AMD64 package가 checksum 검증을 통과하지 못했다.
+- 변경: 두 workflow 모두 메모리 네 필드를 `tonumber`로 정규화한 뒤 exact byte를 비교하고 같은 표현을 source·control-plane 회귀 테스트에 고정했다. OCI 8.27.0 버전은 유지하면서 `darwin_arm64`와 `linux_amd64`의 서명된 provider checksum을 lockfile에 함께 기록했다. CPU·host IP·port·protocol exact 비교는 유지했다.
+- 검증: run `32857239964`에서 앱 gate 뒤 Compose 타입 실패를, run `32857963223`에서 Compose 통과 뒤 Linux provider checksum 실패를 확인했다. Compose 5.5로 같은 JSON 타입과 수정 조건을 재현했고 source focused·deploy Node 테스트, Terraform readonly init·validate가 통과했다. 배포 저장소 CI `32857894954`도 통과했다.
+- 전달: source와 `ghdtjdwn/marketvalley-deploy` 수정에 포함했다. source 새 GitHub Actions run의 Terraform·image smoke 통과를 확인해야 한다.
+- 남은 일: source CI 통과를 확인한다.
+
 ## 2026-08-25 — Figma 제품 메인과 생성 랜딩 레퍼런스 경계 복구
 
 - 목적: 생성되는 랜딩의 참고 사이트 `proo-landing.vercel.app`을 Market Valley 제품 홈으로 잘못 이식한 변경을 되돌리고, 공유 Figma의 화면별 제품 플로우를 다시 기준으로 고정한다.
 - 원인: 공개 산출물 `/p/[slug]`에만 적용해야 할 랜딩 레퍼런스를 제품 인터페이스 `/`의 디자인으로 해석해, Figma 메인 프로젝트 화면을 임의의 `/dashboard`로 밀어냈다.
 - 변경: `/`에 Figma 기반 `전체 프로젝트` 메인을 복구하고 GNB의 프로젝트 링크, 인증 번들 검증과 E2E 진입 경로를 다시 `/`로 연결했다. `/dashboard`는 기존 주소 호환을 위해 `/`로 redirect하며, 잘못 이식한 마케팅 전용 CSS는 제거했다. `proo-landing`은 공개 랜딩 산출물 레퍼런스일 뿐 제품 UI에는 적용하지 않는다고 사용자 흐름 문서에 명시했다.
 - 검증: lint, typecheck, 단위 테스트 26파일 115개, 복구 경계 focused Chromium E2E 4개와 전체 Chromium E2E 21개가 통과했다. 설정된 Supabase 환경의 production build에서 `/`의 `전체 프로젝트`·인증 초기 상태와 server-secret client bundle 비노출을 확인했다.
-- 전달: 로컬 복구와 검증을 완료했다. 커밋·push와 GitHub Actions 재검증을 이어서 수행한다.
-- 남은 일: GitHub Actions 전체 gate 통과를 확인한다.
+- 전달: 복구 커밋 `3bb6f38`을 비공개 `main`에 push했고 GitHub Actions run `32839169561`의 전체 gate가 통과했다. 뒤이어 운영·인프라 변경도 이 복구 위에 rebase해 보존했다.
+- 남은 일: 없음.
+
+## 2026-08-25 — 운영 문구 근거성·공개 예약 abuse protection 보강
+
+- 목적: 형식만 맞는 광고 문구가 입력에 없는 운영 조건을 만들어내는 문제와 공개 예약 endpoint의 bot·폭주·capacity 경쟁 조건을 production 전에 막는다.
+- 변경: 최종 prompt를 `campaign-spec-v2-reservations-flat-v9`로 강화하고 검증 중단 문장, 숫자·성과 주장, 가격·할인·환불·구체 채널, hashtag와 FAQ를 서버에서 입력 근거에 맞게 정규화하거나 fail-closed 처리한다. 운영 기본 모델은 Sonnet 4.6, temperature 0, timeout 90초, 재시도 0회로 바꿨다. Supabase 예약은 canonical HTTPS Origin과 Turnstile exact action·hostname을 확인하고, migration `202608250002`의 global→campaign 잠금 RPC가 분당·전체 capacity·중복·insert를 원자적으로 처리한다. 잘못된 UUID와 누락 token은 외부 검증 전에 400, 거절된 token은 403, verifier·DB 장애는 503, quota는 `Retry-After`가 있는 429로 구분했다. 만료된 widget은 reset하고 script 오류에는 사용자 재시도 경로를 제공한다.
+- 검증: 실제 Sonnet Structured Outputs의 주입·공방 빈자리·마감 음식 대표 입력 3종이 각각 약 52.0초·55.8초·56.8초에 완료됐고 공개 금지 세부사항, hashtag, 주입 격리, 숫자 근거와 사람 판단 hook 자동 조건을 모두 통과했다. 독립 검토에서 발견한 standalone signal 재진입, 60자 hashtag 경계, Turnstile unsupported callback과 safety metadata 혼합 근거를 보완했다. 최종 `pnpm check`의 lint·typecheck·단위 테스트 34파일 164개, configured server-secret bundle, production build, Chromium E2E 21개, archive extractor 4개, coverage와 high audit가 통과했다. 커버리지는 statements 85.11%, branches 77.26%, functions 91.41%, lines 89.01%다.
+- 전달: source 변경을 메인에 push하고 migration `202608250002`를 연결된 운영 Supabase에 적용했다. 원격 migration 이력 일치와 DB lint 오류 0건을 확인하고, 합성 사용자 A/B로 anon·authenticated RPC 차단, 소유자 RLS, 중복·capacity, 캠페인 8개 병렬 요청과 두 캠페인 전역 병렬 quota를 실제 검증했다. 검증 캠페인·예약·quota row·Auth 사용자는 모두 0건으로 정리했다. Anthropic 월 지출 상한 $15와 $10 알림, 자동 충전 중지도 별도 운영 설정으로 완료했다.
+- 남은 일: production hostname에서 실제 Turnstile site key·secret 조합, widget 만료·재시도와 예약 종단을 확인한다.
+
+## 2026-08-25 — 기존 Oracle VM의 Kubernetes 밖 Compose 배포 자동화
+
+- 목적: 발표 snapshot과 분리된 메인 제품을 기존 `ssumcp`의 실제 여유 자원에서 실행하되 Kubernetes·Traefik과 runtime·port·배포 실패 범위를 분리하고, 사용자가 검토한 source Git SHA만 반복 가능하게 배포·복구한다.
+- 확인: Oracle Console에서 Ubuntu 22.04 ARM64 A1 Flex 4 OCPU·24GB, private IP `10.0.0.9`와 최근 1시간 CPU 평균 9.07%·최대 9.87%, 메모리 평균 34.5%·최대 35.47%, load average 최대 0.79를 확인했다. host 80·443은 Traefik이 사용하며 기존 LB·NLB는 0개다. security list의 public 22·6443은 관리 접근 복구 뒤 축소할 위험으로 기록했다.
+- 변경: 전용 사용자의 rootless Docker·cgroup v2를 강제하고 Next.js와 isolated preflight 각각 1.5 CPU·2GiB, Caddy 0.25 CPU·256MiB, BuildKit 1 CPU·3GiB와 user aggregate 2.25 CPU·6GiB 상한을 적용했다. Caddy는 사설 13080·13443만 bind한다. OCI Terraform은 public NLB·NSG와 함께 rootless Docker·release·cache를 Kubernetes boot disk와 격리하는 `prevent_destroy` 적용 50GiB Block Volume을 기존 VM에 연결한다. 팀 source CI에서는 production job·secret을 제거하고 개인 owner-only 비공개 `ghdtjdwn/marketvalley-deploy`가 수동 승인 SHA의 main ancestry와 exact `CI / quality`를 검증하도록 분리했다. `validate → revalidate → deploy` job을 분리해 source token과 SSH secret의 수명을 겹치지 않게 했고, 강제 명령 SSH gateway는 최대 256MiB archive와 `current`·`deploy`·`rollback`만 허용한다. bounded streaming extractor, release 내부 integrity manifest의 원자 이동, lost ACK lock wait와 idempotent rollback을 추가했다.
+- 검증: shell·Python·Node 구문, YAML parse, Terraform 1.15.9·OCI provider 8.27.0 validation, archive traversal·symlink·duplicate·limit·PAX 거절 4개, 배포 control-plane Node 테스트 4개와 main trust boundary를 통과했다. 메인 전체 gate는 lint·typecheck·단위 테스트 164개, configured bundle, production build, Chromium E2E 21개, coverage와 high audit가 통과했다. 독립 보안 재검토에서 P0·P1 잔여가 없었고 GitHub Actions run `32856635189`에서 Caddy·Compose·컨테이너 smoke까지 통과했다.
+- 전달: 비공개 `https://github.com/ghdtjdwn/marketvalley-deploy`를 사용자 개인 계정에 collaborator 없이 생성하고 GitHub Actions를 allowlist·SHA pin으로 제한했다. `unithon26/marketvalley` 한 저장소의 Contents·Actions read만 가진 30일 fine-grained token을 값 노출 없이 `SOURCE_REPOSITORY_TOKEN`에 등록했다. control plane commit `3209a95`를 push했고 CI가 통과했다. source 구현·문서는 이 작업 단위의 메인 커밋에 포함했다. Oracle VM·NLB·NSG·Block Volume·DNS는 아직 변경하지 않았다. 기존 관리자 private SSH key가 없어 serial console 복구 전까지 서버 bootstrap은 차단됐다.
+- 남은 일: maintenance reboot·serial console로 접근을 복구한 뒤 rootless bootstrap, NLB·NSG·DNS, server secret, production OAuth·Turnstile, 실제 종단과 rollback rehearsal을 완료한다. Meta 자동화는 제외한다.
+
+## 2026-08-25 — 발표 전용 clone-and-run 저장소 동결
+
+- 목적: 친구의 발표 완성본을 이후 운영·인프라 변경과 분리하고, 새 노트북에서도 외부 계정이나 자격증명 없이 즉시 실행할 수 있게 한다.
+- 변경: 메인 `b02b7bb`의 추적 파일만 새 이력으로 가져와 비공개 `unithon26/marketvalley-presentation`을 만들었다. `pnpm demo`가 inherited shell·`.env` 값과 무관하게 fixture generator·repository를 강제하고 Anthropic·Supabase·HMAC secret을 비우며, build·서버 준비 대기·포트 충돌 진단을 한 명령으로 처리한다. 발표 CI는 fixture 전용 전체 gate만 수행하고 배포하지 않는다. snapshot provenance와 운영 코드 자동 동기화 금지는 `SNAPSHOT.md`에 고정했다.
+- 검증: 발표 저장소의 lint·typecheck·단위 테스트 26파일 115개, server-secret bundle smoke, production build, Chromium E2E 21개가 통과했다. 오염된 외부 환경변수를 주입한 실행과 새 remote clone에서 install·demo를 다시 수행했고 `/`, `/new`, `/campaigns/demo`, `/p/demo` 200 응답과 실제 fixture 생성 결과 이동을 확인했다. 새 이력은 사용자 신원 단일 commit이고 추적 환경 파일은 `.env.example` 하나뿐이며 secret sentinel 외 실제 자격증명은 발견되지 않았다. GitHub Actions run `32835334248`도 통과했다.
+- 전달: commit `a4764b0`, tag·release `presentation-2026-08-25`를 `https://github.com/unithon26/marketvalley-presentation`에 push했다.
+- 남은 일: 발표 직전에는 이 tag를 그대로 사용한다. 이후 운영 변경은 발표 저장소에 자동 반영하지 않고 실제 발표에 필요한 검증된 수정만 별도 snapshot으로 선별한다.
+
+## 2026-08-25 — 랜딩 주장 경계와 발표 표지 자산 권리 정리
+
+- 목적: 새 서비스 랜딩의 미측정 성과 주장을 제거하고 출처·인물 동의가 확인되지 않은 두 표지 사진을 공개 발표 가능한 원본 자산으로 교체한다.
+- 변경: 랜딩 카운터를 실제 제품이 제거하는 수작업 단계의 설명으로 바꾸고 client bundle secret sentinel과 새 `/dashboard` E2E 경로를 보강했다. 표지 32·34는 사람이 없고 텍스트·로고가 없는 직접 생성 still-life 이미지로 교체해 renderer와 cover crop을 유지했다. 파일 provenance, 생성 prompt, 금지 요소와 사용 범위를 `docs/asset-provenance.md`에 기록하고 기존 권리 불명 사진은 Git에서 제거했다.
+- 검증: 실제 렌더링한 세로·가로 표지를 시각 대조했고 focused cover E2E와 최종 전체 품질 gate가 통과했다. 커밋 전 자격증명·환경 파일과 변경 범위를 검사했다.
+- 전달: 커밋 `285d377`, `b02b7bb`을 비공개 `main`에 push했다. GitHub Actions run `32834553433`에서 단위 테스트 115개, bundle smoke, production build와 Chromium E2E 21개가 통과했다.
+- 남은 일: 없음.
+
+## 2026-08-25 — Anthropic 운영 지출 상한 설정
+
+- 목적: 실제 Claude 문구 생성 검증과 향후 production 호출이 예상치 못한 비용으로 이어지지 않게 계정 수준 안전장치를 둔다.
+- 변경: Anthropic Console의 월 지출 상한을 15달러로 낮추고 10달러 도달 시 모든 관리자에게 알림을 보내도록 설정했다. 자동 충전은 꺼진 상태를 유지했다.
+- 검증: 저장 뒤 billing 설정 화면에서 새 월 상한과 알림 임계값이 표시되는 것을 확인했다. API key 값은 읽거나 기록하지 않았다.
+- 전달: Anthropic 조직 설정에 적용했다.
+- 남은 일: 상한 아래에서 대표 입력 3종의 문구 품질 eval을 수행한다.
 
 ## 2026-08-25 — 서비스 랜딩 교체 후 CI 회귀 복구
 

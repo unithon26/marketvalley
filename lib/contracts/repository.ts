@@ -20,6 +20,7 @@ export type ReservationInput = {
   name: string;
   email: string;
   consent: true;
+  turnstileToken?: string;
   utm?: ReservationUtm;
 };
 
@@ -54,6 +55,20 @@ export class DuplicateSignalError extends Error {
   constructor() {
     super("email already reserved this campaign");
     this.name = "DuplicateSignalError";
+  }
+}
+
+export class ReservationRateLimitError extends Error {
+  constructor(readonly retryAfterSeconds: number, readonly reason: "rate_limited" | "capacity") {
+    super(`reservation ${reason}`);
+    this.name = "ReservationRateLimitError";
+  }
+}
+
+export class ReservationStoreUnavailableError extends Error {
+  constructor() {
+    super("reservation store unavailable");
+    this.name = "ReservationStoreUnavailableError";
   }
 }
 

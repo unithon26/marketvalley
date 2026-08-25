@@ -175,7 +175,28 @@ function fakeClient(state: FakeState, role: Role) {
     from(table: TableName) {
       return new FakeQuery(state, role, table);
     },
-    async rpc(name: string, input: { p_campaign_id: string; p_draft_id: string }) {
+    async rpc(name: string, input: Record<string, unknown>) {
+      if (name === "record_campaign_reservation" && role.kind === "service") {
+        const campaign = state.campaigns.find((row) => row.id === input.p_campaign_id);
+        if (!campaign) return { data: "not_found", error: null };
+        const duplicate = state.reservations.some((row) => (
+          row.campaign_id === input.p_campaign_id && row.email_hash === input.p_email_hash
+        ));
+        if (duplicate) return { data: "duplicate", error: null };
+        state.reservations.push({
+          id: `reservation-${++state.sequence}`,
+          campaign_id: input.p_campaign_id,
+          name: input.p_name,
+          email: input.p_email,
+          email_hash: input.p_email_hash,
+          utm_source: input.p_utm_source,
+          utm_medium: input.p_utm_medium,
+          utm_campaign: input.p_utm_campaign,
+          utm_content: input.p_utm_content,
+          reserved_at: input.p_reserved_at,
+        } as ReservationRow);
+        return { data: "inserted", error: null };
+      }
       if (name !== "reset_owned_campaign" || role.kind !== "owner") {
         return { data: null, error: { code: "42501", message: "forbidden" } };
       }
@@ -203,6 +224,7 @@ function repository(
     ownerClient: fakeClient(state, { kind: "owner", userId }) as never,
     serviceClient: serviceClient as never,
     hashSecret: "0123456789abcdef0123456789abcdef",
+    reservationLimits: { campaignMinute: 10, globalMinute: 120, campaignTotal: 1_000 },
     now: () => new Date("2026-08-25T00:00:00.000Z"),
     slugSuffix: () => "deadbeef",
   });
