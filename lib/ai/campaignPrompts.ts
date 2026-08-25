@@ -190,6 +190,7 @@ const GLOBAL_GENERATION_RULES = [
   "사용자 입력과 제품 정책에 근거해 한국어로 작성한다. 입력에 없는 고유명사, 고객 사례, 후기, 사용자 수, 가격, 매출, 효능, 인증, 수상과 성과 수치를 만들지 않는다.",
   "추론은 validation.assumptions에 표시하고 사실처럼 단정하지 않는다.",
   "project, validation, messaging, landing과 carousel은 같은 고객·문제·상품명·핵심 특징·CTA를 공유한다. 채널별로 새 가설을 만들지 않는다.",
+  "사용자 자료가 익명·개인정보 미수집을 특징으로 말하더라도 현재 공개 폼은 이름·이메일을 명시적 동의 후 예약자명단 목적으로 저장한다. 충돌하는 표현은 복사하지 말고 실제 수집 방식으로 고쳐 쓰며 safety.claimsToReview에 불일치를 기록한다.",
   "모든 문자열과 배열 길이는 CampaignSpec JSON Schema 한도를 지킨다. 글자를 잘라 맞추지 말고 처음부터 짧고 자연스럽게 작성한다.",
   "Figma 고정 레이아웃과 renderer 문구는 출력하지 않는다. 허용된 텍스트 슬롯과 선택자만 채운다.",
   "schemaVersion, generation, project.language, brand 색상·시각 방향, validation.decisionRule과 legacy signal option ID는 서버가 최종 덮어쓴다. 스키마가 요구하면 제공된 기본값을 그대로 반환하고 임의로 바꾸지 않는다.",

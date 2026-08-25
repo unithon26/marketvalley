@@ -32,7 +32,7 @@ describe("FixtureCampaignGenerator", () => {
     expect(second.project.name).toBe("새 광고 초안");
   });
 
-  it("입력에 적은 상품명과 핵심 특징을 모든 산출물의 단일 spec에 보존한다", async () => {
+  it("입력에 적은 상품명과 핵심 특징을 보존하되 실제 예약 폼과 충돌하는 개인정보 표현은 정규화한다", async () => {
     const generator = new FixtureCampaignGenerator();
     const background = "일회용 용기를 줄이고 싶지만 가까운 리필 매장과 가능한 품목을 매번 따로 찾아야 합니다.";
     const solution = "서비스 이름은 ‘리필루프’입니다. 핵심 특징은 용기 정보 한 번 입력, 가까운 리필 스테이션 안내, 개인정보 없는 재사용 의향 수집입니다. 하나의 공개 광고로 연결합니다.";
@@ -45,21 +45,21 @@ describe("FixtureCampaignGenerator", () => {
     expect(spec.landing.benefits.map((benefit) => benefit.title)).toEqual([
       "용기 정보 한 번 입력",
       "가까운 리필 스테이션 안내",
-      "개인정보 없는 재사용 의향 수집",
+      "동의 기반 예약자명단",
     ]);
     expect(spec.messaging.hooks[0]).toContain("리필루프");
     expect(spec.messaging.caption).toContain("가까운 리필 스테이션 안내");
-    expect(spec.carousel.solutionBody).toContain("개인정보 없는 재사용 의향 수집");
+    expect(spec.carousel.solutionBody).toContain("동의 기반 예약자명단");
   });
 
   it.each([
     [
       "상품명은 공방온이고 핵심 기능은 빈자리 한 번 입력, 이웃 대상 공개 안내, 익명 참여 의향 수집입니다.",
-      ["빈자리 한 번 입력", "이웃 대상 공개 안내", "익명 참여 의향 수집"],
+      ["빈자리 한 번 입력", "이웃 대상 공개 안내", "동의 기반 예약자명단"],
     ],
     [
       "서비스명: 공방온. 특징을\n- 빈자리 한 번 입력\n- 이웃 대상 공개 안내\n- 익명 참여 의향 수집",
-      ["빈자리 한 번 입력", "이웃 대상 공개 안내", "익명 참여 의향 수집"],
+      ["빈자리 한 번 입력", "이웃 대상 공개 안내", "동의 기반 예약자명단"],
     ],
   ])("상품명과 특징을 자연스러운 여러 입력 형식에서 추출한다", async (solution, expectedFeatures) => {
     const generator = new FixtureCampaignGenerator();
@@ -83,7 +83,7 @@ describe("FixtureCampaignGenerator", () => {
     expect(spec.project.name).not.toContain("사용 의향");
     expect(spec.landing.benefits.map((benefit) => benefit.title)).toEqual([
       "동의 기반 예약자명단",
-      "관심 의향 한곳에 수집",
+      "사전예약 의향 한곳에 수집",
       "문제·솔루션 한 번 입력",
     ]);
   });

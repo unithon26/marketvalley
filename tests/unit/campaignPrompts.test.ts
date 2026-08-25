@@ -40,7 +40,9 @@ describe("campaign prompts", () => {
     expect(prompt).toContain("서버가 최종 덮어쓴다");
     expect(prompt).toContain("동의 기반 사전예약");
     expect(prompt).toContain("이름·이메일");
-    expect(prompt).not.toContain("개인정보 미수집");
+    expect(prompt).toContain("익명·개인정보 미수집");
+    expect(prompt).toContain("충돌하는 표현은 복사하지 말고");
+    expect(prompt).not.toContain("개인정보 미수집 방식으로 작성");
   });
 
   it("후킹 문구 3개에 서로 다른 역할과 과장 금지 규칙을 준다", () => {

@@ -415,11 +415,11 @@ test("각 reference fixture가 고유 slug, SEO와 브랜드 테마를 유지한
   const campaigns = await Promise.all([
     publishFixtureCampaign(request, {
       background: "예약 취소로 생기는 동네 공방 빈자리를 매번 다시 알리는 반복 업무를 줄이려 합니다.",
-      solution: "서비스 이름은 ‘동네공방 빈자리’입니다. 핵심 특징은 빈자리 한 번 입력, 공개 안내 구성, 익명 참여 의향 수집입니다.",
+      solution: "서비스 이름은 ‘동네공방 빈자리’입니다. 핵심 특징은 빈자리 한 번 입력, 공개 안내 구성, 동의 기반 예약자명단입니다.",
     }),
     publishFixtureCampaign(request, {
       background: "독립 클래스 강사가 일정과 준비물 문의를 매번 반복해서 답하는 일을 줄이려 합니다.",
-      solution: "서비스 이름은 ‘클래스 문의형’입니다. 핵심 특징은 수업 정보 한 번 입력, 문의 안내 구성, 익명 수강 의향 수집입니다.",
+      solution: "서비스 이름은 ‘클래스 문의형’입니다. 핵심 특징은 수업 정보 한 번 입력, 문의 안내 구성, 동의 기반 예약자명단입니다.",
     }),
   ]);
 
@@ -688,14 +688,14 @@ test("게시 응답이 유실돼도 같은 draft와 생성 결과로 재시도�
 test("새 광고를 게시해도 이미 열린 공개 랜딩의 상태가 섞이지 않는다", async ({ page, request }) => {
   const first = await publishFixtureCampaign(request, {
     background: "마감 뒤 남은 메뉴와 폐기를 줄이려는 동네 카페 사장님의 반복 업무입니다.",
-    solution: "서비스 이름은 ‘마감한입’입니다. 핵심 특징은 남은 메뉴 한 번 입력, 공개 안내 구성, 익명 구매 의향 수집입니다.",
+    solution: "서비스 이름은 ‘마감한입’입니다. 핵심 특징은 남은 메뉴 한 번 입력, 공개 안내 구성, 동의 기반 예약자명단입니다.",
   });
   await page.goto(`/p/${first.slug}`);
   await expect(page.getByText("마감한입", { exact: true }).first()).toBeVisible();
 
   const second = await publishFixtureCampaign(request, {
     background: "예약 취소로 생기는 동네 공방 빈자리를 매번 다시 알리는 반복 업무입니다.",
-    solution: "서비스 이름은 ‘공방온’입니다. 핵심 특징은 빈자리 한 번 입력, 공개 안내 구성, 익명 참여 의향 수집입니다.",
+    solution: "서비스 이름은 ‘공방온’입니다. 핵심 특징은 빈자리 한 번 입력, 공개 안내 구성, 동의 기반 예약자명단입니다.",
   });
   expect(second.id).not.toBe(first.id);
   expect(second.slug).not.toBe(first.slug);

@@ -46,8 +46,8 @@ const featurePatterns: ReadonlyArray<{
   },
   {
     pattern: /구매\s*의향|수강\s*의향|참여\s*의향|사용\s*의향|관심\s*(?:응답|신호)/,
-    title: "관심 의향 한곳에 수집",
-    body: "흩어진 문의 대신 선택형 관심 응답을 한곳에서 확인하고 다음 행동을 판단합니다.",
+    title: "사전예약 의향 한곳에 수집",
+    body: "흩어진 문의 대신 동의 후 접수된 예약 의향을 한곳에서 확인하고 다음 행동을 판단합니다.",
   },
   {
     pattern: /알림|안내/,
@@ -121,6 +121,11 @@ function declaredFeatureTitles(solution: string): string[] {
     .map(stripSentenceEnding)
     .map((item) => item.replace(/^(?:(?:각각|바로)\s*|[-*•·]\s*|\d+[.)]\s*)/u, ""))
     .filter((item) => item.length >= 2)
+    .map((item) => (
+      /(?:개인정보\s*(?:없|미수집)|익명|연락처\s*(?:없|미수집))/u.test(item)
+        ? "동의 기반 예약자명단"
+        : item
+    ))
     .map((item) => limit(item, 28));
 }
 

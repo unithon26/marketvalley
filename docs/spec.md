@@ -467,15 +467,15 @@ interface CampaignRepository {
   publish(draftId: string, spec: CampaignSpec): Promise<PublishedCampaign>;
   getById(id: string): Promise<PublishedCampaign | null>;
   getBySlug(slug: string): Promise<PublishedCampaign | null>;
-  recordSignal(input: SignalInput): Promise<SignalSummary>;
-  getSignalSummary(campaignId: string): Promise<SignalSummary>;
+  recordReservation(input: ReservationInput): Promise<ReservationSummary>;
+  getReservationSummary(campaignId: string): Promise<ReservationSummary>;
   saveNextAction(input: NextActionInput): Promise<NextAction>;
   reset(input: ResetCampaignInput): Promise<PublishedCampaign>;
   delete(input: DeleteCampaignInput): Promise<void>;
 }
 ```
 
-실서비스는 OpenAI·Supabase adapter를, 테스트와 데모 모드는 fixture generator와 서버 프로세스 메모리 repository를 사용한다. 브라우저는 익명 `visitorId`와 자신이 만든 캠페인의 draft 소유 토큰만 `localStorage`에 보관한다. 데모 모드는 생성뿐 아니라 게시, 공개 페이지 조회, 중복 응답, 집계, 판단과 초기화까지 실제 Route Handler를 통과한다.
+실서비스는 OpenAI·Supabase adapter를, 테스트와 데모 모드는 fixture generator와 서버 프로세스 메모리 repository를 사용한다. 브라우저는 자신이 만든 캠페인의 draft 소유 토큰만 `localStorage`에 보관한다. 데모 모드는 생성뿐 아니라 게시, 공개 페이지 조회, 중복 예약, 예약자명단 조회, 판단과 초기화까지 실제 Route Handler를 통과한다.
 
 ## 7. AI 생성 규칙
 
@@ -486,7 +486,7 @@ interface CampaignRepository {
 - 추론한 정보는 `assumptions`, 확인이 필요한 주장은 `claimsToReview`에 넣는다.
 - 모델 결과를 HTML로 직접 실행하지 않는다. 모든 출력은 React 렌더러의 텍스트 데이터로만 사용한다.
 - 프롬프트는 `promptVersion`을 가지며 결과와 함께 기록한다.
-- 기본 생성은 낮은 reasoning effort로 지연을 줄이고, 실패 시 동일 요청을 한 번만 재시도한다.
+- live 생성은 20초 timeout과 SDK 재시도 1회로 제한하고, 빈 구조화 응답만 한 번 더 요청한다.
 - 이미지 모델은 글자, 로고, UI, 카드 완성본을 생성하지 않는다.
 - 판단 기준의 숫자는 AI가 생성하지 않고 시스템 기본값을 넣는다.
 
@@ -494,7 +494,7 @@ OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 �
 
 ## 8. 실패 처리
 
-- OpenAI timeout: 입력 보존, 한 번 재시도, 데모 결과 열기
+- OpenAI timeout: 입력 보존, 제한된 재시도 뒤 실패를 명시한다. live 성공을 fixture로 위장하지 않는다.
 - 스키마 오류: 서버 검증 실패로 처리하고 한 번 재시도
 - 이미지 생성 실패: CSS/SVG 기본 배경 유지
 - 저장소 실패: 현재 입력을 유지하고 생성·게시·응답·판단·초기화 실패를 각각 명시
@@ -643,7 +643,7 @@ OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 �
 - 시크릿 창에서 공개 URL, 동의 기반 사전예약, 예약자명단과 판단 화면
 - 새로고침 후 초안 복구
 - API 키가 브라우저, 로그, 저장소에 나타나지 않음
-- OpenAI·DB를 각각 끈 상태에서 실패 안내와 데모 fallback
+- OpenAI·DB를 각각 끈 상태에서 실패 안내를 확인하고, 개발·발표는 사전에 fixture 모드로 선택
 - 랜딩과 카드의 고객·문제·CTA 일치
 - `Meta 게시 준비`의 PNG·문구·CTA·대상 고객·절대 destination URL이 동일 spec과 공개 URL에서 파생됨
 - 랜딩과 캐러셀에 근거 없는 후기·수치·인증이 없음
@@ -658,7 +658,7 @@ OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 �
 6. 20초: 결과 화면에서 예약자명단 증가를 확인한 뒤, 사람이 `계속 검증`을 선택하고 PNG ZIP을 내려받는다.
 7. 10초: “콘텐츠를 만든 것이 아니라, 고객을 만나기 전까지의 제작 업무를 없앴다”로 닫는다.
 
-발표에서 시장 검증 완료, 매출 증가, 전환 개선을 주장하지 않는다. 실제로 보여준 공개·선택형 응답·다운로드와 구현 후 측정한 수동 단계만 말한다.
+발표에서 시장 검증 완료, 매출 증가, 전환 개선을 주장하지 않는다. 실제로 보여준 공개·동의 기반 사전예약·다운로드와 구현 후 측정한 수동 단계만 말한다.
 
 ## 13. 공식 기술 근거
 
