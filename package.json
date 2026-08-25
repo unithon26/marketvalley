@@ -8,6 +8,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "preview:openai": "tsx scripts/preview-openai-generation.ts",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run --passWithNoTests",
@@ -43,6 +44,7 @@
     "eslint": "9.39.5",
     "eslint-config-next": "16.3.2",
     "tailwindcss": "4.3.3",
+    "tsx": "^4.23.12",
     "typescript": "6.0.3",
     "vitest": "4.1.11"
   }

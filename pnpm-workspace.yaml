@@ -1,5 +1,6 @@
 autoInstallPeers: false
 allowBuilds:
+  esbuild: true
   unrs-resolver: false
 minimumReleaseAgeExclude:
   - '@types/react-dom@19.2.5'
