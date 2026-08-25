@@ -98,9 +98,17 @@ test("Supabase 미설정 GNB는 인증 요청 없이 준비 상태를 표시한�
   page.on("request", (request) => {
     if (request.url().includes("/api/auth/session")) authRequests.push(request.url());
   });
-  await page.goto("/");
+  await page.goto("/dashboard");
   await expect(page.getByRole("button", { name: "로그인 준비 중" })).toBeDisabled();
   expect(authRequests).toEqual([]);
+});
+
+test("서비스 루트는 시장 검증 랜딩과 제품 진입 CTA를 보여준다", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: /아이디어가 돈이 되는지/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /내 아이디어 검증하기/ }).first()).toHaveAttribute("href", "/new");
+  await expect(page.getByRole("heading", { name: /이런 리포트를 받습니다/ })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
 });
 
 test("로그인 화면은 확정 로고와 Google 인증 진입점을 보여준다", async ({ page }) => {

@@ -28,3 +28,14 @@
 - 검증: 예약 추이 단위 테스트 3개와 GitHub Actions의 전체 단위 테스트 26파일 115개, lint, typecheck, production build, Chromium E2E 17개가 통과했다.
 - 전달: 커밋 `f77e0b1`을 `main`에 push했고 GitHub Actions run `32824497403`이 통과했다.
 - 남은 일: 없음
+
+## 2026-08-25 — Market Valley 서비스 랜딩 교체
+
+- 목적: `https://github.com/Drizzle03/market-valley-landing.git`의 서비스 소개 랜딩을 현재 Next.js 앱의 루트 `/`에 이식하고, 기존 제품 기능과 인증 흐름을 유지한다.
+- 변경: 원본의 인디고·앰버 디자인 토큰, 문제 공감, 3단계 검증 방식, 기존 방식 비교, 결과 리포트, 비용 비교, 최종 CTA와 반응형 구성을 `app/page.tsx`와 route-scoped CSS Module인 `app/marketing.module.css`로 재구현했다. 루트 페이지 전용 title/description 메타데이터도 원본 기준으로 추가했다.
+- 제품 연결: 모든 검증 시작 CTA는 기존 `CampaignEntryLink`를 사용해 Supabase 설정 상태와 로그인 여부에 따라 `/new` 또는 로그인 모달로 진입한다. 원본 Google Apps Script 사전예약 폼과 PostHog 키는 이식하지 않아 제3자 개인정보 전송 및 외부 추적을 추가하지 않았다.
+- 기존 화면 보존: 이전 루트 프로젝트 목록을 `app/dashboard/page.tsx`로 이동하고, `SiteHeader`의 프로젝트 링크를 `/dashboard`로 변경했다. 캠페인 상세·공개 랜딩·생성 흐름의 기존 경로는 유지했다.
+- 테스트 인프라: `playwright.config.ts`의 Unix 전용 인라인 환경변수 문법을 제거하고 이미 선언된 `webServer.env`와 `corepack pnpm`을 사용하도록 바꿔 Windows에서도 E2E 서버가 기동되게 했다. `tests/e2e/demo-flow.spec.ts`의 GNB 검증 경로를 `/dashboard`로 옮기고 루트 랜딩의 핵심 제목, CTA, 리포트, 가로 넘침 회귀 테스트를 추가했다.
+- 검증: `pnpm lint`, `pnpm typecheck`, 단위 테스트 115개, Next.js 프로덕션 빌드, Chromium E2E 2개가 통과했다. 1440px 데스크톱과 390px 모바일 전체 화면을 렌더링해 카드 단일열 전환과 가로 넘침이 없음을 확인했고, Next CSS 최적화 과정에서 `background` 단축 속성이 텍스트 클리핑을 초기화하던 문제를 `background-image`로 교체해 수정했다.
+- 전달: 변경사항은 로컬 작업 트리에만 있으며 아직 커밋·push하지 않았다.
+- 남은 일: 없음

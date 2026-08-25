@@ -18,7 +18,7 @@ export default defineConfig({
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
   ],
   webServer: {
-    command: `CAMPAIGN_GENERATOR_MODE=anthropic CAMPAIGN_REPOSITORY_MODE=fixture ANTHROPIC_API_KEY= pnpm build && CAMPAIGN_GENERATOR_MODE=fixture CAMPAIGN_REPOSITORY_MODE=fixture ANTHROPIC_API_KEY= pnpm exec next start --port ${port}`,
+    command: `corepack pnpm build && corepack pnpm exec next start --port ${port}`,
     env: {
       CAMPAIGN_GENERATOR_MODE: "fixture",
       CAMPAIGN_REPOSITORY_MODE: "fixture",
