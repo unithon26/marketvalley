@@ -214,3 +214,11 @@
 - 검증: focused 단위 테스트 5파일 33개, 최종 개인정보 계약 보정 focused 단위 테스트 3파일 24개, `pnpm check`의 lint·typecheck·단위 테스트 14파일 72개, configured production auth/server-secret bundle smoke, production Chromium E2E 14개, coverage, high audit, peer dependency, diff 검사가 모두 통과했다. 커버리지는 statements 79.32%, branches 73.17%, functions 84.11%, lines 82.35%다.
 - 전달: 최종 동기화 `70b1c93`, 전달 기록 `5cc3449`, 예약 문구 계약 보정 `a086b4d`까지 비공개 `unithon26/marketvalley`의 `main`에 push했다. 최종 GitHub Actions run `32812242438`에서 install·lint·typecheck·단위 테스트 72개·configured auth bundle smoke·production build·Chromium E2E 14개가 모두 통과했다. 제품 배포와 행사 제출은 수행하지 않았다.
 - 남은 일: G3 Supabase migration·RLS·repository에서 예약 원문을 광고 소유자에게만 반환하고 production OAuth 소유권을 연결한다. 공개 배포 전 사진 사용권과 실제 production URL 설정도 확인한다.
+
+## 2026-08-25 — 리포트 카드뉴스 디자인 이미지 슬롯 준비
+
+- 목적: 마지막 데모 리포트의 캐러셀 ZIP 다운로드를 유지하면서, 디자이너가 최종 이미지를 교체할 수 있는 영역을 바로 아래에 준비한다.
+- 변경: Instagram 캐러셀 결과물 안에 16:9 반응형 이미지 슬롯과 임시 SVG를 추가했다. ZIP 버튼의 이름·동작·파일 구성은 유지하고, E2E에서 이미지 슬롯이 버튼 아래에 보이는지 함께 검증한다.
+- 검증: `pnpm check`의 lint·typecheck·단위 테스트 14파일 74개, focused production Chromium E2E 1개, 전체 production Chromium E2E 14개가 통과했다. 로컬 브라우저에서 데스크톱과 375px 모두 이미지 로드와 가로 overflow 0을 확인했다.
+- 전달: 기능 커밋 `dbab413`을 비공개 `unithon26/marketvalley`의 `main`에 push했다. 제품 배포와 행사 제출은 수행하지 않았다.
+- 남은 일: 디자이너 확정본을 받으면 `public/report/carousel-preview-placeholder.svg`를 최종 자산으로 교체하고 공개 전 사용권을 확인한다.
