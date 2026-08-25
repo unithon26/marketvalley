@@ -100,5 +100,11 @@ export function routeErrorResponse(error: unknown): Response {
   if (error instanceof InvalidSignalOptionError || hasErrorName(error, "InvalidSignalOptionError")) {
     return errorResponse(400, "invalid_signal_option", "이 광고에서 선택할 수 없는 응답입니다.");
   }
+  if (hasErrorName(error, "CampaignGeneratorConfigError")) {
+    return errorResponse(503, "campaign_generator_not_configured", "문구 생성 설정을 확인해주세요.");
+  }
+  if (hasErrorName(error, "CampaignGenerationError")) {
+    return errorResponse(503, "campaign_generation_unavailable", "문구를 생성하지 못했습니다. 잠시 후 다시 시도해주세요.");
+  }
   return errorResponse(500, "internal_error", "요청을 처리하지 못했습니다.");
 }

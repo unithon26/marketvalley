@@ -177,3 +177,12 @@
 - 검증: 문서 전용 변경이라 `pnpm check`는 실행하지 않았다. push 전 `origin/main`을 다시 확인해 B의 `527888e`·`c5a2f90`과 겹치는 파일(`docs/spec.md`, `docs/validation.md`)을 대조했고, 수정 구간이 서로 다른 섹션이라 `git merge-tree`와 실제 병합 모두 충돌 없이 끝났다
 - 전달: 커밋 `59e1c77`, `e7e07af`와 병합 커밋을 `main`에 push했다 (`7cab32f`)
 - 남은 일: B는 착수 전 `docs/superpowers/specs/2026-08-25-reservation-list-migration-design.md` §1(데이터 계약)을 검토해달라. 이후 B-1(Supabase `campaign_reservation` 테이블·repository)과 B-2(`lib/ai/campaignPrompts.ts` 신뢰 문구·OpenAI adapter)를 병렬로 진행하면 된다. `tests/e2e/demo-flow.spec.ts`의 3지선다 관련 검증은 A-1(화면) 단계에서 새 흐름 기준으로 재작성할 예정이라 지금 당장 손대지 않아도 된다.
+
+## 2026-08-25 — 무과금 개발 모드와 OpenAI 문구 생성 adapter 준비
+
+- 목적: 개발·발표 중 모델 과금을 없애면서, 사용자 입력에서 랜딩·캐러셀·게시 문구를 생성하는 OpenAI 경로를 실제 적용 직전 상태까지 준비한다.
+- 변경: `CAMPAIGN_GENERATOR_MODE`를 추가해 API 키가 있어도 기본 `fixture`만 선택하도록 고정했다. 비활성 `OpenAICampaignGenerator`는 Responses API Structured Outputs 한 번으로 기존 슬롯별 prompt를 실행하고, OpenAI 전용 배열 schema를 최종 `CampaignSpec`으로 재검증한다. 생성 메타데이터, 판단 기준, signal option 순서와 Figma 색상·시각 방향은 서버 값으로 덮어쓰며 timeout, 제한된 재시도, `store: false`, 비밀정보 없는 503을 적용했다. production E2E와 bundle smoke도 fixture를 강제하고 서버 키의 client bundle 비노출을 검사한다.
+- 결정: OpenAI API에는 무료 문구 생성 모델이 없으므로 개발·테스트·발표는 외부 호출 0회의 fixture를 사용한다. live 후보만 비용이 낮고 Structured Outputs를 지원하는 `gpt-4o-mini`로 바꾸며, `openai` 모드를 명시적으로 켠 뒤부터 과금된다는 경계를 ADR-0014에 기록했다. 이미지 모델도 개발·발표에서 비활성화한다.
+- 검증: focused lint·TypeScript와 AI·prompt·fixture 단위 테스트 24개, `pnpm check`의 lint·typecheck·단위 테스트 73개, configured production build와 server-secret client bundle smoke, production Chromium E2E 14개, `pnpm test:coverage`, `pnpm audit --audit-level high`, `pnpm peers check`, `git diff --check`가 통과했다. 커버리지는 statements 79.25%, branches 73.38%, functions 83.62%, lines 82.15%다. 실제 OpenAI API 요청은 수행하지 않아 호출과 과금은 0회다.
+- 전달: 로컬 구현과 전체 검증 완료. 실제 OpenAI 모드 활성화, API 요청, 제품 배포와 행사 제출은 수행하지 않았다.
+- 남은 일: ADR-0013 예약자명단 계약이 코드에 반영되면 해당 `CampaignSpec`과 신뢰 문구로 adapter schema·prompt를 동기화하고, 회전한 키와 명시적 비용 승인 아래 대표 입력 3종·긴 한글·refusal 품질 eval을 통과한 뒤 `CAMPAIGN_GENERATOR_MODE=openai`로 전환한다.

@@ -1,10 +1,12 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 
 const result = spawnSync("pnpm", ["exec", "next", "build"], {
   cwd: process.cwd(),
   env: {
     ...process.env,
+    CAMPAIGN_GENERATOR_MODE: "fixture",
+    OPENAI_API_KEY: "bundle-test-openai-secret",
     NEXT_PUBLIC_SITE_URL: "http://localhost:3000",
     NEXT_PUBLIC_SUPABASE_URL: "https://project.supabase.co",
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_bundle_test",
@@ -21,4 +23,16 @@ if (!homeHtml.includes("로그인 상태 확인 중") || homeHtml.includes("로�
   throw new Error("Next.js client bundle이 설정된 인증 GNB 초기 상태를 렌더링하지 않았습니다.");
 }
 
-console.log("Configured auth client bundle smoke passed");
+const clientChunkText = readdirSync(".next/static/chunks", { recursive: true })
+  .filter((path) => typeof path === "string" && path.endsWith(".js"))
+  .map((path) => readFileSync(`.next/static/chunks/${path}`, "utf8"))
+  .join("\n");
+
+if (
+  clientChunkText.includes("bundle-test-openai-secret")
+  || clientChunkText.includes("OPENAI_API_KEY")
+) {
+  throw new Error("서버 전용 OpenAI 설정이 client bundle에 포함됐습니다.");
+}
+
+console.log("Configured auth and server-secret client bundle smoke passed");

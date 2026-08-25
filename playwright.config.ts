@@ -17,6 +17,8 @@ export default defineConfig({
   webServer: {
     command: "pnpm build && pnpm exec next start --port 3100",
     env: {
+      CAMPAIGN_GENERATOR_MODE: "fixture",
+      OPENAI_API_KEY: "",
       NEXT_PUBLIC_SUPABASE_URL: "",
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "",
       NEXT_PUBLIC_SUPABASE_ANON_KEY: "",

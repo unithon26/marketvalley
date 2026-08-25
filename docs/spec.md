@@ -331,8 +331,8 @@ Zod에서 배열 길이와 문자열 최대 길이를 제한한다. 한국어 �
 - Next.js App Router, TypeScript, React/CSS 결정적 렌더러
 - Zod
 - OpenAI JavaScript SDK와 Responses API
-- 텍스트 모델 기본값 `gpt-5.6-terra`, 환경변수 `OPENAI_TEXT_MODEL`로 교체 가능
-- 선택적 이미지 모델 `gpt-image-2`, 텍스트 없는 배경 한 장에만 사용
+- 개발·발표 생성 기본값은 외부 호출이 없는 `fixture`. live를 명시적으로 활성화할 때만 `gpt-4o-mini`를 사용하며 `OPENAI_TEXT_MODEL`로 교체 가능
+- 개발·발표에서는 이미지 모델도 비활성화하고 검증된 reference 자산과 결정적 renderer만 사용
 - Supabase Postgres
 - `html-to-image`와 JSZip
 - Vercel 배포
@@ -666,9 +666,7 @@ OpenAI 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를 �
 - [Next.js Route Handlers](https://nextjs.org/docs/app/getting-started/route-handlers)
 - [Next.js layouts and dynamic segments](https://nextjs.org/docs/app/getting-started/layouts-and-pages)
 - [OpenAI Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs)
-- [OpenAI GPT-5.6 Terra](https://developers.openai.com/api/docs/models/gpt-5.6-terra)
-- [OpenAI GPT Image 2](https://developers.openai.com/api/docs/models/gpt-image-2)
-- [OpenAI Image Generation](https://developers.openai.com/api/docs/guides/image-generation)
+- [OpenAI GPT-4o mini](https://developers.openai.com/api/docs/models/gpt-4o-mini)
 - [Supabase Next.js Quickstart](https://supabase.com/docs/guides/getting-started/quickstarts/nextjs)
 - [Supabase JSON data](https://supabase.com/docs/guides/database/json)
 - [Vercel Functions](https://vercel.com/docs/functions)

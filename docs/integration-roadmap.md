@@ -25,21 +25,23 @@ Google OAuth 서버 계약과 local Google provider·redirect·Site URL·공개 
 
 ## 2. OpenAI
 
+상태: adapter와 비활성 selector 구현 완료. 개발·발표는 `fixture`라 호출·과금이 없고 실제 OpenAI 요청과 문구 품질 eval은 아직 수행하지 않았다.
+
 완료 조건:
 
 - 서버의 Responses API가 전체 `CampaignSpec`을 Structured Outputs로 한 번에 반환한다.
 - `lib/ai/campaignPrompts.ts`의 슬롯별 지시를 하나의 developer prompt로 조합하고, 사용자 입력은 명령이 아닌 별도 JSON 자료로 전달한다.
 - 모델이 고른 허용 template·tone에 서버가 Figma 색상을 매핑하고, `generation`과 고정 판단 기준을 서버 값으로 덮어쓴다.
-- 결과를 Zod로 다시 검증하고 스키마 오류는 한 번만 재시도한다.
+- OpenAI 전용 배열 schema를 기존 Zod `CampaignSpec`으로 다시 검증하고 빈 구조화 응답은 한 번만 재시도한다.
 - 입력, prompt version과 실패 원인을 안전하게 구분하되 API 키나 민감 정보를 로그에 남기지 않는다.
-- timeout이나 스키마 실패 뒤 입력을 잃지 않고 mock 결과로 전환할 수 있다.
+- timeout이나 스키마 실패를 명시적 503으로 알리고, 개발·발표는 사전에 fixture 모드를 선택해 외부 실패와 과금을 제거한다.
 - 실제 입력 3종과 긴 한글 문구 회귀 테스트를 통과한다.
 - 후킹 3종이 반복 순간·사라지는 일·사람의 판단이라는 서로 다른 역할을 지키는 eval과 prompt injection 경계 테스트를 통과한다.
 
 ## 3. Vercel
 
 - GitHub 저장소를 연결하고 검증용 배포부터 확인한다.
-- mock 모드에는 외부 환경변수를 등록하지 않는다.
+- fixture 모드에는 외부 환경변수를 등록하지 않는다.
 - live 검증 환경에만 OpenAI·Supabase 값을 암호화된 환경변수로 등록한다.
 - 배포 성공과 캠페인 게시 성공을 다른 상태로 표현한다.
 
