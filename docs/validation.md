@@ -76,4 +76,4 @@ pnpm test:e2e
 - OAuth 토큰은 HttpOnly 쿠키에만 저장하고 session API에는 사용자 id, 이메일, 표시 이름과 HTTPS avatar URL 이외의 provider metadata를 노출하지 않는다.
 - 권한 판단은 Proxy 또는 쿠키의 session user를 신뢰하지 않고 서버에서 서명 검증한 JWT claims를 다시 확인한다.
 
-표지 `32`와 `34`의 사진은 팀 공유 Figma Inspect에서 받은 원본이다. Inspect에는 원출처와 라이선스 정보가 없었으므로 행사 공개 제출 전에 디자이너에게 사용권을 확인한다.
+표지 `32`와 `34`의 출처·인물 동의가 확인되지 않은 Figma 사진은 제거했다. 사람·문자·로고가 없는 프로젝트 전용 신규 원본 자산 `cover-32-original.webp`, `cover-34-original.webp`으로 교체했고 결정적 렌더러와 E2E 자산 응답 검증을 유지한다. 자산 이력은 `docs/asset-provenance.md`에 기록한다.

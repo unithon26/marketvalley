@@ -294,8 +294,8 @@ body:has(.login-modal-layer) > :not(.login-modal-layer) { filter: blur(3px); }
 .carousel-card { position: relative; flex: 0 0 auto; width: 1080px; height: 1350px; overflow: hidden; padding: 0; color: #fff; background: #111; }
 .carousel-cover-photo, .carousel-cover-overlay { position: absolute; inset: 0; }
 .carousel-cover-photo { background-position: center; background-repeat: no-repeat; background-size: cover; transform: scale(1.01); }
-.carousel-cover-template-cover-32 .carousel-cover-photo { background-image: url("/figma-templates/cover-32.jpg"); filter: grayscale(1); }
-.carousel-cover-template-cover-34 .carousel-cover-photo { background-image: url("/figma-templates/cover-34.jpg"); background-position: 52% center; }
+.carousel-cover-template-cover-32 .carousel-cover-photo { background-image: url("/figma-templates/cover-32-original.webp"); filter: grayscale(1); }
+.carousel-cover-template-cover-34 .carousel-cover-photo { background-image: url("/figma-templates/cover-34-original.webp"); background-position: 52% center; }
 .carousel-cover-overlay { background: linear-gradient(180deg, rgba(0,0,0,.58) 0%, rgba(0,0,0,.42) 48%, rgba(0,0,0,.92) 100%); }
 .carousel-cover-copy { position: absolute; z-index: 2; inset: 0; padding: 92px 78px; }
 .carousel-cover-eyebrow { display: block; max-width: 900px; font-size: 38px; font-weight: 650; line-height: 1.35; }

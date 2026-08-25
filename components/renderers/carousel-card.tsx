@@ -10,8 +10,8 @@ export const carouselFileNames = [
 ] as const;
 
 export const carouselCoverAssets: Partial<Record<CampaignSpec["templates"]["carouselCover"], string>> = {
-  "cover-32": "/figma-templates/cover-32.jpg",
-  "cover-34": "/figma-templates/cover-34.jpg",
+  "cover-32": "/figma-templates/cover-32-original.webp",
+  "cover-34": "/figma-templates/cover-34-original.webp",
 };
 
 function cardCopy(spec: CampaignSpec, index: number) {

@@ -688,10 +688,13 @@ test("Figma 표지 3종과 랜딩 도입부 7종만 결정적으로 렌더링한
     await expectNoHorizontalOverflow(page);
   }
 
-  for (const assetPath of ["/figma-templates/cover-32.jpg", "/figma-templates/cover-34.jpg"]) {
+  for (const assetPath of [
+    "/figma-templates/cover-32-original.webp",
+    "/figma-templates/cover-34-original.webp",
+  ]) {
     const assetResponse = await request.get(assetPath);
     expect(assetResponse.ok()).toBe(true);
-    expect(assetResponse.headers()["content-type"]).toContain("image/jpeg");
+    expect(assetResponse.headers()["content-type"]).toContain("image/webp");
   }
 
   for (const carouselCover of coverTemplates) {
