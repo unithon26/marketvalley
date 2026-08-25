@@ -7,6 +7,7 @@ import {
   isMetaDraftOperator,
   isMetaPausedDraftLiveConfigured,
 } from "@/lib/meta/metaConfig";
+import { getCampaignAnalytics } from "@/lib/analytics/campaignAnalytics";
 
 export default async function CampaignPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -16,6 +17,10 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
   const published = await campaignRepository.getById(id);
   if (!published) notFound();
   const initialSummary = await campaignRepository.getReservationSummary(published.id);
+  const initialAnalytics = await getCampaignAnalytics({
+    campaignId: published.id,
+    reservations: initialSummary.total,
+  });
 
   return (
     <div className="app-shell">
@@ -25,6 +30,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
         publicSlug={published.slug}
         initialSpec={published.spec}
         initialSummary={initialSummary}
+        initialAnalytics={initialAnalytics}
         initialNextAction={published.nextAction}
         metaAdsEnabled={
           metaLiveConfigured && isMetaDraftOperator(metaIdentity?.userId)

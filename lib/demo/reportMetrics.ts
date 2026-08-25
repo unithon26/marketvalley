@@ -1,32 +1,16 @@
-export type MarketFit = "unsuitable" | "suitable" | "very-suitable";
+import type { CampaignAnalytics } from "@/lib/contracts/analytics";
 
-export type MarketReportMetrics = {
-  impressions: number;
-  ctr: number;
-  reservationRate: number;
-  funnel: {
-    impressions: number;
-    clicks: number;
-    landingVisits: number;
-    reservations: number;
-  };
-};
+export type MarketFit = "pending" | "unsuitable" | "suitable" | "very-suitable";
 
-export function classifyMarketFitByCtr(ctr: number): MarketFit {
-  if (!Number.isFinite(ctr) || ctr < 1) return "unsuitable";
+export function calculateRate(numerator: number | null, denominator: number | null): number | null {
+  if (numerator === null || denominator === null || denominator <= 0) return null;
+  return Math.round((numerator / denominator) * 10_000) / 100;
+}
+
+export function classifyMarketFit(metrics: CampaignAnalytics): MarketFit {
+  const ctr = calculateRate(metrics.linkClicks, metrics.impressions);
+  if (ctr === null) return "pending";
+  if (ctr < 1) return "unsuitable";
   if (ctr < 3) return "suitable";
   return "very-suitable";
 }
-
-/** Meta 연동 전 발표 화면에서 사용하는 결정적 목데이터입니다. */
-export const demoMarketReportMetrics: MarketReportMetrics = {
-  impressions: 1_800_820,
-  ctr: 12.6,
-  reservationRate: 4,
-  funnel: {
-    impressions: 1_493_211,
-    clicks: 400_033,
-    landingVisits: 433,
-    reservations: 2,
-  },
-};

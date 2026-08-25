@@ -1,23 +1,30 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  classifyMarketFitByCtr,
-  demoMarketReportMetrics,
+  calculateRate,
+  classifyMarketFit,
 } from "@/lib/demo/reportMetrics";
+import { emptyCampaignAnalytics } from "@/lib/contracts/analytics";
 
-describe("classifyMarketFitByCtr", () => {
+describe("real report metrics", () => {
   it.each([
-    [0, "unsuitable"],
-    [0.99, "unsuitable"],
-    [1, "suitable"],
-    [2.99, "suitable"],
-    [3, "very-suitable"],
-    [12.6, "very-suitable"],
-  ] as const)("CTR %s%%를 %s로 판정한다", (ctr, expected) => {
-    expect(classifyMarketFitByCtr(ctr)).toBe(expected);
+    [1, 200, 0.5],
+    [2, 100, 2],
+    [3, 100, 3],
+  ] as const)("%s/%s를 %s%%로 계산한다", (numerator, denominator, expected) => {
+    expect(calculateRate(numerator, denominator)).toBe(expected);
   });
 
-  it("발표용 목데이터는 매우 적합 화면을 노출한다", () => {
-    expect(classifyMarketFitByCtr(demoMarketReportMetrics.ctr)).toBe("very-suitable");
+  it("실제 Meta 노출이 없으면 시장 적합성을 주장하지 않는다", () => {
+    expect(classifyMarketFit(emptyCampaignAnalytics)).toBe("pending");
+  });
+
+  it("실제 링크 클릭과 노출로만 판정한다", () => {
+    expect(classifyMarketFit({
+      ...emptyCampaignAnalytics,
+      status: "preliminary",
+      impressions: 100,
+      linkClicks: 3,
+    })).toBe("very-suitable");
   });
 });
