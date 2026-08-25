@@ -48,7 +48,6 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 }
 
 async function openCompletedCampaign(page: Page, campaignId?: string): Promise<void> {
-  await page.getByRole("button", { name: "다음 단계로" }).click();
   await expect(page.getByRole("heading", { name: "시장 검증이 완료되었습니다" })).toBeVisible({ timeout: 10_000 });
   await page.getByRole("link", { name: "시장 검증 리포트 확인하기" }).click();
   await expect(page).toHaveURL(
@@ -130,6 +129,33 @@ test("서비스 루트는 Figma 메인 프로젝트 화면과 제품 플로우�
   await expect(page.getByRole("heading", { name: "전체 프로젝트" })).toBeVisible();
 });
 
+test("기존 진행 URL은 Figma 완료 프레임과 모바일 반응형 치수를 유지한다", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1024 });
+  await page.goto("/campaigns/demo/progress");
+
+  await expect(page.getByRole("heading", { name: "시장 검증이 완료되었습니다" })).toBeVisible();
+  await expect(page.getByText("결과 도착까지 24시간", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "시장 검증 리포트 확인하기" })).toHaveAttribute(
+    "href",
+    "/campaigns/demo",
+  );
+  await expect(page.getByRole("list", { name: "광고 검증 진행 상황" }).locator("li.done")).toHaveCount(4);
+
+  const desktopIllustration = await page.locator(".validation-progress-illustration").boundingBox();
+  const desktopCard = await page.locator(".validation-stage-card").boundingBox();
+  expect(desktopIllustration).toMatchObject({ width: 280, height: 165 });
+  expect(desktopCard).toMatchObject({ width: 1000, height: 224 });
+  await expect(page.getByRole("heading", { name: "시장 검증이 완료되었습니다" })).toHaveCSS("font-size", "24px");
+
+  await page.setViewportSize({ width: 375, height: 812 });
+  await expectNoHorizontalOverflow(page);
+  const mobileIllustration = await page.locator(".validation-progress-illustration").boundingBox();
+  const mobileCard = await page.locator(".validation-stage-card").boundingBox();
+  expect(mobileIllustration).toMatchObject({ width: 238, height: 140 });
+  expect(mobileCard).toMatchObject({ width: 343, height: 190 });
+  await expect(page.getByRole("heading", { name: "시장 검증이 완료되었습니다" })).toHaveCSS("font-size", "21px");
+});
+
 test("로그인 화면의 Google 목 로그인은 로그인된 메인으로 돌아온다", async ({ context, page }) => {
   await context.clearCookies();
   await page.goto("/login?next=%2Fnew");
@@ -186,7 +212,7 @@ test("광고 입력 2단계는 브라우저 뒤로가기로 입력값을 보존�
   await expect(page.getByRole("textbox", { name: "제품 배경" })).toHaveValue(background);
 });
 
-test("접수 뒤 실제 광고 제작을 기다리고 게시 후 시장 데이터 수집을 보여준다", async ({ page }) => {
+test("접수 뒤 실제 광고 제작과 게시가 끝날 때까지 단계별로 기다린다", async ({ page }) => {
   let generateStarted = false;
   let publishStarted = false;
   let releaseGenerate = () => {};
@@ -218,17 +244,21 @@ test("접수 뒤 실제 광고 제작을 기다리고 게시 후 시장 데이�
   await page.waitForTimeout(350);
   expect(generateStarted).toBe(false);
 
-  await expect(page.getByRole("heading", { name: "광고 검증을 준비하고 있습니다" })).toBeVisible({ timeout: 2_000 });
+  await expect(page.getByRole("heading", { name: "광고 검증을 준비하고 있습니다" })).toBeVisible({ timeout: 3_000 });
   expect(generateStarted).toBe(true);
   expect(publishStarted).toBe(false);
+  await page.setViewportSize({ width: 375, height: 812 });
+  await expectNoHorizontalOverflow(page);
+  await expect(page.getByRole("list", { name: "광고 검증 진행 상황" })).toBeVisible();
 
   releaseGenerate();
   await expect(page.getByRole("heading", { name: "시장 반응 데이터를 수집하고 있습니다" })).toBeVisible();
   expect(publishStarted).toBe(true);
+  await expect(page.getByRole("link", { name: "시장 검증 리포트 확인하기" })).toHaveCount(0);
 
   releasePublish();
-  await page.waitForTimeout(1_000);
-  await expect(page.getByRole("heading", { name: "시장 반응 데이터를 수집하고 있습니다" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "시장 검증이 완료되었습니다" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "시장 검증 리포트 확인하기" })).toBeVisible();
   await openCompletedCampaign(page);
 });
 
@@ -248,7 +278,7 @@ test("접수 확인 중 화면을 이탈하면 유료 생성을 시작하지 않
 
   await page.getByRole("link", { name: "메인으로" }).click();
   await expect(page).toHaveURL(/\/$/);
-  await page.waitForTimeout(900);
+  await page.waitForTimeout(1_800);
   expect(generateRequests).toBe(0);
 });
 
