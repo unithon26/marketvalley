@@ -6,6 +6,7 @@ import {
 } from "@/lib/contracts/campaign";
 import type { CampaignSpec } from "@/lib/contracts/campaign";
 import type { PublishedCampaign, ReservationSummary } from "@/lib/contracts/repository";
+import type { CampaignAnalytics } from "@/lib/contracts/analytics";
 
 const identifierSchema = z.string().trim().min(1).max(100);
 
@@ -60,6 +61,7 @@ export type GenerateCampaignResponse = {
 export type CampaignResponse = PublishedCampaign & {
   url: string;
   summary: ReservationSummary;
+  analytics: CampaignAnalytics;
 };
 
 export type RecordReservationResponse = {

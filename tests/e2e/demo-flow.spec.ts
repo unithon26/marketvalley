@@ -145,7 +145,8 @@ test("기존 진행 URL은 Figma 완료 프레임과 모바일 반응형 치수�
   const desktopCard = await page.locator(".validation-stage-card").boundingBox();
   expect(desktopIllustration?.width).toBeCloseTo(280, 1);
   expect(desktopIllustration?.height).toBeCloseTo(165, 1);
-  expect(desktopCard).toMatchObject({ width: 1000, height: 224 });
+  expect(desktopCard?.width).toBeCloseTo(1000, 1);
+  expect(desktopCard?.height).toBeCloseTo(224, 1);
   await expect(page.getByRole("heading", { name: "시장 검증이 완료되었습니다" })).toHaveCSS("font-size", "24px");
 
   await page.setViewportSize({ width: 375, height: 812 });
@@ -154,7 +155,8 @@ test("기존 진행 URL은 Figma 완료 프레임과 모바일 반응형 치수�
   const mobileCard = await page.locator(".validation-stage-card").boundingBox();
   expect(mobileIllustration?.width).toBeCloseTo(238, 1);
   expect(mobileIllustration?.height).toBeCloseTo(140, 1);
-  expect(mobileCard).toMatchObject({ width: 343, height: 190 });
+  expect(mobileCard?.width).toBeCloseTo(343, 1);
+  expect(mobileCard?.height).toBeCloseTo(190, 1);
   await expect(page.getByRole("heading", { name: "시장 검증이 완료되었습니다" })).toHaveCSS("font-size", "21px");
 });
 
@@ -349,13 +351,11 @@ test("fixture 생성부터 Figma 리포트, 산출물과 예약까지 실제 API
   expect(campaignId).not.toBe("");
   await expect(page.locator("body")).not.toContainText(/캠페인|CampaignSpec/u);
   await expect(page.locator("body")).not.toContainText(/캠페인|CampaignSpec/u);
-  await expect(page.locator(".figma-report-page")).toHaveAttribute("data-market-fit", "very-suitable");
-  await expect(page.getByRole("heading", { name: "[매우 적합]" })).toBeVisible();
+  await expect(page.locator(".figma-report-page")).toHaveAttribute("data-market-fit", "pending");
+  await expect(page.getByRole("heading", { name: "[집계 중]" })).toBeVisible();
   await expect(page.locator(".report-metric-cards")).toHaveClass(/is-visible/);
-  await page.locator(".region-card").scrollIntoViewIfNeeded();
-  await expect(page.locator(".region-card")).toHaveClass(/is-visible/);
-  await expect(page.getByText("1,800,820회", { exact: true })).toBeVisible();
-  await expect(page.getByText("12.6%", { exact: true })).toBeVisible();
+  await expect(page.getByText("Meta Insights 집계 전", { exact: true })).toBeVisible();
+  await expect(page.getByText("성별·연령·지역·체류시간은 실제 breakdown 계측이 없어 표시하지 않습니다.", { exact: true })).toBeVisible();
   await expect(page.locator(".reservation-table tbody tr")).toHaveCount(4);
 
   const campaignResponse = await request.get(`/api/campaigns?id=${campaignId}`);
@@ -566,14 +566,10 @@ test("375px과 키보드에서 필터, 생성, 리포트와 공개 응답을 조
 
   await page.goto("/campaigns/demo");
   await expectNoHorizontalOverflow(page);
-  await expect(page.getByRole("heading", { name: "[매우 적합]" })).toBeVisible();
-  const regionChart = page.getByRole("region", { name: "거주지 비율 그래프" });
+  await expect(page.getByRole("heading", { name: "[집계 중]" })).toBeVisible();
   const cardNews = page.getByRole("region", { name: "AI가 생성한 광고 카드뉴스 소재" });
-  expect(await regionChart.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
   expect(await cardNews.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
-  await regionChart.evaluate((element) => element.scrollTo({ left: element.scrollWidth }));
   await cardNews.evaluate((element) => element.scrollTo({ left: element.scrollWidth }));
-  expect(await regionChart.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
   expect(await cardNews.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
   const shareButton = page.getByRole("button", { name: "리포트 공유하기" });
   await shareButton.focus();

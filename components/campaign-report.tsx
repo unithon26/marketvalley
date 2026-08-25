@@ -9,15 +9,15 @@ import { CampaignEntryLink } from "@/components/campaign-entry-link";
 import { ArrowRightIcon, CheckIcon, DownloadIcon } from "@/components/icons";
 import { CarouselCard, carouselCoverAssets, carouselFileNames } from "@/components/renderers/carousel-card";
 import type { CampaignResponse } from "@/lib/contracts/api";
+import { emptyCampaignAnalytics, type CampaignAnalytics } from "@/lib/contracts/analytics";
 import type { CampaignSpec, NextAction } from "@/lib/contracts/campaign";
 import type { MetaDraftClientResponse } from "@/lib/contracts/metaDraft";
 import type { ReservationRecord, ReservationSummary } from "@/lib/contracts/repository";
 import { createMetaDraftFormData } from "@/lib/client/metaDraft";
 import {
-  classifyMarketFitByCtr,
-  demoMarketReportMetrics,
+  calculateRate,
+  classifyMarketFit,
   type MarketFit,
-  type MarketReportMetrics,
 } from "@/lib/demo/reportMetrics";
 
 function triggerDownload(blob: Blob, name: string) {
@@ -37,44 +37,23 @@ function maskEmail(email: string): string {
 }
 
 const fitCopy: Record<MarketFit, string> = {
+  pending: "[집계 중]",
   unsuitable: "[부적합]",
   suitable: "[적합]",
   "very-suitable": "[매우 적합]",
 };
 
-const genderData = { male: 185, female: 247 } as const;
-const genderTotal = genderData.male + genderData.female;
-const maleRatio = (genderData.male / genderTotal) * 100;
-const ageRows = [
-  { label: "18–24", ratio: 16 },
-  { label: "25–34", ratio: 37 },
-  { label: "35–44", ratio: 29 },
-  { label: "45–54", ratio: 18 },
-] as const;
-const regionBars = [
-  { label: "서울", ratio: 32 },
-  { label: "인천", ratio: 13 },
-  { label: "경기", ratio: 25 },
-  { label: "부산", ratio: 10 },
-  { label: "대구", ratio: 7 },
-  { label: "대전", ratio: 5 },
-  { label: "광주", ratio: 5 },
-  { label: "울산", ratio: 3 },
-] as const;
-const maxRegionRatio = Math.max(...regionBars.map(({ ratio }) => ratio));
-const scrollRows = [
-  [25, "57s"],
-  [50, "43s"],
-  [75, "34s"],
-  [90, "43s"],
-  [100, "12s"],
-] as const;
+function formatMetric(value: number | null, suffix = ""): string {
+  return value === null ? "집계 전" : `${value.toLocaleString("ko-KR")}${suffix}`;
+}
 
-function MetricCards({ metrics }: { metrics: MarketReportMetrics }) {
+function MetricCards({ metrics }: { metrics: CampaignAnalytics }) {
+  const ctr = calculateRate(metrics.linkClicks, metrics.impressions);
+  const reservationRate = calculateRate(metrics.reservations, metrics.landingVisits);
   return (
     <section className="report-metric-cards report-animated-section" aria-label="핵심 광고 지표">
       <article className="report-impression-card">
-        <strong>{metrics.impressions.toLocaleString("ko-KR")}회</strong>
+        <strong>{formatMetric(metrics.impressions, "회")}</strong>
         <span>노출 수</span>
         <svg viewBox="0 0 384 230" aria-hidden="true">
           <path d="M48 229 C84 229 124 140 156 140 C184 140 212 159 240 159 C270 159 276 61 309 61 C335 61 359 54 384 54 L384 230 L48 230 Z" />
@@ -85,27 +64,31 @@ function MetricCards({ metrics }: { metrics: MarketReportMetrics }) {
         </svg>
       </article>
       <article>
-        <strong>{metrics.ctr}%</strong>
-        <span>CTR</span>
-        <p>업계 평균 대비 15%p 높음</p>
+        <strong>{formatMetric(ctr, "%")}</strong>
+        <span>Meta 링크 CTR</span>
+        <p>{metrics.updatedAt ? `마지막 동기화 ${new Date(metrics.updatedAt).toLocaleString("ko-KR")}` : "Meta Insights 집계 전"}</p>
       </article>
       <article>
-        <strong>{metrics.reservationRate}%</strong>
+        <strong>{formatMetric(reservationRate, "%")}</strong>
         <span>예약률</span>
-        <p>업계 평균 대비 15%p 높음</p>
+        <p>실제 고유 방문 대비 예약</p>
       </article>
     </section>
   );
 }
 
-function FunnelAnalysis({ metrics }: { metrics: MarketReportMetrics }) {
-  const funnel = metrics.funnel;
+function FunnelAnalysis({ metrics }: { metrics: CampaignAnalytics }) {
   const steps = [
-    ["노출", funnel.impressions.toLocaleString("ko-KR")],
-    ["클릭", funnel.clicks.toLocaleString("ko-KR")],
-    ["랜딩 페이지 방문", funnel.landingVisits.toLocaleString("ko-KR")],
-    ["예약", funnel.reservations.toLocaleString("ko-KR")],
+    ["노출", formatMetric(metrics.impressions)],
+    ["링크 클릭", formatMetric(metrics.linkClicks)],
+    ["고유 랜딩 방문", formatMetric(metrics.landingVisits)],
+    ["예약", formatMetric(metrics.reservations)],
   ] as const;
+  const conversionRates = [
+    calculateRate(metrics.linkClicks, metrics.impressions),
+    calculateRate(metrics.landingVisits, metrics.linkClicks),
+    calculateRate(metrics.reservations, metrics.landingVisits),
+  ];
 
   return (
     <section className="figma-report-card funnel-card report-animated-section">
@@ -115,76 +98,27 @@ function FunnelAnalysis({ metrics }: { metrics: MarketReportMetrics }) {
           <div className="funnel-step" key={label}>
             <div className="funnel-value"><span>{label}</span><strong>{value}</strong></div>
             <div className="funnel-bar"><i /></div>
-            {index < steps.length - 1 ? <span className="funnel-arrow">10%<b>→</b></span> : null}
+            {index < steps.length - 1 ? <span className="funnel-arrow">{formatMetric(conversionRates[index], "%")}<b>→</b></span> : null}
           </div>
         ))}
       </div>
-      <p className="report-insight">예약 전환율이 가장 큰 하락 구간입니다</p>
+      <p className="report-insight">모든 값은 실제 Meta Insights, 고유 방문, 예약 기록에서만 계산됩니다.</p>
     </section>
   );
 }
 
-function DemographicInsights() {
+function MeasurementCoverage({ metrics }: { metrics: CampaignAnalytics }) {
   return (
     <section className="figma-report-card demographic-card report-animated-section">
-      <h2>인구통계학적 인사이트</h2>
+      <h2>계측 상태</h2>
       <div className="demographic-layout">
-        <div className="gender-chart">
-          <h3>성별</h3>
-          <div className="gender-chart-body">
-            <span className="gender-label gender-male">남<br />{genderData.male}</span>
-            <div
-              className="gender-donut"
-              aria-label={`남성 ${genderData.male}명, 여성 ${genderData.female}명`}
-              style={{ background: `conic-gradient(var(--report-purple) 0 ${maleRatio}%, #f1effb ${maleRatio}% 100%)` }}
-            >
-              <span>전체<strong>{genderTotal}</strong></span>
-            </div>
-            <span className="gender-label gender-female">여<br />{genderData.female}</span>
-          </div>
+        <div>
+          <h3>Meta 광고</h3>
+          <p>{metrics.status === "not_connected" ? "광고 연결 전" : metrics.status === "collecting" ? "광고 심사·집계 중" : metrics.status === "final" ? "최종 집계" : "예비 집계"}</p>
         </div>
-        <div className="age-chart">
-          <h3>연령대</h3>
-          {ageRows.map(({ label, ratio }) => (
-            <div className="age-row" key={label}>
-              <span>{label}</span>
-              <div><i style={{ width: `${ratio}%` }} /></div>
-              <b>{ratio}%</b>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function RegionInsights() {
-  return (
-    <section className="figma-report-card region-card report-animated-section">
-      <h2>거주지</h2>
-      <div className="region-chart-scroll" role="region" aria-label="거주지 비율 그래프" tabIndex={0}>
-        <div className="region-chart">
-          {regionBars.map(({ label, ratio }) => (
-            <div key={label} aria-label={`${label} ${ratio}%`}>
-              <span className="region-bar-slot"><i style={{ height: `${(ratio / maxRegionRatio) * 100}%` }} /></span>
-              <span>{label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function BehaviorInsights() {
-  return (
-    <section className="figma-report-card behavior-card report-animated-section">
-      <h2>사용자 행동 패턴</h2>
-      <div className="behavior-layout">
-        <div className="average-time"><span>평균 체류시간</span><strong>42s</strong></div>
-        <div className="scroll-time-list">
-          <h3>스크롤 뎁스별 체류 시간</h3>
-          {scrollRows.map(([depth, time]) => <div key={depth}><span>{depth}</span><b>{time}</b></div>)}
+        <div>
+          <h3>수집하지 않는 값</h3>
+          <p>성별·연령·지역·체류시간은 실제 breakdown 계측이 없어 표시하지 않습니다.</p>
         </div>
       </div>
     </section>
@@ -217,7 +151,7 @@ type CampaignReportProps = {
   publicSlug: string;
   initialSpec: CampaignSpec;
   initialSummary: ReservationSummary;
-  metrics?: MarketReportMetrics;
+  initialAnalytics?: CampaignAnalytics;
   initialNextAction: NextAction | null;
   metaAdsEnabled: boolean;
 };
@@ -229,15 +163,35 @@ type MetaDraftUiState = {
   campaignId?: string;
 };
 
+type MetaRunUi = {
+  run: {
+    status: "PAUSED" | "ACTIVATING" | "ACTIVE" | "PAUSING" | "FAILED";
+    adAccountId: string;
+    lifetimeBudgetMinor: number;
+    startsAt: string;
+    endsAt: string;
+    metaCampaignId: string;
+    lastError: string | null;
+  };
+  activationEnabled: boolean;
+  readiness: { accountStatus: number; currency: string };
+  objectStatuses: {
+    campaign: { effectiveStatus: string };
+    adSet: { effectiveStatus: string };
+    ad: { effectiveStatus: string };
+  };
+};
+
 export function CampaignReport({
   campaignId,
   publicSlug,
   initialSpec,
   initialSummary,
-  metrics = demoMarketReportMetrics,
+  initialAnalytics = emptyCampaignAnalytics,
   metaAdsEnabled,
 }: CampaignReportProps) {
   const [summary, setSummary] = useState(initialSummary);
+  const [metrics, setMetrics] = useState(initialAnalytics);
   const [notice, setNotice] = useState("");
   const [loadError, setLoadError] = useState("");
   const [exporting, setExporting] = useState(false);
@@ -247,12 +201,14 @@ export function CampaignReport({
     kind: "idle",
     message: "",
   });
+  const [metaRun, setMetaRun] = useState<MetaRunUi | null>(null);
+  const [metaRunBusy, setMetaRunBusy] = useState(false);
   const cardRefs = useRef<Array<HTMLDivElement | null>>([]);
   const cardPreviewRef = useRef<HTMLDivElement | null>(null);
   const refreshInFlightRef = useRef(false);
   const spec = initialSpec;
   const publicPath = `/p/${encodeURIComponent(publicSlug)}`;
-  const fit = classifyMarketFitByCtr(metrics.ctr);
+  const fit = classifyMarketFit(metrics);
 
   const refresh = useCallback(async () => {
     if (refreshInFlightRef.current) return;
@@ -262,6 +218,7 @@ export function CampaignReport({
       if (!response.ok) throw new Error("report_request_failed");
       const body = await response.json() as CampaignResponse;
       setSummary(body.summary);
+      setMetrics(body.analytics);
       setLoadError("");
     } catch {
       setLoadError("최신 리포트를 불러오지 못했어요. 잠시 후 다시 시도해주세요.");
@@ -269,6 +226,14 @@ export function CampaignReport({
       refreshInFlightRef.current = false;
     }
   }, [campaignId]);
+
+  const refreshMetaRun = useCallback(async () => {
+    if (!metaAdsEnabled) return;
+    const response = await fetch(`/api/meta/runs?campaignId=${encodeURIComponent(campaignId)}`, { cache: "no-store" });
+    if (response.status === 404) return;
+    if (!response.ok) throw new Error("meta_run_request_failed");
+    setMetaRun(await response.json() as MetaRunUi);
+  }, [campaignId, metaAdsEnabled]);
 
   useEffect(() => {
     const refreshReport = () => { void refresh(); };
@@ -286,6 +251,20 @@ export function CampaignReport({
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [refresh]);
+
+  useEffect(() => {
+    if (!metaAdsEnabled) return;
+    const frame = window.requestAnimationFrame(() => {
+      void refreshMetaRun().catch(() => undefined);
+    });
+    const interval = window.setInterval(() => {
+      void refreshMetaRun().then(refresh).catch(() => undefined);
+    }, 60_000);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearInterval(interval);
+    };
+  }, [metaAdsEnabled, refresh, refreshMetaRun]);
 
   useEffect(() => {
     const sections = reportRootRef.current?.querySelectorAll<HTMLElement>(".report-animated-section");
@@ -383,6 +362,7 @@ export function CampaignReport({
           adsManagerUrl: body.adsManagerUrl,
           campaignId: body.campaignId,
         });
+        await refreshMetaRun();
         return;
       }
       if ("state" in body && body.state === "reconciliation_required") {
@@ -409,6 +389,36 @@ export function CampaignReport({
     }
   }
 
+  async function controlMetaRun(action: "activate" | "pause") {
+    if (!metaRun || metaRunBusy) return;
+    const amount = metaRun.run.lifetimeBudgetMinor.toLocaleString("ko-KR");
+    const question = action === "activate"
+      ? `광고계정 ${metaRun.run.adAccountId}에서 총 예산 ₩${amount} 광고를 실제로 활성화할까요?`
+      : `광고계정 ${metaRun.run.adAccountId}의 광고를 즉시 중지할까요?`;
+    if (!window.confirm(question)) return;
+    setMetaRunBusy(true);
+    try {
+      const response = await fetch("/api/meta/runs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaignId,
+          action,
+          confirmAdAccountId: metaRun.run.adAccountId,
+          confirmLifetimeBudgetMinor: metaRun.run.lifetimeBudgetMinor,
+        }),
+      });
+      if (!response.ok) throw new Error("meta_control_failed");
+      setNotice(action === "activate" ? "실제 광고 활성화를 요청했습니다." : "광고를 PAUSED로 중지했습니다.");
+      await refreshMetaRun();
+      await refresh();
+    } catch {
+      setNotice(action === "activate" ? "광고 활성화에 실패해 자동으로 중지를 시도했습니다." : "광고 중지 확인에 실패했습니다.");
+    } finally {
+      setMetaRunBusy(false);
+    }
+  }
+
   function syncActiveCard() {
     const scroller = cardPreviewRef.current;
     const slide = scroller?.querySelector<HTMLElement>(".creative-carousel-slide");
@@ -430,9 +440,7 @@ export function CampaignReport({
         <div className="report-divider" />
         <MetricCards metrics={metrics} />
         <FunnelAnalysis metrics={metrics} />
-        <DemographicInsights />
-        <RegionInsights />
-        <BehaviorInsights />
+        <MeasurementCoverage metrics={metrics} />
 
         <section className="report-creative-grid report-animated-section">
           <article className="figma-report-card creative-card">
@@ -512,6 +520,29 @@ export function CampaignReport({
                         Ads Manager에서 확인 (캠페인 ID {metaDraftState.campaignId})
                       </a>
                     ) : null}
+                  </div>
+                ) : null}
+                {metaRun ? (
+                  <div className="meta-draft-status meta-draft-status-completed" aria-live="polite">
+                    <p>
+                      계정 {metaRun.run.adAccountId} · 총 예산 ₩{metaRun.run.lifetimeBudgetMinor.toLocaleString("ko-KR")} · 상태 {metaRun.run.status}
+                    </p>
+                    <p>
+                      {new Date(metaRun.run.startsAt).toLocaleString("ko-KR")} ~ {new Date(metaRun.run.endsAt).toLocaleString("ko-KR")}
+                    </p>
+                    <p>
+                      캠페인 {metaRun.objectStatuses.campaign.effectiveStatus} · 광고 세트 {metaRun.objectStatuses.adSet.effectiveStatus} · 광고 {metaRun.objectStatuses.ad.effectiveStatus}
+                    </p>
+                    {metaRun.run.lastError ? <p role="alert">최근 오류: {metaRun.run.lastError}</p> : null}
+                    {metaRun.run.status === "ACTIVE" || metaRun.run.status === "ACTIVATING" ? (
+                      <button className="report-outline-button" type="button" disabled={metaRunBusy} onClick={() => controlMetaRun("pause")}>
+                        {metaRunBusy ? "처리 중..." : "광고 즉시 중지"}
+                      </button>
+                    ) : (
+                      <button className="report-outline-button" type="button" disabled={metaRunBusy || !metaRun.activationEnabled} onClick={() => controlMetaRun("activate")}>
+                        {metaRunBusy ? "처리 중..." : metaRun.activationEnabled ? "실제 광고 활성화" : "서버 활성화 잠금"}
+                      </button>
+                    )}
                   </div>
                 ) : null}
               </>

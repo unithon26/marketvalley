@@ -6,6 +6,7 @@ import type { CampaignSpec } from "@/lib/contracts/campaign";
 import type { ReservationUtm } from "@/lib/contracts/repository";
 import { CheckIcon } from "@/components/icons";
 import { campaignThemeStyle } from "@/lib/brand-theme";
+import { getVisitorId } from "@/lib/client/demo-store";
 
 const reservationCtaLabel = "사전예약하기";
 
@@ -229,6 +230,20 @@ export function PublicLanding({
       }
     };
   }, [renderTurnstile]);
+
+  useEffect(() => {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(campaignId)) {
+      return;
+    }
+    const controller = new AbortController();
+    void fetch("/api/analytics/visits", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ campaignId, visitorId: getVisitorId() }),
+      signal: controller.signal,
+    }).catch(() => undefined);
+    return () => controller.abort();
+  }, [campaignId]);
 
   function resetTurnstile() {
     setTurnstileToken("");

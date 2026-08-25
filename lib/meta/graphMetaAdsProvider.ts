@@ -91,6 +91,53 @@ function createForm(fields: Record<string, string>): URLSearchParams {
   return form;
 }
 
+function graphInteger(value: unknown): number {
+  const normalized = typeof value === "number" ? String(value) : value;
+  if (typeof normalized !== "string" || !/^\d+$/u.test(normalized)) {
+    throw new MetaGraphProtocolError();
+  }
+  const parsed = Number(normalized);
+  if (!Number.isSafeInteger(parsed)) throw new MetaGraphProtocolError();
+  return parsed;
+}
+
+function graphMoneyMinor(value: unknown, currency: string): number {
+  if (typeof value !== "string" || !/^\d+(?:\.\d{1,2})?$/u.test(value)) {
+    throw new MetaGraphProtocolError();
+  }
+  const multiplier = currency === "KRW" ? 1 : 100;
+  const parsed = Math.round(Number(value) * multiplier);
+  if (!Number.isSafeInteger(parsed) || parsed < 0) throw new MetaGraphProtocolError();
+  return parsed;
+}
+
+export type MetaAccountReadiness = {
+  adAccountId: string;
+  accountStatus: number;
+  disableReason: number;
+  currency: string;
+  amountSpentMinor: number;
+  balanceMinor: number;
+  hasFundingSource: boolean;
+};
+
+export type MetaObjectStatus = {
+  id: string;
+  configuredStatus: string;
+  effectiveStatus: string;
+};
+
+export type MetaInsights = {
+  impressions: number;
+  reach: number;
+  clicks: number;
+  linkClicks: number;
+  spendMinor: number;
+  currency: string;
+  dateStart: string;
+  dateStop: string;
+};
+
 export type GraphMetaAdsProviderOptions = {
   binding: MetaConfiguredBinding;
   accessToken: string;
@@ -290,6 +337,109 @@ export class GraphMetaAdsProvider implements MetaAdsProvider {
       adset_id: payload.adSetId,
       creative: JSON.stringify({ creative_id: payload.creativeId }),
     }), "Meta ad ID");
+  }
+
+  async getAccountReadiness(): Promise<MetaAccountReadiness> {
+    const body = objectRecord(await this.request(`act_${this.binding.adAccountId}`, {
+      method: "GET",
+      query: {
+        fields: "id,account_status,disable_reason,currency,amount_spent,balance,funding_source",
+      },
+    }));
+    if (body?.id !== `act_${this.binding.adAccountId}` || typeof body.currency !== "string") {
+      throw new MetaGraphProtocolError();
+    }
+    const currency = body.currency;
+    if (!/^[A-Z]{3}$/u.test(currency)) throw new MetaGraphProtocolError();
+    return {
+      adAccountId: this.binding.adAccountId,
+      accountStatus: graphInteger(body.account_status),
+      disableReason: graphInteger(body.disable_reason ?? 0),
+      currency,
+      amountSpentMinor: graphInteger(body.amount_spent ?? "0"),
+      balanceMinor: graphInteger(body.balance ?? "0"),
+      hasFundingSource: typeof body.funding_source === "string" && /^\d{5,32}$/u.test(body.funding_source),
+    };
+  }
+
+  async setObjectStatus(objectId: string, status: "ACTIVE" | "PAUSED"): Promise<void> {
+    assertSafeExternalId("Meta object ID", objectId);
+    const body = objectRecord(await this.request(objectId, {
+      method: "POST",
+      body: createForm({ status }),
+    }));
+    if (body?.success !== true) throw new MetaGraphProtocolError();
+  }
+
+  async getObjectStatus(objectId: string): Promise<MetaObjectStatus> {
+    assertSafeExternalId("Meta object ID", objectId);
+    const body = objectRecord(await this.request(objectId, {
+      method: "GET",
+      query: { fields: "id,configured_status,effective_status" },
+    }));
+    if (
+      body?.id !== objectId ||
+      typeof body.configured_status !== "string" ||
+      typeof body.effective_status !== "string"
+    ) throw new MetaGraphProtocolError();
+    return {
+      id: objectId,
+      configuredStatus: body.configured_status,
+      effectiveStatus: body.effective_status,
+    };
+  }
+
+  async getInsights(options: {
+    objectId: string;
+    startsAt: string;
+    endsAt: string;
+  }): Promise<MetaInsights> {
+    assertSafeExternalId("Meta object ID", options.objectId);
+    const readiness = await this.getAccountReadiness();
+    const start = new Date(options.startsAt);
+    const end = new Date(options.endsAt);
+    if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end <= start) {
+      throw new MetaInputError("Meta Insights 집계 기간이 올바르지 않습니다.");
+    }
+    const since = start.toISOString().slice(0, 10);
+    const until = new Date(Math.min(Date.now(), end.getTime())).toISOString().slice(0, 10);
+    const body = objectRecord(await this.request(`${options.objectId}/insights`, {
+      method: "GET",
+      query: {
+        fields: "impressions,reach,clicks,inline_link_clicks,spend,date_start,date_stop",
+        time_range: JSON.stringify({ since, until }),
+        level: "campaign",
+        limit: "1",
+      },
+    }));
+    const rows = body?.data;
+    if (!Array.isArray(rows)) throw new MetaGraphProtocolError();
+    if (rows.length === 0) {
+      return {
+        impressions: 0,
+        reach: 0,
+        clicks: 0,
+        linkClicks: 0,
+        spendMinor: 0,
+        currency: readiness.currency,
+        dateStart: since,
+        dateStop: until,
+      };
+    }
+    const row = objectRecord(rows[0]);
+    if (!row || typeof row.date_start !== "string" || typeof row.date_stop !== "string") {
+      throw new MetaGraphProtocolError();
+    }
+    return {
+      impressions: graphInteger(row.impressions ?? "0"),
+      reach: graphInteger(row.reach ?? "0"),
+      clicks: graphInteger(row.clicks ?? "0"),
+      linkClicks: graphInteger(row.inline_link_clicks ?? "0"),
+      spendMinor: graphMoneyMinor(row.spend ?? "0", readiness.currency),
+      currency: readiness.currency,
+      dateStart: row.date_start,
+      dateStop: row.date_stop,
+    };
   }
 
   private async createObject(edge: string, body: URLSearchParams, label: string): Promise<string> {

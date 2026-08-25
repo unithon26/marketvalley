@@ -35,6 +35,7 @@ import {
   SupabaseMetaOperationLedger,
 } from "@/lib/meta/supabaseMetaOperationLedger";
 import { PausedCarouselDraftService } from "@/lib/meta/pausedCarouselDraftService";
+import { registerMetaAdRun } from "@/lib/meta/metaAdRun";
 import {
   ApiRequestError,
   jsonResponse,
@@ -59,6 +60,7 @@ export type MetaDraftRouteDependencies = {
   }) => DraftCreator;
   parseFormData: (request: Request) => Promise<FormData>;
   now: () => Date;
+  registerRun?: typeof registerMetaAdRun;
 };
 
 const defaultDependencies: MetaDraftRouteDependencies = {
@@ -81,6 +83,7 @@ const defaultDependencies: MetaDraftRouteDependencies = {
   },
   parseFormData: (request) => request.formData(),
   now: () => new Date(),
+  registerRun: registerMetaAdRun,
 };
 
 function requireMultipartEnvelope(request: Request): void {
@@ -240,6 +243,14 @@ export async function handleCreateMetaDraft(
       destinationOrigin: binding.allowedDestinationOrigins[0],
       policy,
     }));
+    await dependencies.registerRun?.({
+      client: createSupabaseServiceClient(dependencies.environment),
+      ownerId: identity.userId,
+      campaignId: campaign.id,
+      adAccountId: binding.adAccountId,
+      policy,
+      result,
+    });
     const response: MetaDraftCompletedResponse = {
       state: "completed",
       status: "PAUSED",
