@@ -1,5 +1,26 @@
 # Troubleshooting
 
+## 2026-08-26 — 두 Meta 광고계정 환경값 불일치가 production preflight를 중단함
+
+### 맥락과 영향
+
+worker image provenance 검사를 적용한 최종 Oracle 배포가 production 접근 직후 중단됐다. 새 release 활성화 전에 멈췄으므로 기존 app·worker와 실제 광고 수집에는 영향이 없었다.
+
+### 증거와 원인
+
+- 배포 오류는 `META_AUTO_ACTIVATION_AD_ACCOUNT_ID must match META_AD_ACCOUNT_ID`였다.
+- 두 값은 모두 형식상 유효한 16자리 ID지만 서로 달랐다.
+- 운영 DB의 실제 `ACTIVE` Meta run은 자동 활성화 계정 ID와 일치했고 기본 Meta 계정 ID와는 달랐다.
+- 과거 배포 스크립트는 disabled Meta 모드에서 live 설정 비교를 건너뛰어 오래된 기본 계정 값을 허용했다.
+
+### 해결과 회귀 방지
+
+운영 DB의 실제 run과 일치하는 자동 활성화 계정을 권위 값으로 삼아 기본 Meta 계정 ID를 맞췄다. 변경 전 production 환경파일은 root-only backup으로 보존했다. production 배포는 계속 두 계정 ID가 같아야 하며, 다른 계정·예산으로 잘못 광고를 생성할 가능성이 있으면 release 전에 중단한다.
+
+### 남은 위험과 예상 질문
+
+수정 환경으로 exact-SHA 배포를 다시 실행해 app·worker가 함께 재생성되고 수집 상태가 유지되는지 확인한다. 면접에서는 형식 검증만으로는 잡히지 않는 교차 설정 불변조건을 실제 운영 객체와 어떻게 대조했는지 설명할 수 있다.
+
 ## 2026-08-26 — 실행 중인 worker 검사가 이전 release image를 허용함
 
 ### 맥락과 영향
