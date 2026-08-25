@@ -57,14 +57,14 @@ export function ValidationProgress({
 
   useEffect(() => {
     headingRef.current?.focus({ preventScroll: true });
-  }, []);
+  }, [current]);
 
   return (
-    <main className="validation-progress-page page-container">
+    <main className={`validation-progress-page page-container validation-stage-${current}`}>
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {activeStage.title}
       </p>
-      <section className="validation-progress-copy">
+      <section key={current} className="validation-progress-copy">
         <Image
           key={current}
           className="validation-progress-illustration"
