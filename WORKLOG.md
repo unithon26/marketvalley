@@ -1,5 +1,14 @@
 # 작업 기록
 
+## 2026-08-25 — 서비스 랜딩 교체 후 CI 회귀 복구
+
+- 목적: 서비스 랜딩 교체 커밋 `9d6c4d5`의 CI에서 인증 번들 검사가 실패한 원인을 복구하고, 뒤이어 드러난 전체 E2E 경로 회귀를 정리한다.
+- 원인: 프로젝트 GNB가 루트 `/`에서 `/dashboard`로 이동했지만 인증 번들 스모크는 계속 `.next/server/app/index.html`을 검사했다. 전체 E2E에도 루트를 프로젝트 화면으로 가정한 세 경로가 남아 있었고, Windows Clipboard API의 CRLF 정규화가 복사 문자열 비교를 운영체제별로 다르게 만들었다.
+- 변경: 인증 GNB 스모크 대상을 정적 `/dashboard` 산출물로 바꾸고, 프로젝트 이탈·전체 fixture 흐름·375px 필터 E2E를 `/dashboard` 기준으로 갱신했다. 클립보드 검증은 CRLF를 LF로 정규화해 실제 복사 내용만 비교한다.
+- 검증: 설정된 Supabase 환경의 production build와 인증 초기 상태·server-secret client bundle smoke, lint, typecheck, 단위 테스트 26파일 115개, focused Chromium E2E 3개와 전체 Chromium E2E 21개가 통과했다.
+- 전달: 로컬 수정과 검증을 완료했다. 커밋·push와 GitHub Actions 재검증을 이어서 수행한다.
+- 남은 일: GitHub Actions 전체 gate 통과를 확인한다.
+
 ## 2026-08-25 — 실제 생성 경계와 진행 화면 연결
 
 - 목적: 두 입력을 제출한 사용자가 입력 화면에서 AI 응답을 기다리지 않고 즉시 진행 화면을 보며, 구현된 작업의 실제 완료 뒤에만 다음 단계로 이동하게 한다.

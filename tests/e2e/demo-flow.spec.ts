@@ -203,7 +203,7 @@ test("시장 조사 준비 중 화면을 이탈하면 유료 생성을 시작하
   await expect(page.getByRole("heading", { name: "시장 조사 연결 전 단계를 확인하고 있어요" })).toBeVisible();
 
   await page.getByRole("link", { name: "프로젝트" }).click();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/dashboard$/);
   await page.waitForTimeout(2_200);
   expect(generateRequests).toBe(0);
 });
@@ -254,7 +254,7 @@ test("fixture 생성부터 산출물, 예약, 판단, 초기화까지 실제 API
   captureRuntimeErrors(page, runtimeErrors);
   const visitorEmail = "e2e-flow@example.com";
 
-  await page.goto("/");
+  await page.goto("/dashboard");
   await context.grantPermissions(
     ["clipboard-read", "clipboard-write"],
     { origin: new URL(page.url()).origin },
@@ -316,7 +316,9 @@ test("fixture 생성부터 산출물, 예약, 판단, 초기화까지 실제 API
     const copyCard = page.locator(".copy-grid > div").filter({ hasText: copyCase.cardLabel });
     await copyCard.getByRole("button", { name: "복사" }).click();
     await expect(page.getByRole("status")).toHaveText(`${copyCase.noticeLabel} 복사를 완료했어요.`);
-    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(copyCase.value);
+    await expect.poll(async () => (
+      await page.evaluate(() => navigator.clipboard.readText())
+    ).replace(/\r\n/g, "\n")).toBe(copyCase.value);
   }
 
   const [download] = await Promise.all([
@@ -534,7 +536,7 @@ test("375px과 키보드에서 필터, 생성, 공개 응답과 사람 판단을
   captureRuntimeErrors(page, runtimeErrors);
   await page.setViewportSize({ width: 375, height: 812 });
 
-  await page.goto("/");
+  await page.goto("/dashboard");
   await expectNoHorizontalOverflow(page);
   const completedFilter = page.getByRole("button", { name: /검증 완료/ });
   await completedFilter.click();
