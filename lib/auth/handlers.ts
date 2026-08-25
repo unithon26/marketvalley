@@ -32,6 +32,16 @@ function redirect(url: URL | string, status = 302): Response {
   });
 }
 
+function usesCanonicalOrigin(request: Request, origin: string): boolean {
+  if (new URL(request.url).origin !== origin) return false;
+
+  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const requestHost = forwardedHost || request.headers.get("host")?.trim();
+  if (!requestHost) return true;
+
+  return requestHost.toLowerCase() === new URL(origin).host.toLowerCase();
+}
+
 function json(data: unknown, status = 200): Response {
   return Response.json(data, {
     status,
@@ -58,7 +68,14 @@ export async function handleGoogleSignIn(
   let origin: string;
   try {
     origin = resolveAppOrigin(request.url, dependencies.environment);
-    const next = sanitizeNextPath(new URL(request.url).searchParams.get("next"));
+    const requestUrl = new URL(request.url);
+    if (!usesCanonicalOrigin(request, origin)) {
+      const canonicalUrl = new URL("/auth/google", origin);
+      canonicalUrl.search = requestUrl.search;
+      return redirect(canonicalUrl);
+    }
+
+    const next = sanitizeNextPath(requestUrl.searchParams.get("next"));
     const callbackUrl = new URL("/auth/callback", origin);
 
     const supabase = await dependencies.createClient();

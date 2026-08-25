@@ -74,6 +74,34 @@ describe("auth route handlers", () => {
     expect(continuations.take("flow_aaaa")).toBe("/campaigns/demo");
   });
 
+  it("OAuth 시작 origin이 설정값과 다르면 쿠키를 만들기 전에 canonical origin으로 이동한다", async () => {
+    const signInWithOAuth = vi.fn();
+    const set = vi.fn();
+    const response = await handleGoogleSignIn(
+      new Request("http://localhost:3000/auth/google?next=%2Fcampaigns%2Fdemo", {
+        headers: {
+          host: "127.0.0.1:3000",
+          "x-forwarded-host": "127.0.0.1:3000",
+        },
+      }),
+      {
+        environment: {
+          NODE_ENV: "production",
+          NEXT_PUBLIC_SITE_URL: "http://localhost:3000",
+        },
+        createClient: async () => clientWithAuth({ signInWithOAuth }),
+        continuations: { set, take: () => null },
+      },
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3000/auth/google?next=%2Fcampaigns%2Fdemo",
+    );
+    expect(signInWithOAuth).not.toHaveBeenCalled();
+    expect(set).not.toHaveBeenCalled();
+  });
+
   it("외부 next URL은 로그인 뒤 홈으로 제한한다", async () => {
     const signInWithOAuth = vi.fn().mockResolvedValue({
       data: { url: "https://project.supabase.co/authorize", flowId: "flow_bbbb" },

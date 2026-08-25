@@ -33,6 +33,8 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable-key>
 
 legacy 프로젝트는 `NEXT_PUBLIC_SUPABASE_ANON_KEY`도 호환하지만 새 설정은 publishable key를 사용한다. `SUPABASE_SERVICE_ROLE_KEY`는 사용자 로그인에 필요하지 않으며 브라우저와 인증 route에서 사용하지 않는다.
 
+로컬 앱은 `http://localhost:3000`으로 연다. `127.0.0.1`처럼 설정된 Site URL과 다른 origin에서 OAuth를 시작하면 PKCE 쿠키의 host가 callback과 달라질 수 있으므로, 로그인 route는 쿠키를 만들기 전에 위 canonical origin으로 이동한다.
+
 ## Google Auth Platform 설정
 
 Google OAuth client는 `Web application` 유형을 사용한다.

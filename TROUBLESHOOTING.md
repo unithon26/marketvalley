@@ -1,5 +1,38 @@
 # Troubleshooting
 
+## 2026-08-25 — 127.0.0.1에서 시작한 Google OAuth callback 실패
+
+### 맥락과 기대 동작
+
+로컬 production 서버를 `127.0.0.1:3000`에 bind한 상태에서도 사용자는 Google 로그인을 시작하고, 설정된 `http://localhost:3000/auth/callback`에서 PKCE code를 세션으로 교환할 수 있어야 했다.
+
+### 실제 동작과 영향
+
+`127.0.0.1` 링크에서 Google 로그인을 시작하면 provider 동의 뒤 `/auth/error?code=callback_failed`로 이동했다. 로컬 OAuth 검증만 막혔고 production 배포와 사용자 영향은 없다.
+
+### 재현과 증거
+
+1. 브라우저에서 `http://127.0.0.1:3000`을 연다.
+2. Google 로그인을 시작한다.
+3. 로그인 시작 응답은 PKCE verifier를 `127.0.0.1`의 host-only cookie로 설정한다.
+4. `NEXT_PUBLIC_SITE_URL`에 따라 callback은 `http://localhost:3000/auth/callback`으로 돌아온다.
+5. callback 요청에는 다른 host의 verifier cookie가 없어 code 교환이 실패한다.
+
+서버 응답을 비밀값 없이 검사해 요청 origin은 `127.0.0.1`, callback origin은 `localhost`이고 PKCE cookie가 로그인 시작 host에 설정되는 것을 확인했다.
+
+### 근본 원인과 해결
+
+OAuth의 시작 origin과 callback origin이 달랐다. `localhost`와 `127.0.0.1`은 같은 컴퓨터를 가리켜도 cookie 기준으로는 서로 다른 host다. 로그인 handler가 Supabase client와 PKCE cookie를 만들기 전에 요청 origin을 `NEXT_PUBLIC_SITE_URL`과 비교하고, 다르면 query를 보존한 canonical `/auth/google`로 먼저 redirect하도록 수정했다.
+
+### 검증과 회귀 방지
+
+단위 테스트는 Next.js가 `request.url`을 canonical 값으로 정규화하더라도 실제 `Host`·`X-Forwarded-Host`가 `127.0.0.1`이면 `localhost`로 redirect되고 Supabase 호출과 continuation cookie 생성이 일어나지 않는지 검증한다. 최종 인증 focused 테스트 20개, 전체 단위 테스트 73개, configured bundle smoke와 production E2E 14개가 통과했다. 실제 Chrome에서도 `127.0.0.1` 시작, `localhost` canonical 이동, Google 계정 선택, Supabase callback과 로그인 사용자 표시를 확인했다. production에서는 `NEXT_PUBLIC_SITE_URL`, Supabase Site URL·Redirect URL과 실제 공개 origin을 동일하게 유지해야 한다.
+
+### 면접 질문과 답변 근거
+
+- 같은 컴퓨터인데 왜 OAuth가 실패했나? 쿠키의 host 경계에서 `localhost`와 `127.0.0.1`은 별개이기 때문이다.
+- callback에서 억지로 복구하지 않은 이유는 무엇인가? verifier가 없는 callback에서는 안전한 code 교환이 불가능하므로, 쿠키 생성 전 origin을 정규화해야 한다.
+
 ## 2026-08-25 — 실제 Supabase Auth 설정 후 GNB가 미설정으로 남음
 
 ### 맥락과 기대 동작
