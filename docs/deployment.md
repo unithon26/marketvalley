@@ -181,7 +181,7 @@ CI 성공은 배포 승인과 같지 않다. 실행 전 source 앱, `.github/wor
 - 로그인 사용자의 생성·게시, 다른 기기의 공개 예약, 중복 차단, 소유자 예약자명단·판단 저장 성공
 - 병렬 예약에서 campaign/global 분당 quota와 campaign total capacity가 DB에서 원자적으로 유지됨
 - 다른 계정이 owner route와 예약 원문을 읽지 못함
-- PNG 5장·carousel ZIP·Meta 게시 준비 ZIP이 production에서 생성됨
+- PNG 5장·carousel ZIP이 production에서 생성되고 같은 PNG가 실제 Meta 소재에 사용됨
 - 접수 뒤 브라우저를 닫아도 Oracle worker가 Claude·랜딩·카드·Meta ACTIVE·Insights 단계를 이어가고 재로그인 화면이 DB 상태를 복원함
 - 기존 ACTIVE 캠페인은 중복 Meta 객체 없이 `COLLECTING`으로 이어받고 종료 뒤 PAUSED·final snapshot·`COMPLETED`가 됨
 - 실패 SHA를 의도적으로 배포한 controlled rehearsal에서 직전 public health가 복구됨

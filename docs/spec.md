@@ -322,7 +322,7 @@ Zod에서 배열 길이와 문자열 최대 길이를 제한한다. 한국어 �
 | `validation.signal.ctaLabel` | 예약 폼 고정 CTA의 export 호환 문구 | 5장 CTA headline |
 | `carousel.ctaBody` | 예약 폼 참여 이유 보조 | 5장 CTA body |
 
-`Meta 게시 준비`도 별도 문구 상태를 만들지 않는다. 기본 문구는 `messaging.caption`, headline은 `messaging.hooks[0]`, CTA는 `validation.signal.ctaLabel`, 대상 고객 가설은 `validation.customer`, destination은 게시 결과에서 만든 절대 공개 URL을 사용한다. ZIP에는 이 정보를 담은 `meta-ready.txt`와 캐러셀 PNG 5장을 함께 넣는다.
+Meta 광고도 별도 문구 상태를 만들지 않는다. 기본 문구는 `messaging.caption`, headline은 `messaging.hooks[0]`, CTA는 `validation.signal.ctaLabel`, 대상 고객 가설은 `validation.customer`, destination은 게시 결과에서 만든 절대 공개 URL을 사용한다. 실제 업로드는 화면·다운로드와 같은 서버 PNG 5장을 사용한다.
 
 `landing.hero`와 `carousel`은 위 문구를 별도 복제하지 않는다. 게시된 `CampaignSpec`은 snapshot과 내보내기 입력으로 고정하며, 내용을 바꾸려면 새 캠페인을 생성한다.
 
@@ -361,38 +361,34 @@ Oracle Compute VM에는 marketvalley Next.js 애플리케이션 하나와 Caddy 
 ```text
 app/
   page.tsx
-  auth/google/route.ts
-  auth/callback/route.ts
-  auth/logout/route.ts
+  new/page.tsx
+  campaigns/[id]/progress/page.tsx
   campaigns/[id]/page.tsx
+  campaigns/[id]/presentation/page.tsx
   p/[slug]/page.tsx
-  api/generate/route.ts
   api/campaigns/route.ts
+  api/campaigns/lifecycle/route.ts
+  api/campaigns/[id]/cards/[index]/route.tsx
+  api/internal/lifecycle/route.ts
+  api/analytics/visits/route.ts
   api/reservations/route.ts
-  api/auth/session/route.ts
 components/
-  auth-controls.tsx
   campaign-wizard.tsx
   campaign-report.tsx
   progress-view.tsx
   renderers/public-landing.tsx
   renderers/carousel-card.tsx
 lib/
-  auth/authorization.ts
-  auth/handlers.ts
-  supabase/server.ts
-  client/use-auth-session.ts
   contracts/campaign.ts
-  contracts/generator.ts
   contracts/repository.ts
-  demo/demo-campaign.ts
-  demo/fixtureGenerator.ts
-  demo/fixtureRepository.ts
+  lifecycle/campaignLifecycleProcessor.ts
+  lifecycle/campaignLifecycleStore.ts
+  meta/
+  supabase/
+supabase/migrations/
 tests/unit/
 tests/e2e/
 ```
-
-`lib/ai/`의 prompt 계약과 Google OAuth용 `lib/auth/`, `lib/supabase/` 서버 client는 구현했다. `lib/db/`와 `supabase/migrations/`는 live 데이터 adapter를 구현할 때 추가한다. 현재 존재하지 않는 경로를 구현 완료로 간주하지 않는다.
 
 `lib/contracts/campaign.ts`는 두 개발자가 함께 합의한 뒤 한 명만 소유한다. 랜딩과 캐러셀 렌더러는 API를 직접 호출하지 않는다.
 
@@ -401,12 +397,12 @@ tests/e2e/
 - `POST /api/campaigns`: 2단계 입력과 client 생성 `draftId`를 검증해 계정 소유 접수를 먼저 저장하고 lifecycle ID를 반환한다. 같은 `draftId`와 입력의 재요청은 같은 캠페인을 반환한다.
 - `GET /api/campaigns/lifecycle`: 로그인 계정의 캠페인 목록 또는 한 캠페인의 현재 상태를 반환한다.
 - `GET /api/internal/lifecycle`: 32바이트 이상 Bearer secret으로만 worker가 호출하며 due campaign을 lease로 claim해 다음 외부 작업을 수행한다.
-- `POST /api/campaigns`: `{ draftId, spec }`을 다시 검증해 공개 snapshot으로 저장한다. 같은 `draftId`와 동일한 spec의 재요청은 중복 캠페인을 만들지 않고 기존 결과를 반환한다. 이미 게시된 `draftId`에 다른 spec이 오면 충돌로 처리한다. 성공하면 게시 campaign, 공개 URL과 초기 예약자명단을 반환한다.
+- `GET /api/campaigns?id=...`: 로그인한 소유자에게 완성된 spec, 공개 slug, 실제 analytics와 예약자명단을 반환한다. ID가 없으면 계정의 lifecycle 목록을 반환한다.
+- `GET /api/campaigns/[id]/cards/[index]`: 같은 서버 renderer로 1080×1350 PNG 한 장을 반환한다.
 - `POST /api/reservations`: `{ campaignId, name, email, consent, utm? }`를 검증해 동의된 예약 한 건을 기록한다. fixture는 `(campaignId, email)` hash, live는 서버 HMAC email hash와 DB unique constraint로 중복을 막는다.
 - `PATCH /api/campaigns`: `{ campaignId, draftId, nextAction }`을 받아 소유 draft가 맞을 때만 사람의 선택 `continue`, `revise`, `pause`를 저장한다.
-- `GET /api/campaigns?id=...`: fixture 또는 로그인한 소유자에게 spec과 예약자 수·최근 예약자명단을 반환한다.
-- `POST /api/campaigns/reset`: `{ campaignId, draftId }` 소유권을 검증한 뒤 발표용 추가 예약과 다음 판단을 seed 상태로 되돌린다.
-- `DELETE /api/campaigns`: `{ campaignId, draftId }` 소유권을 검증해 캠페인을 삭제한다. 본문 없는 요청은 기존 `/campaigns/demo` 발표 초기화와 E2E 호환에만 사용한다.
+- `DELETE /api/campaigns?id=...&draftId=...`: 소유권을 검증하고 Meta run이 없는 미시작·실패 접수만 안전하게 삭제한다.
+- `POST /api/analytics/visits`: 공개 랜딩의 고유 방문을 privacy-preserving identifier로 집계한다.
 
 모든 route handler에서 입력 크기와 Zod 스키마를 검사한다. `POST /api/reservations`는 동의가 없는 제출을 거절하고 같은 캠페인의 같은 이메일 중복을 `alreadyReserved` 결과로 변환한다. 원문 이메일은 소유자 조회에만 사용하고 목록 화면에는 마스킹한다. Anthropic 키와 Supabase 서버 키는 클라이언트 번들에 포함하지 않는다.
 
@@ -417,10 +413,14 @@ campaigns
 - id uuid primary key
 - owner_id uuid not null references auth.users(id)
 - draft_id text not null
-- slug text unique not null
-- spec jsonb not null
+- input_background / input_solution text
+- lifecycle_status text not null
+- slug text unique, spec jsonb, published_at timestamptz (생성 완료 뒤 채움)
+- generation_attempts / stage_attempts / retry_from_status / next_attempt_at
+- processing_token / processing_lease_until
+- preparation_completed_at / collection_started_at / collection_ends_at / finalized_at
+- last_error_code / last_error_message
 - next_action text null check in ('continue', 'revise', 'pause')
-- published_at timestamptz not null
 - created_at timestamptz not null
 - unique (owner_id, draft_id)
 
@@ -442,31 +442,37 @@ campaign_reservations
 generation_rate_limits / generation_daily_usage / generation_global_daily_usage
 - 사용자 분당, 사용자 일일, 전체 일일 유료 AI 생성 요청 수
 - service-role 전용 원자 RPC `consume_generation_quota`만 갱신
+
+meta_ad_runs / meta_operation_ledgers / meta_insight_snapshots
+- Meta 객체 ID·checkpoint·activation 상태와 실제 수집 구간
+- 동일 광고계정 live run 하나를 보장하는 partial unique index
+- 중간·최종 Insights snapshot과 fetch 시각
 ```
 
 (ADR-0013으로 익명 신호를 이름·이메일 기반 `campaign_reservations`로 대체했다. ADR-0016으로
 소유자 작업에는 `auth.uid()` RLS를 적용하고 공개 예약·분산 quota만 server-only client가 처리한다.)
 
-현재 mock 입력은 `/new` 컴포넌트 상태에 남아 API 실패 뒤 재시도할 수 있다. 같은 입력의 재시도는 한 번 만든 draft ID와 검증된 spec을 재사용하며, 게시 성공 뒤 draft 소유 토큰을 `localStorage`에 보관한다. live 단계의 새로고침 전 입력 복구는 별도 초안 저장소를 연결한다. 게시 시점의 spec만 snapshot이 되며 게시된 snapshot은 수정하지 않는다.
+`/new`의 입력은 단계 이동과 브라우저 뒤로·앞으로에서 유지된다. 제출하면 입력과 draft ID를 DB에 먼저 저장하므로 Claude나 Meta가 실패해도 아이디어 작성 단계로 되돌리지 않는다. 같은 입력의 재요청은 같은 계정·draft ID의 lifecycle을 반환하고 worker는 저장된 checkpoint에서 재개한다. 게시 시점의 spec만 snapshot이 되며 게시된 snapshot은 수정하지 않는다.
 
 공개 페이지는 예약자명단 제출 시 이메일을 서버로 보낸다(ADR-0013). 중복 예약 방지는 `(campaignId, email)` 조합으로 판단하며, fixture는 원문을 남기지 않기 위해 무비밀 SHA-256을 사용한다. live Supabase adapter는 서버 전용 `SIGNAL_HASH_SECRET`으로 이메일 HMAC 해시(`email_hash`)를 만들어 dedupe에 쓰고, 원문 `email`은 소유자 화면·리스트 원본 조회용으로 별도 저장한다. 리스트 표시에는 마스킹된 이메일(`seon****@gmail.com` 형태)만 노출하고 공개 예약 응답에는 예약자 수나 목록을 반환하지 않는다. DB 접근은 서버에서만 수행하며 IP 주소와 원문 user-agent를 저장하지 않는다.
 
 ### 지표 정의 (ADR-0013로 갱신)
 
-리포트는 현재 저장소에 접수된 예약 데이터와 사전 판단 기준만 수치로 표시한다. 디자인 시안의 임의 우상향 그래프나 고정 노출 수·CTR·업계 평균은 사용하지 않는다.
+리포트는 저장된 Meta Insights, 고유 랜딩 방문, 예약 데이터와 사전 판단 기준만 수치로 표시한다. 디자인 시안의 임의 우상향 그래프나 고정 노출 수·CTR·업계 평균은 사용하지 않는다.
 
 **실제 지표**
 
 - 예약자 수: `campaign_reservations`에 실제로 기록된 행 수.
 - 예약자 리스트: 이름과 마스킹된 이메일. 응답이 0이면 `아직 예약 없음`을 표시한다.
-- 예약 접수 추이: 저장된 각 예약의 `reservedAt`을 시간순으로 정렬한 누적 건수. fixture seed와 공개 랜딩 제출을 같은 저장소 결과로 그리되 seed 포함 사실을 화면에 알린다.
+- 예약 접수 추이: 저장된 각 예약의 `reservedAt`을 시간순으로 정렬한 누적 건수. 운영 제품과 테스트 fixture 모두 기본 seed 없이 실제 제출 건만 집계한다.
 - 판단 기준 대비 표본: 현재 예약자 수와 `decisionRule.minimumResponses`의 단순 비교. 시장성 자동 판정은 하지 않는다.
+- Meta 노출·도달·클릭·링크 클릭·광고비: `meta_insight_snapshots`의 최신 또는 최종 행.
+- 고유 랜딩 방문과 예약률: privacy-preserving 방문 기록과 예약 행에서 계산한다.
 
-**연동 전 지표**
+**표시하지 않는 지표**
 
-- 방문 수·체류시간·스크롤 깊이·랜딩 예약률은 방문 이벤트 수집을 구현한 뒤에만 표시한다.
-- Meta CTR과 성별·연령·지역은 팀 소유 계정의 Meta Insights 연결과 사용 가능 필드 확인 뒤에만 표시한다.
-- 연동 전에는 값을 만들지 않고 화면에 `계측 연결 전` 상태만 표시한다.
+- 체류시간·스크롤 깊이와 성별·연령·지역은 실제 breakdown 계측이 없어 표시하지 않는다.
+- Meta 또는 방문 계측 전에는 값을 만들지 않고 `계측 연결 전` 또는 `집계 전` 상태를 표시한다.
 
 실입금·결제 관련 지표(레퍼런스의 "실입금 사전예약")는 이번 스코프에서 구현하지 않는다.
 
@@ -486,12 +492,11 @@ interface CampaignRepository {
   recordReservation(input: ReservationInput): Promise<void>;
   getReservationSummary(campaignId: string): Promise<ReservationSummary>;
   saveNextAction(input: NextActionInput): Promise<NextAction>;
-  reset(input: ResetCampaignInput): Promise<PublishedCampaign>;
   delete(input: DeleteCampaignInput): Promise<void>;
 }
 ```
 
-실서비스는 Anthropic·Supabase adapter를, 테스트와 데모 모드는 fixture generator와 서버 프로세스 메모리 repository를 사용한다. 브라우저는 자신이 만든 캠페인의 draft 소유 토큰만 `localStorage`에 보관한다. 데모 모드는 생성뿐 아니라 게시, 공개 페이지 조회, 중복 예약, 예약자명단 조회, 판단과 초기화까지 실제 Route Handler를 통과한다.
+실서비스는 Anthropic·Supabase adapter를, 자동 테스트는 fixture generator와 서버 프로세스 메모리 repository를 사용한다. 운영 브라우저에는 lifecycle 소유 토큰을 두지 않고 Google 세션과 RLS로 소유권을 확인한다. fixture도 생성, 게시, 공개 페이지 조회, 중복 예약, 예약자명단 조회와 판단까지 실제 Route Handler를 통과한다.
 
 ## 7. AI 생성 규칙
 
@@ -514,10 +519,10 @@ Anthropic 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를
 - Anthropic 문법 컴파일 오류: `campaign_generation_schema_error`로 일반 upstream 실패와 구분하고 입력을 보존한다.
 - 모델 출력 스키마 오류: 서버 검증 실패로 처리하고 입력을 보존한 채 실패를 명시
 - 이미지 생성 실패: CSS/SVG 기본 배경 유지
-- 저장소 실패: 현재 입력을 유지하고 생성·게시·예약·판단·초기화 실패를 각각 명시
+- 저장소 실패: 현재 입력과 lifecycle 상태를 유지하고 생성·게시·예약·판단 실패를 각각 명시
 - 예약 중복: 최초 예약을 유지하고 이미 접수됐다는 상태 표시
 - PNG export 실패: 실패 안내 뒤 브라우저 새로고침과 재시도를 제공하고, 발표에서는 사전 검증한 백업 ZIP으로 전환
-- 공개 URL 실패: `/p/demo`와 사전 캡처 영상으로 발표 지속
+- 공개 URL 실패: 같은 source SHA의 Oracle 배포와 사전 캡처 영상으로 발표 지속
 - 긴 문구: UI에서 잘라 숨기지 않고 스키마 오류와 입력 수정·재생성 안내
 
 ## 9. 팀 분업
@@ -530,7 +535,7 @@ Anthropic 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를
 - `/new` 2단계 입력·실제 생성 진행, `/campaigns/[id]/progress` 호환 화면과 `/campaigns/[id]` 결과 화면
 - 폼 상태와 내부 API 연결
 - 재사용 가능한 랜딩·캐러셀 결정적 렌더러
-- 공개 랜딩의 표현 컴포넌트, `Meta 게시 준비` ZIP·복사 기능과 결과 UI
+- 공개 랜딩의 표현 컴포넌트, 실제 Meta와 같은 PNG/ZIP export와 결과 UI
 - 동일 렌더러 기반 PNG/ZIP export
 - 로딩·빈 상태·오류·데모 fallback UI
 - 최종 E2E 흐름과 Oracle 앱 배포 책임
@@ -545,7 +550,7 @@ Anthropic 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를
 - 게시·조회·동의 기반 예약·예약자명단 집계·다음 판단 API
 - `/p/[slug]`의 데이터 로딩과 상태 처리 wrapper
 - fixture·Anthropic·Supabase adapter와 단위 테스트
-- 향후 Meta OAuth·token·광고 쓰기·Insights를 담당하는 server-only provider
+- Meta token·광고 쓰기·Insights와 lifecycle을 담당하는 server-only provider
 
 소유 경로 예시: `lib/contracts/`, `lib/ai/`, `lib/db/`, `lib/demo/`, `app/api/`, `app/p/`, `supabase/`, `tests/unit/`.
 
@@ -603,7 +608,7 @@ Anthropic 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를
 
 | 개발자 A | 개발자 B |
 | --- | --- |
-| 공개 랜딩 예약 폼, 결과 화면, `Meta 게시 준비` ZIP·복사 기능, PNG/ZIP | fixture 기반 게시·slug·예약·명단·다음 판단 adapter와 API 형태 고정 |
+| 공개 랜딩 예약 폼, 결과 화면과 PNG/ZIP | fixture 기반 게시·slug·예약·명단·다음 판단 adapter와 API 형태 고정 |
 
 - 완료 게이트 G2: 외부 API와 실제 계정 없이 `/ → /new 2단계 입력 → 생성·게시 → /campaigns/[id] → /p/[slug] → 예약 → 결과 → 사람의 판단 → PNG/ZIP`이 끝까지 작동한다.
 - 실제 Anthropic 없이도 완성된 흐름을 fixture production build로 실행하고 디자이너 1차 QA를 받는다.
@@ -651,18 +656,18 @@ Anthropic 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를
 - `pnpm typecheck`
 - `pnpm test`
 - `pnpm build`
-- Playwright로 fixture 기반 `/ → 2단계 입력 → 생성·게시 → 예약 → 판단·초기화 → ZIP` 핵심 흐름과 API 실패 상태를 검증한다. 발표 자동 클릭 기능은 만들지 않는다.
+- Playwright로 fixture 기반 `/ → 2단계 입력 → 생성·게시 → 예약 → 판단 → ZIP` 핵심 흐름과 API 실패 상태를 검증한다. 발표 자동 클릭 기능은 만들지 않는다.
 
 수동 검증:
 
 - 375px 모바일과 발표 노트북 해상도
-- 한글 줄바꿈, 5장 PNG 1080×1350, 캐러셀·Meta ZIP 파일명과 내부 항목
+- 한글 줄바꿈, 5장 PNG 1080×1350과 캐러셀 ZIP 파일명·내부 항목
 - 시크릿 창에서 공개 URL, 동의 기반 사전예약, 예약자명단과 판단 화면
 - 새로고침 후 초안 복구
 - API 키가 브라우저, 로그, 저장소에 나타나지 않음
 - Anthropic·DB를 각각 끈 상태에서 실패 안내를 확인하고, 개발·발표는 사전에 fixture 모드로 선택
 - 랜딩과 카드의 고객·문제·CTA 일치
-- `Meta 게시 준비`의 PNG·문구·CTA·대상 고객·절대 destination URL이 동일 spec과 공개 URL에서 파생됨
+- Meta의 PNG·문구·CTA·대상 고객·절대 destination URL이 동일 spec과 공개 URL에서 파생됨
 - 랜딩과 캐러셀에 근거 없는 후기·수치·인증이 없음
 
 ## 12. 3분 데모 시나리오

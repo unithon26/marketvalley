@@ -24,10 +24,12 @@ describe("automatic Meta boundary", () => {
     expect(report).toContain(`/api/campaigns/${props.campaignId}/cards/1`);
   });
 
-  it("퇴역한 수동 API와 브라우저 이미지 업로드 client를 제공하지 않는다", async () => {
+  it("퇴역한 수동·발표 API와 브라우저 이미지 업로드 client를 제공하지 않는다", async () => {
     for (const relative of [
       "app/api/meta/drafts/route.ts",
       "app/api/meta/runs/route.ts",
+      "app/api/campaigns/reset/route.ts",
+      "app/api/generate/route.ts",
       "lib/client/metaDraft.ts",
       "lib/contracts/metaDraft.ts",
     ]) {

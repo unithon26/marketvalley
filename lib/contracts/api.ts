@@ -4,7 +4,6 @@ import {
   campaignSpecSchema,
   nextActionSchema,
 } from "@/lib/contracts/campaign";
-import type { CampaignSpec } from "@/lib/contracts/campaign";
 import { ideaInputSchema } from "@/lib/contracts/generator";
 import type {
   CampaignLifecycleRecord,
@@ -40,8 +39,6 @@ export const deleteCampaignRequestSchema = z.object({
   draftId: identifierSchema,
 }).strict();
 
-export const resetCampaignRequestSchema = deleteCampaignRequestSchema;
-
 const utmFieldSchema = z.string().trim().min(1).max(100).optional();
 
 export const recordReservationRequestSchema = z.object({
@@ -62,12 +59,7 @@ export type PublishCampaignRequest = z.infer<typeof publishCampaignRequestSchema
 export type StartCampaignRequest = z.infer<typeof startCampaignRequestSchema>;
 export type UpdateCampaignRequest = z.infer<typeof updateCampaignRequestSchema>;
 export type DeleteCampaignRequest = z.infer<typeof deleteCampaignRequestSchema>;
-export type ResetCampaignRequest = z.infer<typeof resetCampaignRequestSchema>;
 export type RecordReservationRequest = z.infer<typeof recordReservationRequestSchema>;
-
-export type GenerateCampaignResponse = {
-  spec: CampaignSpec;
-};
 
 export type CampaignResponse = PublishedCampaign & {
   url: string;

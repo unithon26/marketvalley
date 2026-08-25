@@ -60,7 +60,7 @@ describe("FixtureCampaignRepository", () => {
     await expect(repository.getById(demoCampaignId)).resolves.toBeNull();
   });
 
-  it("새 게시를 고유 id와 slug로 격리하고 소유 draft로 상태를 초기화한다", async () => {
+  it("새 게시를 고유 id와 slug로 격리하고 소유 draft로 상태를 저장한다", async () => {
     const repository = new FixtureCampaignRepository({ seedReservations });
     const published = await repository.publish("new-draft", workshopVacancyCampaign);
     await repository.recordReservation({
@@ -76,8 +76,6 @@ describe("FixtureCampaignRepository", () => {
     await expect(repository.getBySlug(published.id)).resolves.toBeNull();
     await expect(repository.saveNextAction({ campaignId: published.id, draftId: published.id, nextAction: "continue" }))
       .rejects.toBeInstanceOf(DraftOwnershipError);
-    const reset = await repository.reset({ campaignId: published.id, draftId: "new-draft" });
-    expect(reset.nextAction).toBeNull();
-    await expect(repository.getReservationSummary(published.id)).resolves.toMatchObject({ total: 4 });
+    await expect(repository.getReservationSummary(published.id)).resolves.toMatchObject({ total: 5 });
   });
 });

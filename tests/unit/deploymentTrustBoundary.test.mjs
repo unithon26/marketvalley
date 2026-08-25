@@ -47,6 +47,7 @@ describe("production deployment trust boundary", () => {
     expect(releaseScript).toContain('NEXT_PUBLIC_TURNSTILE_SITE_KEY must be a non-placeholder');
     expect(releaseScript).toContain('TURNSTILE_VERIFY_TIMEOUT_MS must be an integer between 500 and 10000');
     expect(releaseScript).toContain('RESERVATION_CAMPAIGN_MINUTE_LIMIT must not exceed');
+    expect(releaseScript).toContain('production campaign lifecycle requires META_ADS_MODE=live');
     expect(releaseScript).toContain('validate-release-archive.py');
     expect(releaseScript).toContain('--cpus 0.75');
     expect(releaseScript).toContain('--memory 1536m');
@@ -64,6 +65,8 @@ describe("production deployment trust boundary", () => {
     expect(bootstrap).toContain('"${filesystem_label}" == "marketvalley"');
     expect(bootstrap).toContain('/opt/marketvalley/docker');
     expect(releaseScript).toContain('dedicated marketvalley volume is not mounted');
+    expect(releaseScript).toContain('compose up --detach --no-build app lifecycle-worker proxy');
+    expect(releaseScript).toContain('wait_for_running_lifecycle_worker || return 1');
   });
 
   it("hard-isolates Docker storage on an attached OCI block volume", () => {

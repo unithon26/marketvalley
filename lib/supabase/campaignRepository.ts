@@ -23,7 +23,6 @@ import {
   type ReservationInput,
   type ReservationRecord,
   type ReservationSummary,
-  type ResetCampaignInput,
 } from "@/lib/contracts/repository";
 import { summarizeReservations } from "@/lib/demo/campaignReservations";
 import type { ReservationProtectionLimits } from "@/lib/security/reservationProtection";
@@ -347,19 +346,6 @@ export class SupabaseCampaignRepository implements CampaignRepository {
     if (error) throw databaseFailure("next action update", error);
     if (!data) throw new CampaignNotFoundError();
     return nextAction;
-  }
-
-  async reset(input: ResetCampaignInput): Promise<PublishedCampaign> {
-    const campaign = await this.requireOwnerCampaign(input.campaignId);
-    this.assertDraftOwnership(campaign, input.draftId);
-    const { data, error } = await this.requireOwnerClient().rpc("reset_owned_campaign", {
-      p_campaign_id: input.campaignId,
-      p_draft_id: input.draftId.trim(),
-    });
-    if (error) throw databaseFailure("campaign reset", error);
-    const row = Array.isArray(data) ? data[0] : data;
-    if (!row) throw new CampaignNotFoundError();
-    return toPublishedCampaign(row as CampaignRow);
   }
 
   async delete(input: DeleteCampaignInput): Promise<void> {
