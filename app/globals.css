@@ -212,6 +212,9 @@ button { color: inherit; }
 .deliverable-grid h3 { margin: 0 0 3px; }
 .deliverable-grid p { margin: 0 0 5px; color: var(--muted); }
 .deliverable-grid code { color: var(--tertiary); font-size: 11px; }
+.carousel-design-placeholder { grid-column: 1 / -1; overflow: hidden; margin: 2px 0 0; border: 1px dashed #c9c2dd; border-radius: 12px; background: var(--purple-soft); }
+.carousel-design-placeholder img { display: block; width: 100%; height: auto; }
+.carousel-design-placeholder figcaption { padding: 10px 14px; color: var(--muted); background: #fff; font-size: 12px; }
 .icon-button { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid var(--line); border-radius: 12px; background: white; cursor: pointer; }
 .icon-button:hover { background: var(--surface); }
 .copy-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
