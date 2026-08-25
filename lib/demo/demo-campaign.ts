@@ -2,10 +2,10 @@ import {
   campaignSpecSchema,
   type CampaignSpec,
   type NextAction,
-  type SignalOptionId,
 } from "@/lib/contracts/campaign";
 import type { IdeaInput } from "@/lib/contracts/generator";
-import { aggregateSignals, type SignalSummary } from "@/lib/demo/campaignSignals";
+import { summarizeReservations } from "@/lib/demo/campaignReservations";
+import type { ReservationRecord, ReservationSummary } from "@/lib/contracts/repository";
 
 export const demoCampaignId = "demo";
 export const demoCampaignSlug = "demo";
@@ -96,7 +96,7 @@ export const demoCampaign = defineCampaign({
       { title: "의향을 보고 판단합니다", body: "익명 응답을 확인하고 다음 알림을 이어갈지 직접 선택합니다." },
     ],
     faq: [
-      { question: "개인정보를 받나요?", answer: "아니요. 이 광고는 선택형 관심 응답만 기록합니다." },
+      { question: "개인정보를 받나요?", answer: "네. 이름과 이메일을 동의 후에만 예약자명단에 저장합니다." },
       { question: "오늘 바로 판매가 보장되나요?", answer: "아니요. 응답은 당일 구매 의향을 확인하는 신호일 뿐 판매를 보장하지 않습니다." },
       { question: "게시가 자동으로 올라가나요?", answer: "아니요. 게시 자료를 준비하며 실제 게시와 운영 판단은 사장님이 합니다." },
     ],
@@ -212,7 +212,7 @@ export const workshopVacancyCampaign = defineCampaign({
       { title: "의향을 보고 판단합니다", body: "익명 응답을 확인하고 다음 행동을 직접 선택합니다." },
     ],
     faq: [
-      { question: "예약 정보를 받나요?", answer: "아니요. 이 광고는 개인정보 없이 선택형 관심 응답만 기록합니다." },
+      { question: "예약 정보를 받나요?", answer: "네. 이름과 이메일을 동의 후에만 예약자명단에 저장합니다." },
       { question: "빈자리가 채워진다고 보장하나요?", answer: "아니요. 응답은 참여 의향을 확인하는 신호일 뿐 예약을 보장하지 않습니다." },
       { question: "게시가 자동으로 올라가나요?", answer: "아니요. 게시 자료를 준비하며 실제 게시와 운영 판단은 공방 운영자가 합니다." },
     ],
@@ -328,7 +328,7 @@ export const classInquiryCampaign = defineCampaign({
       { title: "의향을 보고 판단합니다", body: "익명 응답을 확인하고 다음 행동을 직접 선택합니다." },
     ],
     faq: [
-      { question: "연락처를 받나요?", answer: "아니요. 이 광고는 개인정보 없이 선택형 관심 응답만 기록합니다." },
+      { question: "연락처를 받나요?", answer: "네. 이름과 이메일을 동의 후에만 예약자명단에 저장합니다." },
       { question: "수강 신청으로 처리되나요?", answer: "아니요. 응답은 수강 의향을 확인하는 신호이며 실제 신청이 아닙니다." },
       { question: "답변이 자동 전송되나요?", answer: "아니요. 안내 자료를 준비하며 실제 소통과 수업 판단은 강사가 합니다." },
     ],
@@ -406,18 +406,17 @@ export const demoIdeaInput = {
 };
 
 /**
- * Four deterministic responses leave one response short of the configured sample.
- * They are presentation fixtures, not user research data.
+ * Four deterministic reservations. They are presentation fixtures, not real user data.
  */
-export const seedSignals: readonly SignalOptionId[] = [
-  "positive",
-  "positive",
-  "neutral",
-  "negative",
+export const seedReservations: readonly Omit<ReservationRecord, "id">[] = [
+  { name: "이서준", email: "seojun.lee@example.com", reservedAt: "2026-08-24T09:00:00.000Z" },
+  { name: "박하늘", email: "haneul.park@example.com", reservedAt: "2026-08-24T09:05:00.000Z" },
+  { name: "최민서", email: "minseo.choi@example.com", reservedAt: "2026-08-24T09:10:00.000Z" },
+  { name: "정다인", email: "dain.jung@example.com", reservedAt: "2026-08-24T09:15:00.000Z" },
 ];
 
-export function evaluateDecision(optionIds: readonly SignalOptionId[]): SignalSummary {
-  return aggregateSignals(optionIds, demoCampaign);
+export function evaluateDecision(records: readonly Omit<ReservationRecord, "id">[]): ReservationSummary {
+  return summarizeReservations(records.map((record, index) => ({ id: `seed-${index + 1}`, ...record })));
 }
 
 export type { NextAction };

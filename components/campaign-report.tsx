@@ -8,9 +8,9 @@ import { CheckIcon, CopyIcon, DownloadIcon, ExternalIcon } from "@/components/ic
 import { CarouselCard, carouselCoverAssets, carouselFileNames } from "@/components/renderers/carousel-card";
 import type { CampaignSpec, NextAction } from "@/lib/contracts/campaign";
 import type { CampaignResponse } from "@/lib/contracts/api";
-import type { SignalSummary } from "@/lib/contracts/repository";
+import type { ReservationSummary } from "@/lib/contracts/repository";
 import { getCampaignDraftId } from "@/lib/client/demo-store";
-import { createNextActionState } from "@/lib/demo/campaignSignals";
+import { createNextActionState } from "@/lib/demo/campaignReservations";
 
 function triggerDownload(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob);
@@ -21,18 +21,33 @@ function triggerDownload(blob: Blob, name: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function statusCopy(status: SignalSummary["decisionStatus"]) {
-  if (status === "threshold_met") return { label: "기준 도달", tone: "positive", description: "미리 정한 최소 표본과 긍정 신호 기준에 도달했습니다." };
-  if (status === "threshold_not_met") return { label: "가설 재검토", tone: "warning", description: "표본은 모였지만 현재 메시지의 긍정 신호 기준에는 도달하지 않았습니다." };
-  if (status === "no_responses") return { label: "응답 없음", tone: "neutral", description: "아직 응답이 없어 판단하지 않고 사전 기준만 보여드립니다." };
-  return { label: "표본 수 부족", tone: "neutral", description: "아직 결론을 내리지 않고 응답 분포와 남은 표본만 보여드립니다." };
+/**
+ * 실제 방문·클릭 트래킹을 아직 구현하지 않았다 (ADR-0013). 예약자 수·리스트만 실제 데이터이고,
+ * 이 값들은 화면에 "예시 지표" 라벨과 함께 표시해 실측치로 오인되지 않게 한다.
+ */
+const EXAMPLE_METRICS = {
+  impressions: 4_312,
+  ctr: 3.8,
+  industryCtr: 1.9,
+  reservationRate: 25,
+  industryReservationRate: 10,
+  dwellTimeSeconds: 47,
+  bounceRate: 42,
+} as const;
+
+function maskEmail(email: string): string {
+  const [local, domain] = email.split("@");
+  if (!domain) return email;
+  const visible = local.slice(0, Math.min(2, local.length));
+  const masked = "*".repeat(Math.max(4, local.length - visible.length));
+  return `${visible}${masked}@${domain}`;
 }
 
 type CampaignReportProps = {
   campaignId: string;
   publicSlug: string;
   initialSpec: CampaignSpec;
-  initialSummary: SignalSummary;
+  initialSummary: ReservationSummary;
   initialNextAction: NextAction | null;
 };
 
@@ -43,7 +58,7 @@ export function CampaignReport({
   initialSummary,
   initialNextAction,
 }: CampaignReportProps) {
-  const [summary, setSummary] = useState<SignalSummary>(initialSummary);
+  const [summary, setSummary] = useState<ReservationSummary>(initialSummary);
   const [nextAction, setNextAction] = useState<NextAction | null>(initialNextAction);
   const [notice, setNotice] = useState("");
   const [loadError, setLoadError] = useState("");
@@ -58,10 +73,6 @@ export function CampaignReport({
   const spec = initialSpec;
   const publicPath = `/p/${encodeURIComponent(publicSlug)}`;
   const state = useMemo(() => createNextActionState(nextAction), [nextAction]);
-  const status = statusCopy(summary.decisionStatus);
-  const remainingToDecision = Math.max(summary.remainingResponses, summary.remainingPositiveResponses);
-  const positiveDegrees = summary.total ? (summary.positive / summary.total) * 360 : 0;
-  const neutralDegrees = summary.total ? ((summary.positive + summary.neutral) / summary.total) * 360 : 0;
 
   const refresh = useCallback(async (): Promise<boolean> => {
     if (mutationInFlightRef.current || refreshInFlightRef.current) return false;
@@ -250,30 +261,30 @@ export function CampaignReport({
         <div><span className="eyebrow">{spec.project.name} · DEMO AD</span><h1>검증 리포트를 보여드릴게요</h1><p>모든 수치는 발표 흐름을 확인하기 위한 목데이터입니다.</p></div>
       </div>
 
-      <section className="status-banner">
-        <div><span>시장검증 상태</span><strong>{status.description}</strong></div>
-        <b className={`status-pill ${status.tone}`}>{status.label}</b>
-      </section>
-
       <section className="metric-grid">
-        <article><span>선택형 응답</span><strong>{summary.total}<small>건</small></strong><p>개인정보 없는 데모 응답</p></article>
-        <article><span>긍정 신호율</span><strong>{summary.positiveRate === null ? "—" : <>{Math.round(summary.positiveRate * 100)}<small>%</small></>}</strong><p>긍정 {summary.positive} / 전체 {summary.total}</p></article>
-        <article><span>기준 충족 최소 추가</span><strong>{remainingToDecision}<small>건</small></strong><p>{spec.validation.decisionRule.description}</p></article>
+        <article><span>예약자 수</span><strong>{summary.total}<small>명</small></strong><p>실제 예약자명단 기준</p></article>
+        <article className="example-metric"><span>노출 수<em className="example-tag">예시 지표</em></span><strong>{EXAMPLE_METRICS.impressions.toLocaleString("ko-KR")}</strong><p>실제 계측 전 참고용 값</p></article>
+        <article className="example-metric"><span>CTR<em className="example-tag">예시 지표</em></span><strong>{EXAMPLE_METRICS.ctr}<small>%</small></strong><p>업계 평균 {EXAMPLE_METRICS.industryCtr}% 대비</p></article>
+        <article className="example-metric"><span>예약률<em className="example-tag">예시 지표</em></span><strong>{EXAMPLE_METRICS.reservationRate}<small>%</small></strong><p>업계 평균 {EXAMPLE_METRICS.industryReservationRate}% 대비</p></article>
       </section>
 
       <section className="report-section response-section">
-        <div className="section-heading"><div><span className="eyebrow">ACTUAL DEMO SIGNALS</span><h2>응답 분포</h2></div><Link className="button button-secondary" href={publicPath} target="_blank">공개 랜딩 열기 <ExternalIcon size={17} /></Link></div>
-        <div className="response-layout">
-          <div className="donut" style={{ "--positive": `${positiveDegrees}deg`, "--neutral": `${neutralDegrees}deg` } as React.CSSProperties}><span><b>{summary.total}</b>응답</span></div>
-          <div className="distribution-list">
-            {spec.validation.signal.options.map((option) => {
-              const count = summary[option.id];
-              const percent = summary.total ? Math.round((count / summary.total) * 100) : 0;
-              return <div key={option.id}><div><span><i className={option.id} />{option.label}</span><b>{count}건 · {percent}%</b></div><div className="distribution-track"><i className={option.id} style={{ width: `${percent}%` }} /></div></div>;
-            })}
+        <div className="section-heading"><div><span className="eyebrow">RESERVATIONS</span><h2>예약자명단</h2></div><Link className="button button-secondary" href={publicPath} target="_blank">공개 랜딩 열기 <ExternalIcon size={17} /></Link></div>
+        {summary.recent.length === 0 ? (
+          <p className="data-note">아직 예약이 없어요.</p>
+        ) : (
+          <div className="reservation-table-wrap">
+            <table className="reservation-table">
+              <thead><tr><th>No</th><th>이름</th><th>이메일</th></tr></thead>
+              <tbody>
+                {summary.recent.map((reservation, index) => (
+                  <tr key={reservation.id}><td>{index + 1}</td><td>{reservation.name}</td><td>{maskEmail(reservation.email)}</td></tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </div>
-        <p className="data-note">서버 메모리에 준비된 seed 응답과 공개 랜딩에서 제출한 응답만 표시합니다. 실제 사용자 조사 결과가 아닙니다.</p>
+        )}
+        <p className="data-note">서버 메모리에 준비된 seed 예약과 공개 랜딩에서 제출한 예약만 표시합니다. 랜딩 체류시간 {EXAMPLE_METRICS.dwellTimeSeconds}초·이탈률 {EXAMPLE_METRICS.bounceRate}%를 포함해 노출 수·CTR·예약률은 실제 계측 전 예시 지표입니다.</p>
       </section>
 
       <section className="report-section deliverables-section">

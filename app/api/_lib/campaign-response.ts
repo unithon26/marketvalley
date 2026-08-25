@@ -9,6 +9,6 @@ export async function toCampaignResponse(
   return {
     ...campaign,
     url: new URL(`/p/${campaign.slug}`, requestUrl).toString(),
-    summary: await campaignRepository.getSignalSummary(campaign.id),
+    summary: await campaignRepository.getReservationSummary(campaign.id),
   };
 }
