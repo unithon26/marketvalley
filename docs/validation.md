@@ -12,6 +12,8 @@ pnpm test:e2e
 
 2026-08-25에 입력 개인화와 Figma 산출물 템플릿을 반영한 뒤 `pnpm check`, `pnpm build`, `pnpm test:e2e`, `pnpm test:coverage`, `pnpm audit --audit-level high`, `pnpm peers check`가 모두 성공했다. 단위 테스트는 5개 파일 33개, production `next start`를 사용하는 Chromium E2E는 13개다. 단위 테스트 커버리지는 statements 87.96%, branches 77.55%, functions 94.31%, lines 89.27%였고 알려진 취약점과 peer dependency 문제는 없었다.
 
+같은 날 Figma 고정 영역과 AI 문구 슬롯의 프롬프트 계약을 추가한 뒤 `pnpm check`, `pnpm build`, `pnpm test:coverage`, `pnpm audit --audit-level high`, `pnpm peers check`, `git diff --check`가 성공했다. 단위 테스트는 6개 파일 38개이고 커버리지는 statements 88.35%, branches 77.55%, functions 94.62%, lines 89.66%다. 새 테스트는 고정·생성 소유권, 슬롯별 지시 누락, 후킹 3종의 역할·과장 금지, 사용자 입력의 명령 격리와 prompt version을 검증한다. 화면과 API 동작을 바꾸지 않아 기존 production E2E 13개 결과는 재사용하고 새 E2E는 추가하지 않았다.
+
 E2E는 2단계 입력과 생성·게시, 입력한 상품명·특징의 리포트·공개 랜딩·캐러셀·Meta 파일 반영, 약 2초의 진행 완료, 문구 4종 clipboard 복사, 캐러셀·Meta ZIP 내부 항목과 PNG 5장의 1080×1350 크기, 사진형 표지 자산 포함, 절대 destination URL, 공개 응답·중복 방지, 무응답 비율, 사전 기준 gap, 사람 판단 저장·초기화, API 입력·크기·소유권·404 경계, 요청 실패와 게시 응답 유실 재시도, 캠페인 격리, 3개 fixture의 slug·SEO·브랜드, Figma 표지 3종·랜딩 도입부 7종, 계약상 최대 길이의 표지 잘림·랜딩 겹침 방지, 375px overflow·키보드·ARIA, polling 순서 경쟁과 3초 이상 지연되는 조회의 중복 방지를 재현한다.
 
 ## 자동 검증
@@ -64,5 +66,6 @@ pnpm test:e2e
 - 모든 seed 응답과 fixture는 `데모 데이터`로 표시된다.
 - 근거 없는 후기, 사용자 수, 효능·매출 수치와 인증이 없다.
 - 시장 검증 완료나 실제 광고 집행을 주장하지 않는다.
+- 사용자 입력 문자열 안의 지시문은 실행하지 않고 생성 근거로만 취급하며, Figma·서버 고정값은 AI 문구 슬롯에서 제외한다.
 
 표지 `32`와 `34`의 사진은 팀 공유 Figma Inspect에서 받은 원본이다. Inspect에는 원출처와 라이선스 정보가 없었으므로 행사 공개 제출 전에 디자이너에게 사용권을 확인한다.

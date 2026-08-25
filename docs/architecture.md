@@ -15,7 +15,7 @@
 2단계 사용자 입력
    ↓ POST /api/generate
 CampaignGenerator ── mock: 키워드 기반 시각 template 선택 + 중립 문장 골격 + 입력값 결정적 주입
-   │                live: OpenAI Structured Outputs
+   │                live: 슬롯별 지시를 조합한 단일 OpenAI Structured Outputs
    ↓
 CampaignSpec (Zod 검증, 단일 진실 공급원)
    ↓ POST /api/campaigns
@@ -41,6 +41,14 @@ CampaignRepository ── mock: Node.js 프로세스 메모리
 - P0의 선택형 응답에는 이름, 이메일, 전화번호, IP와 원문 user-agent를 저장하지 않는다.
 - 저장·응답·판단·초기화 실패를 성공으로 표시하지 않으며 사용자가 재시도할 수 있다.
 - 동일 입력의 게시 재시도는 같은 draft ID와 생성 결과를 재사용한다.
+
+## Figma와 AI의 소유 경계
+
+Figma renderer는 랜딩·캐러셀의 레이아웃, 타이포·색상 조합, 섹션 순서와 제품의 상태·개인정보·사람 판단 안내를 고정한다. AI는 새 HTML이나 레이아웃을 만들지 않고 허용된 템플릿 ID만 선택한다. 선택된 ID의 실제 색상과 시각 방향은 서버가 Figma 토큰으로 매핑한다.
+
+AI가 채우는 문구는 상품 요약, 검증 가설, 관심 질문, 가치제안, 후킹 3종, 게시 문구, 랜딩 각 섹션과 캐러셀 각 장이다. `lib/ai/campaignPrompts.ts`가 각 슬롯의 목적·길이·금지사항을 따로 정의한 뒤 하나의 developer prompt로 조합한다. 사용자 입력은 명령이 아닌 별도 JSON 자료로 전달한다. 전체 `CampaignSpec`은 한 번의 Structured Outputs 호출로 생성해 랜딩·캐러셀·Meta 문구의 고객·문제·특징·CTA가 어긋나지 않게 한다.
+
+`schemaVersion`, `generation`, Figma 색상, `validation.decisionRule`, id·slug·공개 URL과 실제 응답은 서버 소유다. 모델 결과를 Zod로 검증한 뒤 서버 값으로 덮어쓰며, 생성 프롬프트의 변경은 `promptVersion`으로 추적한다.
 
 ## 실행 모드
 

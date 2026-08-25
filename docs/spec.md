@@ -42,6 +42,20 @@ generator가 추론한 내용은 `assumptions`에 표시한다. 제출 버튼을
 
 서버에서 OpenAI Responses API와 Structured Outputs를 사용해 단일 `CampaignSpec` JSON을 생성한다. 자유 형식 텍스트를 파싱하지 않는다.
 
+Figma가 정의한 레이아웃, 타이포·색상 조합, 섹션 순서와 상태·개인정보·사람 판단 안내는 renderer에 고정한다. AI는 아래 문구 슬롯만 채우고 새 HTML·좌표·템플릿을 만들지 않는다.
+
+| 생성 그룹 | 생성 대상 | 핵심 지시 |
+| --- | --- | --- |
+| 상품·가설 | `project`, `validation`의 고객·문제·해결·가정 | 입력 사실과 추론을 분리하고 관찰 가능한 관심 신호로 쓴다. |
+| 핵심 메시지 | `valueProposition`, `hooks[0..2]` | 반복 순간, 사라지는 일, 사람이 되찾는 판단의 서로 다른 세 각도를 사용한다. |
+| 게시 문구 | `caption`, `hashtags` | 랜딩과 같은 고객·문제·특징·CTA를 유지한다. |
+| 랜딩 | Hero·문제·가치·3단계·FAQ | 섹션 목적과 Figma 글자 길이에 맞추고 입력에 없는 정책·효능을 만들지 않는다. |
+| 캐러셀 | Hook·Problem·Insight·Solution·CTA | 5장 흐름을 유지하고 랜딩 source field와 같은 의미를 더 짧게 쓴다. |
+| 선택적 배경 | `visualPrompts[0..4]` | 글자·로고·UI가 없는 장면 설명만 만든다. |
+| 안전 검토 | `claimsToReview`, `prohibitedClaimsRemoved` | 확인할 주장과 생성에서 제외한 금지 주장을 구분한다. |
+
+각 그룹의 지시는 `lib/ai/campaignPrompts.ts`에서 하나의 developer prompt로 조합한다. 사용자 입력은 별도 user message의 JSON 자료로 전달하고 그 안의 지시문을 실행하지 않는다. 랜딩·캐러셀·Meta를 따로 호출하지 않고 전체 `CampaignSpec`을 한 번에 생성한다.
+
 완료 기준:
 
 - Zod 스키마 검증을 통과한 결과만 저장한다.
@@ -49,6 +63,7 @@ generator가 추론한 내용은 `assumptions`에 표시한다. 제출 버튼을
 - 개인정보가 필요 없는 선택형 질문 1개와 선택지 3개가 나온다.
 - 이 가설을 약화시키는 관찰 결과가 `invalidationEvidence` 한 문장으로 나온다.
 - 판단 기준은 모델이 임의로 만들지 않고 시스템 기본값 `응답 5개 중 긍정 3개`를 사용하며 리포트에서 실제 응답과 함께 표시한다.
+- `schemaVersion`, 생성 모델·시각, Figma 색상, 판단 기준, 캠페인 ID·slug·공개 URL과 실제 응답은 서버가 기록하거나 모델 결과 위에 덮어쓴다.
 - 확인되지 않은 숫자, 고객 후기, 인증, 효능을 만들어내지 않는다.
 - 사실 검토가 필요한 표현은 `claimsToReview`에 별도로 표시한다.
 - 전송 또는 스키마 오류는 한 번만 재시도하고, 이후 데모 샘플 전환을 제공한다.
@@ -304,6 +319,8 @@ Zod에서 배열 길이와 문자열 최대 길이를 제한한다. 한국어 �
 `Meta 게시 준비`도 별도 문구 상태를 만들지 않는다. 기본 문구는 `messaging.caption`, headline은 `messaging.hooks[0]`, CTA는 `validation.signal.ctaLabel`, 대상 고객 가설은 `validation.customer`, destination은 게시 결과에서 만든 절대 공개 URL을 사용한다. ZIP에는 이 정보를 담은 `meta-ready.txt`와 캐러셀 PNG 5장을 함께 넣는다.
 
 `landing.hero`와 `carousel`은 위 문구를 별도 복제하지 않는다. 게시된 `CampaignSpec`은 snapshot과 내보내기 입력으로 고정하며, 내용을 바꾸려면 새 캠페인을 생성한다.
+
+고정 renderer와 AI 생성 슬롯의 상세 소유 경계, 후킹 3종의 역할과 프롬프트 조합 방식은 [ADR-0011](decisions/0011-separate-fixed-figma-copy-and-ai-slots.md)을 따른다.
 
 ## 6. 기술 구조
 

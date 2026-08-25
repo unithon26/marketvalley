@@ -25,10 +25,13 @@
 완료 조건:
 
 - 서버의 Responses API가 전체 `CampaignSpec`을 Structured Outputs로 한 번에 반환한다.
+- `lib/ai/campaignPrompts.ts`의 슬롯별 지시를 하나의 developer prompt로 조합하고, 사용자 입력은 명령이 아닌 별도 JSON 자료로 전달한다.
+- 모델이 고른 허용 template·tone에 서버가 Figma 색상을 매핑하고, `generation`과 고정 판단 기준을 서버 값으로 덮어쓴다.
 - 결과를 Zod로 다시 검증하고 스키마 오류는 한 번만 재시도한다.
 - 입력, prompt version과 실패 원인을 안전하게 구분하되 API 키나 민감 정보를 로그에 남기지 않는다.
 - timeout이나 스키마 실패 뒤 입력을 잃지 않고 mock 결과로 전환할 수 있다.
 - 실제 입력 3종과 긴 한글 문구 회귀 테스트를 통과한다.
+- 후킹 3종이 반복 순간·사라지는 일·사람의 판단이라는 서로 다른 역할을 지키는 eval과 prompt injection 경계 테스트를 통과한다.
 
 ## 3. Vercel
 
