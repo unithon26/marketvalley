@@ -63,9 +63,7 @@ export const anthropicCampaignCopySchema = z.object({
   signalType: z.enum(["problem_confirmation", "solution_interest"]),
   signalCtaLabel: shortText(40),
   signalQuestion: shortText(180),
-  signalPositiveLabel: shortText(80),
-  signalNeutralLabel: shortText(80),
-  signalNegativeLabel: shortText(80),
+  signalOptionLabels: uniqueStrings(3, 80),
   signalSuccessMessage: shortText(160),
   brandTone: z.enum(["trust", "bold", "warm"]),
   carouselCoverTemplate: carouselCoverTemplateSchema,
@@ -106,14 +104,7 @@ export const anthropicCampaignCopySchema = z.object({
   carouselVisualPrompts: uniqueStrings(5, 300),
   claimsToReview: z.array(shortText(240)).max(8),
   prohibitedClaimsRemoved: z.array(shortText(240)).max(8),
-}).strict().refine(
-  (copy) => new Set([
-    copy.signalPositiveLabel,
-    copy.signalNeutralLabel,
-    copy.signalNegativeLabel,
-  ]).size === 3,
-  { path: ["signalNeutralLabel"], message: "신호 선택지 문구는 서로 달라야 합니다." },
-);
+}).strict();
 
 const FIXED_DECISION_RULE: CampaignSpec["validation"]["decisionRule"] = {
   minimumResponses: 5,
@@ -149,7 +140,8 @@ export class CampaignGenerationError extends Error {
     readonly code:
       | "anthropic_request_failed"
       | "anthropic_empty_response"
-      | "anthropic_billing_error",
+      | "anthropic_billing_error"
+      | "anthropic_schema_error",
     message: string,
     options?: ErrorOptions,
   ) {
@@ -202,11 +194,10 @@ export function applyServerOwnedCampaignFields(
         type: parsed.signalType,
         ctaLabel: parsed.signalCtaLabel,
         question: parsed.signalQuestion,
-        options: [
-          { id: "positive", label: parsed.signalPositiveLabel },
-          { id: "neutral", label: parsed.signalNeutralLabel },
-          { id: "negative", label: parsed.signalNegativeLabel },
-        ],
+        options: (["positive", "neutral", "negative"] as const).map((id, index) => ({
+          id,
+          label: parsed.signalOptionLabels[index],
+        })),
         successMessage: parsed.signalSuccessMessage,
       },
       decisionRule: FIXED_DECISION_RULE,
@@ -305,6 +296,33 @@ export class AnthropicCampaignGenerator implements CampaignGenerator {
       );
     } catch (error) {
       if (error instanceof CampaignGenerationError) throw error;
+      const upstreamBody = typeof error === "object" && error !== null && "error" in error
+        ? error.error
+        : undefined;
+      const upstreamError = typeof upstreamBody === "object"
+        && upstreamBody !== null
+        && "error" in upstreamBody
+        ? upstreamBody.error
+        : undefined;
+      if (
+        typeof error === "object"
+        && error !== null
+        && "status" in error
+        && error.status === 400
+        && typeof upstreamError === "object"
+        && upstreamError !== null
+        && "type" in upstreamError
+        && upstreamError.type === "invalid_request_error"
+        && "message" in upstreamError
+        && typeof upstreamError.message === "string"
+        && upstreamError.message.includes("compiled grammar")
+      ) {
+        throw new CampaignGenerationError(
+          "anthropic_schema_error",
+          "Anthropic 구조화 출력 스키마를 컴파일하지 못했습니다.",
+          { cause: error },
+        );
+      }
       if (
         typeof error === "object"
         && error !== null

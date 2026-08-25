@@ -120,6 +120,14 @@ export function routeErrorResponse(error: unknown): Response {
       typeof error === "object"
       && error !== null
       && "code" in error
+      && error.code === "anthropic_schema_error"
+    ) {
+      return errorResponse(503, "campaign_generation_schema_error", "AI 생성 형식 설정을 확인해주세요.");
+    }
+    if (
+      typeof error === "object"
+      && error !== null
+      && "code" in error
       && error.code === "anthropic_billing_error"
     ) {
       return errorResponse(503, "anthropic_billing_error", "AI 생성 결제 상태를 확인해주세요.");

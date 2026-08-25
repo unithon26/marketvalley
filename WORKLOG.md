@@ -1,5 +1,14 @@
 # 작업 기록
 
+## 2026-08-25 — Anthropic 503 후속 회귀 복구
+
+- 목적: 첫 503 수정과 CI 통과 뒤 사용자가 같은 `/api/generate` 503을 다시 확인한 문제를 최종 push 코드로 재현하고 복구한다.
+- 원인: 실제 성공을 확인한 5,600바이트·42속성 평면 스키마 뒤 독립 리뷰에서 signal label 배열을 세 문자열 필드로 펼쳤고, 이 변경이 최종 스키마를 7,425바이트·44속성으로 다시 키워 Anthropic 문법 컴파일 제한을 넘었다. CI는 실제 유료 Anthropic 요청을 실행하지 않아 회귀를 발견하지 못했다.
+- 변경: signal label을 positive·neutral·negative 순서가 명시된 단일 배열로 되돌리고 prompt version을 `campaign-spec-v2-reservations-flat-v2`로 올렸다. 스키마 top-level 속성·중첩 객체·직렬화 크기 회귀 검사를 추가하고, Anthropic 문법 컴파일 오류를 일반 생성 실패가 아닌 `campaign_generation_schema_error`로 안전하게 구분했다. 상세 원인과 회귀 방지는 `TROUBLESHOOTING.md`에 반영했다.
+- 검증: focused 생성·prompt·route 테스트 3파일 18개, typecheck와 대상 lint가 통과했다. 최종 스키마는 5,600바이트·42속성·3객체이며 사용자가 실패한 마감한입 입력의 실제 Claude Haiku 4.5 호출이 약 31.0초에 성공해 `CampaignSpec v2`, hook 3개와 positive·neutral·negative option ID를 반환했다. 최종 `pnpm check`의 lint·typecheck·단위 테스트 26파일 114개, production build, configured server-secret client bundle smoke, Chromium E2E 17개, coverage, high audit, peer·diff 검사가 통과했다. 커버리지는 statements 83.58%, branches 76.19%, functions 90.13%, lines 87.93%다.
+- 전달: commit·push·CI는 이 기록 시점에 진행 중이며 제품 배포와 행사 제출은 수행하지 않았다.
+- 남은 일: 사용자가 로그인된 화면에서 같은 입력을 직접 재시도한다.
+
 ## 2026-08-25 — 광고 입력 단계의 브라우저 뒤로가기 복구
 
 - 목적: `/new`의 2단계 솔루션 입력에서 브라우저 뒤로가기를 누르면 1단계가 아니라 메인 화면으로 이탈하는 문제를 해결한다.
@@ -20,8 +29,8 @@
 
 - 목적: 로그인 뒤 `/api/generate`가 503을 반환해 실제 AI 광고 생성이 중단되는 문제를 재현하고 복구한다.
 - 원인: 전체 `CampaignSpec` 71개 속성과 19개 중첩 객체를 Anthropic Structured Outputs에 전달해 내부 문법 복잡도 제한을 넘었다. 스키마를 줄인 뒤에는 정상 생성 약 29초보다 짧은 20초 timeout도 확인됐다.
-- 변경: AI 소유 문구와 allowlist 선택만 담는 평면 출력 계약으로 줄이고 서버가 generation·판단 기준·Figma 필드를 조립한 뒤 최종 `CampaignSpec`을 재검증하게 했다. timeout은 60초, SDK·앱 자동 재시도는 0회로 바꿔 정상 지연을 허용하면서 timeout·빈 응답 뒤 중복 유료 요청 가능성을 줄였다. prompt version을 `campaign-spec-v2-reservations-flat-v1`으로 올리고 신호 문구를 의미가 명시된 3개 필드로 분리했다. 원인·대안·회귀 방지는 `TROUBLESHOOTING.md`와 ADR-0017에 기록했다.
-- 검증: 평면 스키마는 7,425바이트·44개 속성·3개 객체이며 실제 Claude Haiku 4.5 호출은 약 28.8초에 성공해 최종 `CampaignSpec v2`, hook 3개, 문제 카드 3개, visual prompt 5개가 Zod 검증을 통과했다. 최종 `pnpm check`의 lint·typecheck·단위 테스트 24파일 108개, production build, configured server-secret bundle smoke, production Chromium E2E 16개, coverage, high audit와 peer 검사가 통과했다. coverage는 statements 83.65%, branches 74.91%, functions 90.54%, lines 87.88%다. 독립 리뷰의 전체 요청 시간·prompt version·signal 순서·조립·SDK 설정 테스트 지적을 모두 반영하고 재검토에서 기능 결함이 없음을 확인했다.
+- 변경: AI 소유 문구와 allowlist 선택만 담는 평면 출력 계약으로 줄이고 서버가 generation·판단 기준·Figma 필드를 조립한 뒤 최종 `CampaignSpec`을 재검증하게 했다. timeout은 60초, SDK·앱 자동 재시도는 0회로 바꿔 정상 지연을 허용하면서 timeout·빈 응답 뒤 중복 유료 요청 가능성을 줄였다. 원인·대안·회귀 방지는 `TROUBLESHOOTING.md`와 ADR-0017에 기록했다.
+- 검증: 첫 평면 배열 스키마 5,600바이트·42개 속성·3개 객체에서 실제 Claude Haiku 4.5 호출이 약 28.8초에 성공해 최종 `CampaignSpec v2`, hook 3개, 문제 카드 3개, visual prompt 5개가 Zod 검증을 통과했다. 이후 리뷰 변경 뒤 실제 호출 검증 없이 `pnpm check`의 lint·typecheck·단위 테스트 24파일 108개, production build, configured server-secret bundle smoke, production Chromium E2E 16개, coverage, high audit와 peer 검사가 통과했다. 이 검증 공백으로 생긴 후속 회귀와 최종 복구는 위 작업 기록에 정정했다.
 - 전달: 수정 커밋 `03705a4`를 비공개 `main`에 push했다. GitHub Actions run `32821756306`에서 install·lint·typecheck·단위 테스트 108개·server-secret bundle·production build·Chromium E2E 16개가 모두 통과했다. 제품 배포와 행사 제출은 수행하지 않았다.
 - 남은 일: 대표 입력 3종 품질 eval, Anthropic Console spend limit, Vercel 실제 route 지연 검증을 수행한다.
 

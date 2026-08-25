@@ -33,7 +33,7 @@ Figma 기반 화면과 mock 종단 흐름, Supabase·Anthropic adapter 코드는
 - 모델이 고른 허용 template·tone에 서버가 Figma 색상을 매핑하고, `generation`과 고정 판단 기준을 서버 값으로 덮어쓴다.
 - Anthropic Zod output format으로 평면 문구 계약을 검증하고, 서버가 기존 `CampaignSpec`으로 다시 검증한다. timeout과 빈 구조화 응답은 자동 재호출하지 않는다.
 - 입력, prompt version과 실패 원인을 안전하게 구분하되 API 키나 민감 정보를 로그에 남기지 않는다.
-- timeout이나 스키마 실패를 명시적 503으로 알리고, 개발·발표는 사전에 fixture 모드를 선택해 외부 실패와 과금을 제거한다.
+- timeout이나 스키마 실패를 명시적 503으로 알리고, Anthropic 문법 컴파일 실패는 `campaign_generation_schema_error`로 구분한다. 개발·발표는 사전에 fixture 모드를 선택해 외부 실패와 과금을 제거한다.
 - 실제 입력 3종과 긴 한글 문구 회귀 테스트를 통과한다.
 - 후킹 3종이 반복 순간·사라지는 일·사람의 판단이라는 서로 다른 역할을 지키는 eval과 prompt injection 경계 테스트를 통과한다.
 

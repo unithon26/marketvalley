@@ -12,8 +12,8 @@ Google 로그인과 `ANTHROPIC_API_KEY`를 연결한 로컬 제품에서 `/new` 
 
 `POST /api/generate`가 503 `campaign_generation_unavailable`을 반환해 광고 생성이 중단됐다. 인증,
 same-origin, 입력 검증과 생성 quota는 통과했지만 일반 오류 경계가 upstream 원인을 숨겨 브라우저
-응답만으로는 설정·결제·모델·timeout을 구분할 수 없었다. 로컬 실제 계정 검증에서 발견됐고 배포된
-서비스 영향은 없다.
+응답만으로는 설정·결제·모델·timeout을 구분할 수 없었다. 첫 수정 뒤에도 최종 리뷰 변경을 포함한
+코드에서 같은 503이 재발했다. 로컬 실제 계정 검증에서 발견됐고 배포된 서비스 영향은 없다.
 
 ### 재현과 증거
 
@@ -25,6 +25,11 @@ same-origin, 입력 검증과 생성 quota는 통과했지만 일반 오류 경�
 
 기존 출력 JSON Schema는 8,341바이트, 속성 71개, 중첩 객체 19개였다. 키 값, 로그인 토큰, 사용자
 입력 원문과 upstream 요청 header는 기록하지 않았다.
+
+첫 평면화는 5,600바이트, 속성 42개, 객체 3개로 줄어 실제 요청이 성공했다. 이후 signal label의
+순서 의존성을 없애려 배열을 세 문자열 필드로 펼친 최종 리뷰 변경이 스키마를 7,425바이트, 속성
+44개로 다시 키웠다. 이 변경 뒤에는 실제 Anthropic 요청 없이 단위 테스트·build·fixture E2E와 CI만
+통과했고, 사용자의 재시도와 같은 adapter 직접 실행에서 다시 400 `invalid_request_error`가 재현됐다.
 
 ### 검토한 가설과 근본 원인
 
@@ -48,19 +53,26 @@ Anthropic의 내부 스키마 복잡도 한도를 넘은 것이 근본 원인이
 - 한 번의 호출은 유지하되 AI가 소유한 문구와 허용된 template·tone만 평면 계약으로 출력하고,
   서버가 메타데이터·판단 기준·Figma 값을 조립하도록 변경했다.
 
-새 출력 스키마는 7,425바이트, 속성 44개, 객체 3개이며 최종 결과는 기존 `CampaignSpec` Zod
-계약으로 다시 검증한다. timeout은 60초로 늘리고 SDK 자동 재시도는 0회로 바꿔 timeout 뒤 같은
-유료 요청이 중복 실행될 가능성을 줄였다. 구조화 응답 자체가 비어도 자동 재호출하지 않고 실패를
-명시한다.
+최종 출력 스키마는 성공이 확인된 5,600바이트, 속성 42개, 객체 3개 계약을 사용한다. signal label은
+한 배열 안에서 positive·neutral·negative 순서를 prompt와 조립 테스트로 고정해 문법 복잡도를 늘리지
+않고 의미를 보존한다. 최종 결과는 기존 `CampaignSpec` Zod 계약으로 다시 검증한다. timeout은 60초,
+SDK 자동 재시도는 0회로 둬 timeout 뒤 같은 유료 요청이 중복 실행될 가능성을 줄였다. 구조화 응답
+자체가 비어도 자동 재호출하지 않고 실패를 명시한다.
+
+Anthropic의 문법 컴파일 거절은 일반 upstream 실패와 분리해 내부 `anthropic_schema_error`, HTTP
+`campaign_generation_schema_error`로 변환한다. 상세 upstream 문구와 비밀값은 응답에 노출하지
+않으면서 다음 재현에서는 네트워크 응답만으로 같은 설정 회귀를 구분할 수 있다.
 
 ### 검증과 회귀 방지
 
-- 평면 출력 스키마에 AI 문구 필드가 있고 서버 소유 `schemaVersion`이 없으며 중첩 객체가 3개인지
-  단위 테스트로 고정했다. 신호 문구는 순서 의존 배열 대신 positive·neutral·negative 필드로 구분했다.
+- 평면 출력 스키마에 AI 문구 필드가 있고 서버 소유 `schemaVersion`이 없으며 top-level 속성 38개,
+  중첩 객체 3개, 직렬화 크기 6,500자 미만인지 단위 테스트로 고정했다.
+- signal label 배열을 positive·neutral·negative ID 순서로 조립하고 prompt가 같은 순서를 명시하는지
+  검증했다.
 - 서버 조립 뒤 generation, 판단 기준, signal option ID, Figma 색상과 전체 랜딩 구조가 기존
   `CampaignSpec`을 만족하는지 검증했다.
-- 실제 Claude Haiku 4.5 요청이 약 28.8초에 성공했고 `CampaignSpec v2`, hook 3개, 문제 카드 3개,
-  visual prompt 5개가 최종 검증을 통과했다.
+- 최종 `campaign-spec-v2-reservations-flat-v2`로 사용자가 실패한 마감한입 입력을 다시 보냈고 약
+  31.0초에 `CampaignSpec v2`, hook 3개와 positive·neutral·negative option ID가 최종 검증을 통과했다.
 
 대표 입력 3종의 문구 품질 eval과 Vercel 환경의 실제 route 지연·함수 제한 검증은 남아 있다. 외부
 장애 시 fixture 성공으로 위장하지 않고 명시적 503과 발표용 사전 전환을 유지한다.

@@ -3,7 +3,7 @@ import {
   type IdeaInput,
 } from "@/lib/contracts/generator";
 
-export const CAMPAIGN_PROMPT_VERSION = "campaign-spec-v2-reservations-flat-v1";
+export const CAMPAIGN_PROMPT_VERSION = "campaign-spec-v2-reservations-flat-v2";
 
 type PromptSlotGroup = {
   id: string;
@@ -92,7 +92,7 @@ export const AI_COPY_SLOT_GROUPS: readonly PromptSlotGroup[] = [
       "validation.signal.options[positive|neutral|negative].label",
       "validation.signal.successMessage",
     ],
-    instruction: "ctaLabel은 ‘사전예약하기’처럼 이름·이메일과 동의를 제출하면 예약자명단에 기록된다는 점이 분명한 행동형 문구로 쓴다. question과 successMessage는 구매·결제·좌석 확정을 약속하지 않고 운영자가 다음 안내를 직접 전달한다고 설명한다. options는 현재 export 호환을 위한 legacy 필드이므로 서버가 고정한 positive·neutral·negative ID와 중립적인 고유 label을 유지하되 공개 폼 선택지로 안내하지 않는다.",
+    instruction: "ctaLabel은 ‘사전예약하기’처럼 이름·이메일과 동의를 제출하면 예약자명단에 기록된다는 점이 분명한 행동형 문구로 쓴다. question과 successMessage는 구매·결제·좌석 확정을 약속하지 않고 운영자가 다음 안내를 직접 전달한다고 설명한다. signalOptionLabels는 반드시 positive, neutral, negative 순서의 중립적이고 서로 다른 label 3개로 쓴다. 이 선택지는 현재 export 호환을 위한 legacy 필드이므로 공개 폼 선택지로 안내하지 않는다.",
   },
   {
     id: "value-proposition",

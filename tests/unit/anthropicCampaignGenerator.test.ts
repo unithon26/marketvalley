@@ -66,9 +66,7 @@ function copyCandidate(spec: CampaignSpec = demoCampaign) {
     signalType: spec.validation.signal.type,
     signalCtaLabel: spec.validation.signal.ctaLabel,
     signalQuestion: spec.validation.signal.question,
-    signalPositiveLabel: spec.validation.signal.options[0].label,
-    signalNeutralLabel: spec.validation.signal.options[1].label,
-    signalNegativeLabel: spec.validation.signal.options[2].label,
+    signalOptionLabels: spec.validation.signal.options.map((option) => option.label),
     signalSuccessMessage: spec.validation.signal.successMessage,
     brandTone: spec.brand.tone,
     carouselCoverTemplate: spec.templates.carouselCover,
@@ -219,8 +217,9 @@ describe("AnthropicCampaignGenerator", () => {
     expect(request.messages[0].content).toContain(JSON.stringify(idea.background));
     expect(request.output_config.format.schema.properties).toHaveProperty("projectName");
     expect(request.output_config.format.schema.properties).not.toHaveProperty("schemaVersion");
-    expect(Object.keys(request.output_config.format.schema.properties)).toHaveLength(40);
+    expect(Object.keys(request.output_config.format.schema.properties)).toHaveLength(38);
     expect(countSchemaNodes(request.output_config.format.schema, "object")).toBe(3);
+    expect(JSON.stringify(request.output_config.format.schema).length).toBeLessThan(6_500);
     expect(result.landing).toEqual({
       seoTitle: candidate.landingSeoTitle,
       hero: {
@@ -233,7 +232,7 @@ describe("AnthropicCampaignGenerator", () => {
       faq: candidate.landingFaq,
     });
     expect(result.generation).toEqual({
-      promptVersion: "campaign-spec-v2-reservations-flat-v1",
+      promptVersion: "campaign-spec-v2-reservations-flat-v2",
       model: "claude-haiku-4-5-20251001",
       generatedAt: "2026-08-25T12:34:56.000Z",
     });
@@ -267,11 +266,9 @@ describe("AnthropicCampaignGenerator", () => {
         successMessage: candidate.signalSuccessMessage,
       },
     });
-    expect(result.validation.signal.options.map((option) => option.label)).toEqual([
-      candidate.signalPositiveLabel,
-      candidate.signalNeutralLabel,
-      candidate.signalNegativeLabel,
-    ]);
+    expect(result.validation.signal.options.map((option) => option.label)).toEqual(
+      candidate.signalOptionLabels,
+    );
     expect(result.templates).toEqual({
       carouselCover: candidate.carouselCoverTemplate,
       landingIntro: candidate.landingIntroTemplate,
@@ -349,6 +346,31 @@ describe("AnthropicCampaignGenerator", () => {
       code: "anthropic_billing_error",
       message: "Anthropic API 결제 상태를 확인해주세요.",
     });
+
+    const schemaError = Object.assign(new Error("secret schema detail"), {
+      status: 400,
+      type: "invalid_request_error",
+      error: {
+        type: "error",
+        error: {
+          type: "invalid_request_error",
+          message: "The compiled grammar is too large.",
+        },
+      },
+    });
+    const schemaGenerator = new AnthropicCampaignGenerator({
+      client: {
+        messages: {
+          parse: vi.fn().mockRejectedValue(schemaError),
+        } as unknown as Anthropic["messages"],
+      },
+      model: "claude-haiku-4-5-20251001",
+    });
+    await expect(schemaGenerator.generate(idea)).rejects.toMatchObject({
+      name: "CampaignGenerationError",
+      code: "anthropic_schema_error",
+      message: "Anthropic 구조화 출력 스키마를 컴파일하지 못했습니다.",
+    });
   });
 
   it("설정·upstream 오류를 비밀정보 없는 503 응답으로 변환한다", async () => {
@@ -367,5 +389,11 @@ describe("AnthropicCampaignGenerator", () => {
     );
     expect(billingResponse.status).toBe(503);
     expect((await billingResponse.json()).error.code).toBe("anthropic_billing_error");
+
+    const schemaResponse = routeErrorResponse(
+      new CampaignGenerationError("anthropic_schema_error", "secret schema detail"),
+    );
+    expect(schemaResponse.status).toBe(503);
+    expect((await schemaResponse.json()).error.code).toBe("campaign_generation_schema_error");
   });
 });

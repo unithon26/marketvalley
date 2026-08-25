@@ -42,6 +42,7 @@ describe("campaign prompts", () => {
     expect(prompt).toContain("이름·이메일");
     expect(prompt).toContain("익명·개인정보 미수집");
     expect(prompt).toContain("충돌하는 표현은 복사하지 말고");
+    expect(prompt).toContain("positive, neutral, negative 순서");
     expect(prompt).not.toContain("개인정보 미수집 방식으로 작성");
   });
 
@@ -66,6 +67,6 @@ describe("campaign prompts", () => {
   });
 
   it("배포 뒤 결과 추적에 사용할 안정된 prompt version을 제공한다", () => {
-    expect(CAMPAIGN_PROMPT_VERSION).toBe("campaign-spec-v2-reservations-flat-v1");
+    expect(CAMPAIGN_PROMPT_VERSION).toBe("campaign-spec-v2-reservations-flat-v2");
   });
 });

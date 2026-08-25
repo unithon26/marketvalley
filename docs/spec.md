@@ -508,7 +508,8 @@ Anthropic 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를
 ## 8. 실패 처리
 
 - Anthropic timeout: 자동 재호출 없이 입력을 보존하고 실패를 명시한다. live 성공을 fixture로 위장하지 않는다.
-- 스키마 오류: 서버 검증 실패로 처리하고 입력을 보존한 채 실패를 명시
+- Anthropic 문법 컴파일 오류: `campaign_generation_schema_error`로 일반 upstream 실패와 구분하고 입력을 보존한다.
+- 모델 출력 스키마 오류: 서버 검증 실패로 처리하고 입력을 보존한 채 실패를 명시
 - 이미지 생성 실패: CSS/SVG 기본 배경 유지
 - 저장소 실패: 현재 입력을 유지하고 생성·게시·응답·판단·초기화 실패를 각각 명시
 - 신호 중복: 최초 응답을 유지하고 이미 참여했다는 상태 표시
