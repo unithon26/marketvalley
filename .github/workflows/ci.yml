@@ -60,12 +60,12 @@ jobs:
                 config --format json
           )"
           jq -e '
-            .services.app.cpus == 1.5 and
-            (.services.app.mem_limit | tonumber) == 2147483648 and
-            (.services.app.memswap_limit | tonumber) == 2147483648 and
-            .services.proxy.cpus == 0.25 and
-            (.services.proxy.mem_limit | tonumber) == 268435456 and
-            (.services.proxy.memswap_limit | tonumber) == 268435456 and
+            .services.app.cpus == 0.75 and
+            (.services.app.mem_limit | tonumber) == 1610612736 and
+            (.services.app.memswap_limit | tonumber) == 1610612736 and
+            .services.proxy.cpus == 0.15 and
+            (.services.proxy.mem_limit | tonumber) == 201326592 and
+            (.services.proxy.memswap_limit | tonumber) == 201326592 and
             ([.services.proxy.ports[] | {host_ip, published, target, protocol}] == [
               {host_ip: "10.0.0.9", published: "13080", target: 80, protocol: "tcp"},
               {host_ip: "10.0.0.9", published: "13443", target: 443, protocol: "tcp"}

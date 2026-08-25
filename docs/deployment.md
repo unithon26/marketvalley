@@ -10,9 +10,10 @@
 - OCI Resource Manager stack이 public NLB `152.67.213.96`, NLB·backend NSG, 전용 50GiB Block Volume과 attachment를 관리함
 - 관리자 Ed25519 key의 public IP 직접 접속, 별도 강제 명령 deploy key, Tailscale SSH 복구 경로를 확인함
 - 전용 volume은 `/opt/marketvalley`에 ext4 UUID mount되고 rootless Docker 29.7.2 data-root와 release cache를 소유함
-- production origin은 `https://marketvalley-152-67-213-96.sslip.io`이며 server 환경에는 Anthropic·Supabase·signal secret을 적용함. Turnstile과 OAuth production 설정, 첫 앱 release는 남아 있음
+- 공식 사용자 origin용 Vercel 프로젝트 `marketvaley`를 생성했고 `https://marketvaley.vercel.app`에 Turnstile을 제외한 production 환경변수를 등록함. Vercel 계정의 GitHub 앱에 `unithon26/marketvalley` 비공개 저장소 권한을 추가해야 Git 자동 배포가 연결됨
+- Oracle 검증 origin은 `https://marketvalley-152-67-213-96.sslip.io`이며 server 환경에는 Anthropic·Supabase·signal secret을 적용함. Turnstile과 OAuth production 설정, 두 대상의 첫 앱 release는 남아 있음
 
-새 VM이나 Kubernetes workload는 만들지 않는다. 기존 VM의 rootless Compose 기반과 owner-only GitHub 배포 자동화만 사용하며, 실제 첫 앱 release는 4·24 복원과 production 외부 설정 뒤 수행한다.
+새 VM이나 Kubernetes workload는 만들지 않는다. 기존 VM의 rootless Compose 기반과 owner-only GitHub 배포 자동화만 사용한다. 4·24 복구 전에도 기존 K3s를 보호하는 1.25 CPU·3GiB aggregate 상한으로 첫 release를 허용하고, 실제 사용량을 관측한 뒤에만 상향한다.
 
 ## 운영 구조
 
@@ -35,7 +36,7 @@ OCI 50GiB Block Volume
       release·app cache
 ```
 
-앱과 isolated preflight는 각각 1.5 CPU·2GiB, Caddy 0.25 CPU·256MiB, BuildKit 1 CPU·3GiB가 상한이다. 전용 rootless user cgroup은 CPU 225%, 메모리 6GiB, swap 0, task 1024로 한 번 더 묶고 BuildKit은 병렬 2와 2GiB GC cache를 넘기지 않는다. rootless Docker data-root와 release·app cache는 Kubernetes boot disk가 아니라 전용 50GiB volume 안에 둔다. Next.js와 Caddy는 별도 Compose network를 사용하고 host에 앱 3000을 publish하지 않는다. Caddy는 사설 고포트에만 bind하고 HTTP/3를 끈다. NLB가 표준 포트를 전달하므로 production URL에는 포트 번호가 없다.
+앱과 isolated preflight는 각각 0.75 CPU·1.5GiB, Caddy 0.15 CPU·192MiB, BuildKit 1 CPU·2GiB가 상한이다. 전용 rootless user cgroup은 CPU 125%, 메모리 3GiB, swap 0, task 1024로 한 번 더 묶고 BuildKit은 병렬 1과 1GiB GC cache를 넘기지 않는다. 현재 Oracle host는 4 OCPU·24GB 복구가 capacity 부족으로 거절된 2 OCPU·12GB 상태이므로 이 보수적 상한으로 K3s에 최소 0.75 CPU와 9GiB 메모리를 남긴다. rootless Docker data-root와 release·app cache는 Kubernetes boot disk가 아니라 전용 50GiB volume 안에 둔다. Next.js와 Caddy는 별도 Compose network를 사용하고 host에 앱 3000을 publish하지 않는다. Caddy는 사설 고포트에만 bind하고 HTTP/3를 끈다. NLB가 표준 포트를 전달하므로 production URL에는 포트 번호가 없다.
 
 구조와 기각 대안은 [ADR-0019](decisions/0019-self-host-on-oracle-with-verified-ssh-releases.md)에 기록했다.
 
@@ -112,7 +113,7 @@ NLB가 healthy가 되기 전에는 기존 security list의 22·6443을 건드리
 
 ## 4. DNS와 server secret
 
-`marketvaley.vercel.app`은 2026-08-25 확인 시 404를 반환했고 `vercel.app` 하위 도메인은 Vercel 프로젝트가 관리하므로 OCI NLB의 A record로 바꿀 수 없다. 이 주소는 추후 별도 Vercel 발표본에만 사용할 수 있고 Oracle production origin으로 사용하지 않는다.
+`vercel.app` 하위 도메인은 OCI NLB의 A record로 바꿀 수 없다. 2026-08-26 공식 사용자 URL용 Vercel 프로젝트 `marketvaley`를 생성해 `https://marketvaley.vercel.app` 이름을 확보했다. 같은 Next.js 앱을 Vercel의 공식 사용자 배포와 Oracle Compose의 인프라 검증 배포로 각각 운영하되, 데이터와 인증은 같은 Supabase project를 사용한다.
 
 첫 Oracle 배포는 NLB public IP가 나온 뒤 `marketvalley-<NLB-IP-with-dashes>.sslip.io`를 사용한다. `sslip.io`는 hostname 안의 public IP를 A record로 해석하고 Caddy가 HTTP-01으로 해당 개별 hostname의 TLS 인증서를 발급받을 수 있다. 별도 도메인을 확보하면 같은 NLB IP로 A record를 옮기고 OAuth·Supabase·Turnstile origin을 함께 교체한다. 기존 VM public IP를 가리키면 Traefik으로 들어가므로 사용할 수 없다.
 
@@ -132,7 +133,7 @@ release는 새 image의 network 없는 `/api/health`를 먼저 확인한다. 이
 
 ## 5. OAuth production origin
 
-HTTPS가 실제로 열린 뒤 다음 세 설정을 같은 origin으로 맞춘다.
+HTTPS가 실제로 열린 뒤 공식 Vercel origin과 Oracle 검증 origin을 다음 설정에 모두 등록한다. Supabase Site URL은 공식 Vercel origin 하나만 사용하고 redirect allow-list에는 두 callback을 둔다.
 
 1. `NEXT_PUBLIC_SITE_URL`
 2. Supabase Site URL과 `https://<domain>/auth/callback\?sb_flow_id=*` redirect allow-list
@@ -140,7 +141,7 @@ HTTPS가 실제로 열린 뒤 다음 세 설정을 같은 origin으로 맞춘다
 
 Google callback은 앱 서버가 아니라 기존 Supabase callback URI를 유지한다. 설정 뒤 실제 Google 로그인·새로고침·로그아웃·두 탭 역순 callback을 production URL에서 다시 검증한다.
 
-같은 production hostname을 Cloudflare Turnstile widget에 등록하고 public site key와 server secret을 `production.env`에 넣는다. migration `202608250002_reservation_abuse_protection.sql`을 적용한 뒤 실제 widget token이 exact `action=reservation`과 hostname으로 검증되는지 확인한다. migration과 실제 token 검증 전에는 Supabase production mode를 활성화하지 않는다.
+두 production hostname을 같은 Cloudflare Turnstile widget에 등록하고 public site key와 server secret을 Vercel과 Oracle `production.env`에 넣는다. migration `202608250002_reservation_abuse_protection.sql`을 적용한 뒤 각 hostname의 실제 widget token이 exact `action=reservation`과 요청 origin으로 검증되는지 확인한다. migration과 실제 token 검증 전에는 Supabase production mode를 활성화하지 않는다.
 
 ## 6. GitHub 배포 자동화와 수동 승인
 

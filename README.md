@@ -64,8 +64,8 @@ GNB의 Google 로그인·사용자·로그아웃 UI는 인증 상태 hook과 분
 ## 범위 경계
 
 - 방문 이벤트와 Meta Insights를 연결하기 전에는 예약자 수 이외의 광고 성과 수치를 표시하지 않는다. Claude 문구와 Supabase adapter, 운영 migration·실DB 종단은 검증했다. Meta 자동화는 범위에서 제외한다.
-- Google OAuth는 local Google·Supabase provider와 실제 계정 로그인·로그아웃까지 검증했다. Oracle production origin은 정했지만 Supabase·Google production redirect와 실제 OAuth 종단은 아직 설정·검증하지 않았다. 기존 fixture 데모에는 로그인을 강제하지 않는다.
-- 기존 Oracle VM의 Kubernetes·Traefik은 그대로 두고 OCI NLB·NSG·전용 50GiB volume, rootless Docker와 강제 명령 deploy gateway를 실제 적용했다. Oracle A1 capacity 부족으로 현재 사양은 2 OCPU·12GB이며 4·24 복원을 재시도 중이다. 팀 source에는 운영 비밀을 두지 않고 개인 owner-only 저장소가 검토한 SHA만 배포한다. Turnstile·OAuth production 설정과 첫 앱 배포는 아직 완료하지 않았다.
+- Google OAuth는 local Google·Supabase provider와 실제 계정 로그인·로그아웃까지 검증했다. 공식 Vercel origin과 Oracle 검증 origin은 정했지만 Supabase·Google production redirect와 실제 OAuth 종단은 아직 설정·검증하지 않았다. 기존 fixture 데모에는 로그인을 강제하지 않는다.
+- 공식 사용자 URL용 Vercel 프로젝트 `marketvaley`를 생성하고 Turnstile을 제외한 production 환경변수를 등록했다. 기존 Oracle VM의 Kubernetes·Traefik은 그대로 두고 OCI NLB·NSG·전용 50GiB volume, rootless Docker와 강제 명령 deploy gateway를 실제 적용했다. Oracle A1 capacity 부족으로 현재 사양은 2 OCPU·12GB이며 Compose 전체를 1.25 CPU·3GiB로 제한했다. 팀 source에는 운영 비밀을 두지 않고 개인 owner-only 저장소가 검토한 SHA만 Oracle에 배포한다. Vercel Git 권한, Turnstile·OAuth production 설정과 첫 앱 배포는 아직 완료하지 않았다.
 - P0는 명시적 동의 뒤 예약자명단 목적의 이름·이메일만 수집한다. 목록 화면의 이메일은 마스킹한다.
 - Meta 계정 연결, 광고 활성화와 실제 지출은 해커톤 P0 범위에 넣지 않는다.
 - 기본 fixture에서는 광고·예약자명단·판단이 Node.js 프로세스 메모리에만 남는다. 운영 migration과 server secret을 적용해 `CAMPAIGN_REPOSITORY_MODE=supabase`로 전환하면 계정 소유 RLS와 영속 저장을 사용한다.

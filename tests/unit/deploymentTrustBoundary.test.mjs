@@ -12,8 +12,8 @@ describe("production deployment trust boundary", () => {
     expect(workflow).not.toContain("PRODUCTION_SSH_PRIVATE_KEY");
     expect(workflow).not.toContain("PRODUCTION_SSH_HOST");
     expect(workflow).not.toMatch(/^\s{2}deploy:\s*$/mu);
-    expect(workflow).toContain("(.services.app.mem_limit | tonumber) == 2147483648");
-    expect(workflow).toContain("(.services.proxy.mem_limit | tonumber) == 268435456");
+    expect(workflow).toContain("(.services.app.mem_limit | tonumber) == 1610612736");
+    expect(workflow).toContain("(.services.proxy.mem_limit | tonumber) == 201326592");
   });
 
   it("dispatches deploy and rollback through a root-owned fixed release script", () => {
@@ -35,18 +35,18 @@ describe("production deployment trust boundary", () => {
     expect(runtimeContract).toBe("marketvalley-production-v1");
     expect(releaseScript).toContain('required_release_contract="marketvalley-production-v1"');
     expect(releaseScript).toContain('release runtime contract is incompatible with this server');
-    expect(releaseScript).toContain('--driver-opt memory=3g');
-    expect(releaseScript).not.toContain('--driver-opt memory=4g');
-    expect(releaseScript).toContain('deploy user aggregate CPU quota must be 225%');
-    expect(releaseScript).toContain('deploy user aggregate memory limit must be 6 GiB');
+    expect(releaseScript).toContain('--driver-opt memory=2g');
+    expect(releaseScript).not.toContain('--driver-opt memory=3g');
+    expect(releaseScript).toContain('deploy user aggregate CPU quota must be 125%');
+    expect(releaseScript).toContain('deploy user aggregate memory limit must be 3 GiB');
     expect(releaseScript).toContain('deploy user aggregate I/O weight must be 100');
     expect(releaseScript).toContain('NEXT_PUBLIC_TURNSTILE_SITE_KEY must be a non-placeholder');
     expect(releaseScript).toContain('TURNSTILE_VERIFY_TIMEOUT_MS must be an integer between 500 and 10000');
     expect(releaseScript).toContain('RESERVATION_CAMPAIGN_MINUTE_LIMIT must not exceed');
     expect(releaseScript).toContain('validate-release-archive.py');
-    expect(releaseScript).toContain('--cpus 1.5');
-    expect(releaseScript).toContain('--memory 2g');
-    expect(releaseScript).toContain('--memory-swap 2g');
+    expect(releaseScript).toContain('--cpus 0.75');
+    expect(releaseScript).toContain('--memory 1536m');
+    expect(releaseScript).toContain('--memory-swap 1536m');
     expect(releaseScript).toContain('flock --wait 2100');
     expect(releaseScript).toContain('existing release has no trusted integrity manifest');
     expect(releaseScript).toContain('.marketvalley-release-integrity');

@@ -13,8 +13,8 @@
 ## 결정
 
 - Kubernetes·k3s containerd·Traefik·Ingress를 수정하거나 공유하지 않는다. 전용 `marketvalley` Linux 사용자 아래 rootless Docker daemon과 Compose project, network, volume, Buildx builder를 둔다. 이 사용자는 rootful `docker` group에 들어가지 않는다.
-- Next.js 16 `output: "standalone"` 산출물을 UID 1001의 read-only 이미지로 실행한다. 앱은 1.5 CPU·2GiB, Caddy는 0.25 CPU·256MiB, BuildKit은 1 CPU·3GiB로 제한한다. 실행 중인 앱과 build가 겹쳐도 daemon 여유를 남기도록 전용 rootless user cgroup은 CPU 225%, 메모리 6GiB, swap 0, task 1024로 제한한다. rootless cgroup v2와 systemd controller delegation이 확인되지 않으면 배포를 거절한다.
-- image preflight에도 app과 같은 1.5 CPU·2GiB·swap 2GiB 상한을 둔다. OCI home region에 `prevent_destroy`로 보호한 50GiB Block Volume을 만들고 기존 VM에 `/dev/oracleoci/oraclevdb`로 paravirtualized attachment한다. A1 VM이 paravirtualized 전송 중 암호화를 지원하지 않아 해당 옵션은 끄되 OCI 저장 암호화는 유지한다. bootstrap은 non-boot whole disk·크기·빈 filesystem과 명시적 format 확인값을 검증한 뒤 ext4로 만들고 `/opt/marketvalley`에 mount한다. rootless Docker data-root, image·build cache, release와 app cache가 모두 이 volume에 있지 않으면 배포를 거절한다.
+- Next.js 16 `output: "standalone"` 산출물을 UID 1001의 read-only 이미지로 실행한다. 현재 2 OCPU·12GB host에서 기존 K3s와 공존하도록 앱은 0.75 CPU·1.5GiB, Caddy는 0.15 CPU·192MiB, BuildKit은 1 CPU·2GiB로 제한한다. 실행 중인 앱과 build가 겹쳐도 K3s 여유를 남기도록 전용 rootless user cgroup은 CPU 125%, 메모리 3GiB, swap 0, task 1024로 제한한다. rootless cgroup v2와 systemd controller delegation이 확인되지 않으면 배포를 거절한다.
+- image preflight에도 app과 같은 0.75 CPU·1.5GiB·swap 1.5GiB 상한을 둔다. OCI home region에 `prevent_destroy`로 보호한 50GiB Block Volume을 만들고 기존 VM에 `/dev/oracleoci/oraclevdb`로 paravirtualized attachment한다. A1 VM이 paravirtualized 전송 중 암호화를 지원하지 않아 해당 옵션은 끄되 OCI 저장 암호화는 유지한다. bootstrap은 non-boot whole disk·크기·빈 filesystem과 명시적 format 확인값을 검증한 뒤 ext4로 만들고 `/opt/marketvalley`에 mount한다. rootless Docker data-root, image·build cache, release와 app cache가 모두 이 volume에 있지 않으면 배포를 거절한다.
 - Caddy는 VM 사설 IP `10.0.0.9`의 TCP 13080·13443에만 bind한다. host 80·443과 Kubernetes 네트워크에는 연결하지 않는다. HTTP/3는 사용하지 않고 Caddy가 TLS를 종료한다.
 - OCI public Network Load Balancer가 별도 public IP의 TCP 80·443을 각각 13080·13443으로 L4 전달한다. 포트가 다르므로 backend set을 둘로 나누며 source preservation을 꺼 full NAT로 사용한다. HTTP backend는 `/api/health` 200을, HTTPS backend는 TCP 연결을 확인한다.
 - NLB와 backend 전용 NSG를 Terraform으로 관리한다. NLB는 인터넷에서 80·443만 받고 backend 고포트는 NLB NSG에서만 허용한다. 기존 primary VNIC를 Terraform attachment로 소유하지 않고, 현재 NSG 목록을 보존하는 검증 스크립트로 backend NSG 하나만 append한다.
@@ -58,7 +58,7 @@ inbound rule을 줄일 수 있지만 별도 계정·token·agent와 제3자 장�
 
 ### `marketvaley.vercel.app`을 Oracle 도메인으로 사용한다
 
-`vercel.app` 하위 도메인의 DNS는 Vercel 프로젝트가 관리해 OCI NLB로 A record를 변경할 수 없다. 2026-08-25 해당 주소도 404였다. 첫 배포는 NLB IP를 포함한 `sslip.io` hostname과 Caddy 개별 인증서를 사용하고, 보유 커스텀 도메인이 생기면 origin을 한 번에 교체한다.
+`vercel.app` 하위 도메인의 DNS는 Vercel 프로젝트가 관리해 OCI NLB로 A record를 변경할 수 없다. Oracle은 NLB IP를 포함한 `sslip.io` hostname과 Caddy 개별 인증서를 사용한다. 사용자가 지정한 주소는 별도 Vercel 공식 배포로 확보했으며 두 대상을 병행하는 결정은 ADR-0020에 기록했다.
 
 ### Actions에서 이미지를 빌드해 registry에 push한다
 

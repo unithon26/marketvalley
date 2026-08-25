@@ -211,8 +211,8 @@ printf '%s\n' \
   'MemoryAccounting=true' \
   'TasksAccounting=true' \
   'IOAccounting=true' \
-  'CPUQuota=225%' \
-  'MemoryMax=6G' \
+  'CPUQuota=125%' \
+  'MemoryMax=3G' \
   'MemorySwapMax=0' \
   'TasksMax=1024' \
   'IOWeight=100' \
