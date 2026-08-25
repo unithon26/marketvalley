@@ -1,0 +1,20 @@
+# Local dependencies and build outputs
+node_modules/
+.next/
+out/
+coverage/
+playwright-report/
+test-results/
+
+# Infrastructure is deployed independently from the Next.js application.
+infra/
+
+# Local-only configuration and caches
+.vercel/
+supabase/.temp/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tsbuildinfo
+.DS_Store
+*.log

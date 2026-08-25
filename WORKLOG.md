@@ -1,5 +1,13 @@
 # 작업 기록
 
+## 2026-08-26 — 공개 source 기반 Vercel Git 연결과 Turnstile 운영 설정
+
+- 목적: 공식 `marketvaley.vercel.app`과 Oracle Compose 배포가 같은 source SHA를 사용하고, 예약 폼의 운영 봇 방어와 Vercel 자동 배포를 연결한다.
+- 변경: Cloudflare Turnstile `marketvalley-production` 위젯을 생성해 Vercel·Oracle HTTPS hostname 두 개만 허용하고 site·secret key를 각 운영 환경에 등록했다. Vercel GitHub App은 `unithon26/marketvalley` 한 저장소에만 설치했다. Vercel Hobby가 조직 비공개 저장소 연결을 거부해 사용자 승인 아래 저장소를 공개로 전환하고 Git 연동을 완료했다. Terraform provider와 로컬 산출물이 Vercel CLI 업로드에 섞이지 않도록 `.vercelignore`를 추가하고 결정 근거를 ADR-0022에 기록했다.
+- 검증: Git 이력 86개 커밋을 `gitleaks git --redact`로 검사했다. 탐지 3건은 모두 같은 단위 테스트용 고정값 `0123456789abcdef` 반복으로 확인했고 실제 자격증명은 없었다. source SHA `c1dde07`의 GitHub Actions run `32870843617`이 성공했으며, Vercel production 환경변수 19개와 Oracle Turnstile 두 키의 형식·파일 권한을 값 노출 없이 확인했다.
+- 전달: `unithon26/marketvalley`는 공개 저장소가 됐고 Vercel 프로젝트 `marketvaley`와 연결됐다. Turnstile secret은 Git·로그·문서에 기록하지 않았다.
+- 남은 일: 이 변경을 push해 Vercel Git production 배포를 시작하고 공식 URL의 health·OAuth·예약 종단을 검증한다. 같은 green source SHA를 Oracle owner-only workflow로 배포해 NLB·TLS·rollback을 확인한다.
+
 ## 2026-08-26 — Oracle Compose 운영 기반 적용과 접근 복구
 
 - 목적: 기존 `ssumcp`의 Kubernetes와 분리된 NLB·전용 볼륨·rootless Docker 운영 기반을 실제 OCI에 적용하고 owner-only GitHub 배포 경로를 서버까지 연결한다.
