@@ -2,7 +2,7 @@
 
 marketvalley는 아이디어를 처음 검증하려는 예비창업가와 초기 1인 사업자가 반복하던 광고 기획, 채널별 재작성, 조판, 파일 정리와 반응 취합을 하나의 흐름으로 없애는 UNITHON 2026 프로젝트다.
 
-현재 저장소에는 Figma 디자인을 반영한 종단 데모가 있다. 카드뉴스 표지 3종과 랜딩 도입부 고정안 7종을 같은 `CampaignSpec`에서 선택하고, 입력에 명시한 상품명·핵심 특징과 문제·솔루션을 랜딩·카드뉴스·게시 준비 파일에 일관되게 반영한다. 제품 생성 기본 경로는 Anthropic Messages API의 Structured Outputs 한 번으로 랜딩 Hero·문제·혜택·단계·FAQ를 포함한 전체 광고 문구를 만든다. 자동 테스트와 외부 장애에 대비한 발표 fallback만 `CAMPAIGN_GENERATOR_MODE=fixture`를 명시해 결정적 결과를 사용한다.
+현재 저장소에는 Figma 디자인을 반영한 종단 데모가 있다. 카드뉴스 표지 3종과 랜딩 도입부 고정안 7종을 같은 `CampaignSpec`에서 선택하고, 입력에 명시한 상품명·핵심 특징과 문제·솔루션을 랜딩·카드뉴스·게시 준비 파일에 일관되게 반영한다. 제품 생성 기본 경로는 Anthropic Messages API의 Structured Outputs 한 번으로 랜딩 Hero·문제·혜택·단계·FAQ를 포함한 광고 문구 슬롯을 만들고, 서버가 고정 필드와 합쳐 최종 `CampaignSpec`을 검증한다. 자동 테스트와 외부 장애에 대비한 발표 fallback만 `CAMPAIGN_GENERATOR_MODE=fixture`를 명시해 결정적 결과를 사용한다.
 
 ## 실행
 

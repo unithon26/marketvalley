@@ -11,10 +11,13 @@ import {
   resolveCampaignGeneratorStatus,
 } from "@/lib/ai/generatorConfig";
 import {
+  ANTHROPIC_REQUEST_POLICY,
   CampaignGenerationError,
   AnthropicCampaignGenerator,
+  anthropicCampaignCopySchema,
   type AnthropicMessagesClient,
 } from "@/lib/ai/anthropicCampaignGenerator";
+import type { CampaignSpec } from "@/lib/contracts/campaign";
 import type { CampaignGenerator } from "@/lib/contracts/generator";
 import { demoCampaign } from "@/lib/demo/demo-campaign";
 
@@ -33,6 +36,65 @@ function fakeClient(
     },
     parse,
   };
+}
+
+function countSchemaNodes(value: unknown, type: string): number {
+  if (!value || typeof value !== "object") return 0;
+  if (Array.isArray(value)) {
+    return value.reduce((total, item) => total + countSchemaNodes(item, type), 0);
+  }
+
+  const record = value as Record<string, unknown>;
+  return (record.type === type ? 1 : 0)
+    + Object.values(record).reduce<number>(
+      (total, item) => total + countSchemaNodes(item, type),
+      0,
+    );
+}
+
+function copyCandidate(spec: CampaignSpec = demoCampaign) {
+  return anthropicCampaignCopySchema.parse({
+    projectName: spec.project.name,
+    projectOneLiner: spec.project.oneLiner,
+    projectCategory: spec.project.category,
+    validationCustomer: spec.validation.customer,
+    validationProblem: spec.validation.problem,
+    validationSolution: spec.validation.solution,
+    validationExpectedSignal: spec.validation.expectedSignal,
+    validationInvalidationEvidence: spec.validation.invalidationEvidence,
+    validationAssumptions: spec.validation.assumptions,
+    signalType: spec.validation.signal.type,
+    signalCtaLabel: spec.validation.signal.ctaLabel,
+    signalQuestion: spec.validation.signal.question,
+    signalPositiveLabel: spec.validation.signal.options[0].label,
+    signalNeutralLabel: spec.validation.signal.options[1].label,
+    signalNegativeLabel: spec.validation.signal.options[2].label,
+    signalSuccessMessage: spec.validation.signal.successMessage,
+    brandTone: spec.brand.tone,
+    carouselCoverTemplate: spec.templates.carouselCover,
+    landingIntroTemplate: spec.templates.landingIntro,
+    valueProposition: spec.messaging.valueProposition,
+    hooks: spec.messaging.hooks,
+    socialCaption: spec.messaging.caption,
+    hashtags: spec.messaging.hashtags,
+    landingSeoTitle: spec.landing.seoTitle,
+    landingHeroEyebrow: spec.landing.hero.eyebrow,
+    landingHeroSupportingText: spec.landing.hero.supportingText,
+    landingPainPoints: spec.landing.painPoints,
+    landingBenefits: spec.landing.benefits,
+    landingSteps: spec.landing.steps,
+    landingFaq: spec.landing.faq,
+    carouselHookBody: spec.carousel.hookBody,
+    carouselProblemHeadline: spec.carousel.problem.headline,
+    carouselProblemBody: spec.carousel.problem.body,
+    carouselInsightHeadline: spec.carousel.insight.headline,
+    carouselInsightBody: spec.carousel.insight.body,
+    carouselSolutionBody: spec.carousel.solutionBody,
+    carouselCtaBody: spec.carousel.ctaBody,
+    carouselVisualPrompts: spec.carousel.visualPrompts,
+    claimsToReview: spec.safety.claimsToReview,
+    prohibitedClaimsRemoved: spec.safety.prohibitedClaimsRemoved,
+  });
 }
 
 describe("campaign generator configuration", () => {
@@ -101,26 +163,29 @@ describe("campaign generator configuration", () => {
 });
 
 describe("AnthropicCampaignGenerator", () => {
+  it("실제 SDK client에 단일 60초 요청 정책을 전달한다", () => {
+    const { client } = fakeClient(null);
+    const createClient = vi.fn(() => client);
+
+    new AnthropicCampaignGenerator({
+      apiKey: "test-key",
+      model: "claude-haiku-4-5-20251001",
+      createClient,
+    });
+
+    expect(createClient).toHaveBeenCalledWith({
+      apiKey: "test-key",
+      timeout: 60_000,
+      maxRetries: 0,
+    });
+    expect(ANTHROPIC_REQUEST_POLICY).toEqual({
+      timeoutMs: 60_000,
+      maxRetries: 0,
+    });
+  });
+
   it("Messages API Structured Outputs 한 번으로 문구를 만들고 서버 필드를 다시 고정한다", async () => {
-    const candidate = structuredClone(demoCampaign);
-    candidate.generation = {
-      promptVersion: "model-controlled-value",
-      model: "model-controlled-value",
-      generatedAt: "2025-01-01T00:00:00.000Z",
-    };
-    candidate.validation.decisionRule = {
-      minimumResponses: 10,
-      minimumPositiveResponses: 10,
-      description: "모델이 임의로 바꾼 기준",
-    };
-    candidate.validation.signal.options = [
-      candidate.validation.signal.options[2],
-      candidate.validation.signal.options[0],
-      candidate.validation.signal.options[1],
-    ];
-    candidate.brand.primaryColor = "#FFFFFF";
-    candidate.brand.accentColor = "#FFFFFF";
-    candidate.brand.visualDirection = "모델이 임의로 바꾼 시각 지시";
+    const candidate = copyCandidate();
 
     const { client, parse } = fakeClient(candidate);
     const generator = new AnthropicCampaignGenerator({
@@ -152,9 +217,23 @@ describe("AnthropicCampaignGenerator", () => {
     expect(request.system).toContain("landing.steps[0..2].title");
     expect(request.system).toContain("landing.faq[0..2].question");
     expect(request.messages[0].content).toContain(JSON.stringify(idea.background));
-    expect(result.landing).toEqual(candidate.landing);
+    expect(request.output_config.format.schema.properties).toHaveProperty("projectName");
+    expect(request.output_config.format.schema.properties).not.toHaveProperty("schemaVersion");
+    expect(Object.keys(request.output_config.format.schema.properties)).toHaveLength(40);
+    expect(countSchemaNodes(request.output_config.format.schema, "object")).toBe(3);
+    expect(result.landing).toEqual({
+      seoTitle: candidate.landingSeoTitle,
+      hero: {
+        eyebrow: candidate.landingHeroEyebrow,
+        supportingText: candidate.landingHeroSupportingText,
+      },
+      painPoints: candidate.landingPainPoints,
+      benefits: candidate.landingBenefits,
+      steps: candidate.landingSteps,
+      faq: candidate.landingFaq,
+    });
     expect(result.generation).toEqual({
-      promptVersion: "campaign-spec-v2-reservations",
+      promptVersion: "campaign-spec-v2-reservations-flat-v1",
       model: "claude-haiku-4-5-20251001",
       generatedAt: "2026-08-25T12:34:56.000Z",
     });
@@ -168,6 +247,59 @@ describe("AnthropicCampaignGenerator", () => {
       "neutral",
       "negative",
     ]);
+    expect(result.project).toEqual({
+      name: candidate.projectName,
+      oneLiner: candidate.projectOneLiner,
+      category: candidate.projectCategory,
+      language: "ko",
+    });
+    expect(result.validation).toMatchObject({
+      customer: candidate.validationCustomer,
+      problem: candidate.validationProblem,
+      solution: candidate.validationSolution,
+      expectedSignal: candidate.validationExpectedSignal,
+      invalidationEvidence: candidate.validationInvalidationEvidence,
+      assumptions: candidate.validationAssumptions,
+      signal: {
+        type: candidate.signalType,
+        ctaLabel: candidate.signalCtaLabel,
+        question: candidate.signalQuestion,
+        successMessage: candidate.signalSuccessMessage,
+      },
+    });
+    expect(result.validation.signal.options.map((option) => option.label)).toEqual([
+      candidate.signalPositiveLabel,
+      candidate.signalNeutralLabel,
+      candidate.signalNegativeLabel,
+    ]);
+    expect(result.templates).toEqual({
+      carouselCover: candidate.carouselCoverTemplate,
+      landingIntro: candidate.landingIntroTemplate,
+    });
+    expect(result.messaging).toEqual({
+      valueProposition: candidate.valueProposition,
+      hooks: candidate.hooks,
+      caption: candidate.socialCaption,
+      hashtags: candidate.hashtags,
+    });
+    expect(result.carousel).toEqual({
+      hookBody: candidate.carouselHookBody,
+      problem: {
+        headline: candidate.carouselProblemHeadline,
+        body: candidate.carouselProblemBody,
+      },
+      insight: {
+        headline: candidate.carouselInsightHeadline,
+        body: candidate.carouselInsightBody,
+      },
+      solutionBody: candidate.carouselSolutionBody,
+      ctaBody: candidate.carouselCtaBody,
+      visualPrompts: candidate.carouselVisualPrompts,
+    });
+    expect(result.safety).toEqual({
+      claimsToReview: candidate.claimsToReview,
+      prohibitedClaimsRemoved: candidate.prohibitedClaimsRemoved,
+    });
     expect(result.brand).toMatchObject({
       primaryColor: "#5A3E36",
       accentColor: "#D58C5B",
@@ -185,7 +317,7 @@ describe("AnthropicCampaignGenerator", () => {
       name: "CampaignGenerationError",
       code: "anthropic_empty_response",
     });
-    expect(empty.parse).toHaveBeenCalledTimes(2);
+    expect(empty.parse).toHaveBeenCalledTimes(1);
 
     const parse = vi.fn().mockRejectedValue(new Error("sensitive upstream detail"));
     const failingGenerator = new AnthropicCampaignGenerator({

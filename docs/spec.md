@@ -44,7 +44,7 @@ generator가 추론한 내용은 `assumptions`에 표시한다. 제출 버튼을
 
 ### P0-2. 검증 가설 및 광고 생성
 
-서버에서 Anthropic Messages API와 Structured Outputs를 사용해 단일 `CampaignSpec` JSON을 생성한다. 자유 형식 텍스트를 파싱하지 않는다.
+서버에서 Anthropic Messages API와 Structured Outputs를 사용해 한 번에 평면 문구 슬롯 JSON을 생성한다. 서버가 Figma·안전·판단 기준 필드와 합쳐 단일 `CampaignSpec`을 만들고 전체 Zod 계약으로 다시 검증한다. 자유 형식 텍스트를 파싱하지 않는다.
 
 Figma가 정의한 레이아웃, 타이포·색상 조합, 섹션 순서와 상태·개인정보·사람 판단 안내는 renderer에 고정한다. AI는 아래 문구 슬롯만 채우고 새 HTML·좌표·템플릿을 만들지 않는다.
 
@@ -58,7 +58,7 @@ Figma가 정의한 레이아웃, 타이포·색상 조합, 섹션 순서와 상�
 | 선택적 배경 | `visualPrompts[0..4]` | 글자·로고·UI가 없는 장면 설명만 만든다. |
 | 안전 검토 | `claimsToReview`, `prohibitedClaimsRemoved` | 확인할 주장과 생성에서 제외한 금지 주장을 구분한다. |
 
-각 그룹의 지시는 `lib/ai/campaignPrompts.ts`에서 하나의 developer prompt로 조합한다. 사용자 입력은 별도 user message의 JSON 자료로 전달하고 그 안의 지시문을 실행하지 않는다. 랜딩·캐러셀·Meta를 따로 호출하지 않고 전체 `CampaignSpec`을 한 번에 생성한다.
+각 그룹의 지시는 `lib/ai/campaignPrompts.ts`에서 하나의 developer prompt로 조합한다. 사용자 입력은 별도 user message의 JSON 자료로 전달하고 그 안의 지시문을 실행하지 않는다. 랜딩·캐러셀·Meta를 따로 호출하지 않고 필요한 문구 슬롯을 한 번에 생성한 뒤 서버에서 전체 `CampaignSpec`으로 조립한다.
 
 완료 기준:
 
@@ -70,7 +70,7 @@ Figma가 정의한 레이아웃, 타이포·색상 조합, 섹션 순서와 상�
 - `schemaVersion`, 생성 모델·시각, Figma 색상, 판단 기준, 캠페인 ID·slug·공개 URL과 실제 응답은 서버가 기록하거나 모델 결과 위에 덮어쓴다.
 - 확인되지 않은 숫자, 고객 후기, 인증, 효능을 만들어내지 않는다.
 - 사실 검토가 필요한 표현은 `claimsToReview`에 별도로 표시한다.
-- 전송 또는 스키마 오류는 한 번만 재시도하고, 이후 데모 샘플 전환을 제공한다.
+- 빈 구조화 응답을 포함한 전송·timeout·스키마 오류는 자동 재호출 없이 실패를 명시한 뒤 사용자가 재시도하거나 데모 샘플로 전환할 수 있다.
 
 ### P0-3. 광고 생성과 게시
 
@@ -491,14 +491,14 @@ interface CampaignRepository {
 
 ## 7. AI 생성 규칙
 
-- 하나의 호출에서 전체 `CampaignSpec`을 생성한다.
-- Structured Outputs의 JSON Schema와 서버 Zod 검증을 함께 사용한다.
+- 하나의 호출에서 전체 광고의 문구 슬롯과 허용된 선택자를 생성한다.
+- 문법 복잡도를 제한한 평면 Structured Outputs 스키마와 최종 `CampaignSpec` Zod 검증을 함께 사용한다.
 - 입력에 없는 수치, 후기, 수상, 인증, 효능, 가격을 발명하지 않는다.
 - 실제 인터뷰 근거가 없는 베타테스터 후기, 고객 인용문, 사용 인원은 placeholder로도 만들지 않는다.
 - 추론한 정보는 `assumptions`, 확인이 필요한 주장은 `claimsToReview`에 넣는다.
 - 모델 결과를 HTML로 직접 실행하지 않는다. 모든 출력은 React 렌더러의 텍스트 데이터로만 사용한다.
 - 프롬프트는 `promptVersion`을 가지며 결과와 함께 기록한다.
-- live 생성은 20초 timeout과 SDK 재시도 1회로 제한하고, 빈 구조화 응답만 한 번 더 요청한다.
+- live 생성은 실측 지연을 반영한 60초 timeout과 SDK·앱 재시도 0회로 제한해 timeout·빈 응답 뒤 중복 생성과 과금을 막는다.
 - 이미지 모델은 글자, 로고, UI, 카드 완성본을 생성하지 않는다.
 - 판단 기준의 숫자는 AI가 생성하지 않고 시스템 기본값을 넣는다.
 
@@ -506,8 +506,8 @@ Anthropic 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를
 
 ## 8. 실패 처리
 
-- Anthropic timeout: 입력 보존, 제한된 재시도 뒤 실패를 명시한다. live 성공을 fixture로 위장하지 않는다.
-- 스키마 오류: 서버 검증 실패로 처리하고 한 번 재시도
+- Anthropic timeout: 자동 재호출 없이 입력을 보존하고 실패를 명시한다. live 성공을 fixture로 위장하지 않는다.
+- 스키마 오류: 서버 검증 실패로 처리하고 입력을 보존한 채 실패를 명시
 - 이미지 생성 실패: CSS/SVG 기본 배경 유지
 - 저장소 실패: 현재 입력을 유지하고 생성·게시·응답·판단·초기화 실패를 각각 명시
 - 신호 중복: 최초 응답을 유지하고 이미 참여했다는 상태 표시
@@ -616,7 +616,7 @@ Anthropic 공식 문서상 Structured Outputs는 제공한 JSON Schema 준수를
 
 | 개발자 A | 개발자 B |
 | --- | --- |
-| 생성 중·재시도·검토 경고 UI | Responses API Structured Outputs, Zod 재검증, 제한된 재시도, prompt version과 명시적 fixture 모드 |
+| 생성 중·재시도·검토 경고 UI | Anthropic Messages API Structured Outputs, Zod 재검증, 단일 60초 호출, prompt version과 명시적 fixture 모드 |
 
 - 완료 게이트 G4: 실제 입력 3종이 유효한 `CampaignSpec`을 만들고, 네트워크·스키마 실패 시 입력을 잃지 않은 채 데모 흐름으로 전환된다.
 - AI 연결을 위해 렌더러나 화면별 상태 계약을 바꾸지 않는다. 문제가 생기면 adapter 경계를 먼저 수정한다.

@@ -15,7 +15,10 @@
 - 제품 기본 생성 모드는 `anthropic`, 모델은 snapshot ID
   `claude-haiku-4-5-20251001`로 고정한다.
 - `AnthropicCampaignGenerator`는 Messages API의 `output_config.format` Structured Outputs를
-  사용해 한 번에 `CampaignSpec`을 만들고 기존 Zod 계약으로 다시 검증한다.
+  사용해 한 번에 평면 문구 슬롯과 허용된 선택자를 만든다. 서버가 고정 필드를 조립하고 기존
+  `CampaignSpec` Zod 계약으로 다시 검증한다.
+- live timeout은 60초, SDK와 앱 자동 재시도는 0회로 둔다. timeout이나 빈 응답 뒤에는 사용자가
+  명시적으로 다시 시도하게 해 중복 생성과 과금 가능성을 줄인다.
 - 서버 비밀은 `ANTHROPIC_API_KEY`, 모델 override는 `ANTHROPIC_TEXT_MODEL`로만 받는다.
 - 기존 OpenAI SDK, adapter, 환경변수와 `openai` 생성 모드는 제거한다.
 - 인증, same-origin, 분산 quota, 서버 소유 필드 덮어쓰기와 명시적 `fixture` fallback은 유지한다.
@@ -40,9 +43,11 @@
 
 ## 결과
 
-제품의 live 문구 생성은 Claude Haiku 4.5 하나로 수렴한다. 로컬 키와 해당 모델의 Structured
-Outputs 연결은 실제 요청으로 확인했다. API 호출은 토큰 사용량에 따라 과금되며, 자동 테스트와
-발표 복구는 계속 외부 호출이 없는 fixture를 사용한다.
+제품의 live 문구 생성은 Claude Haiku 4.5 하나로 수렴한다. 전체 `CampaignSpec`을 그대로 출력
+스키마로 사용했을 때 Anthropic의 내부 문법 복잡도 제한을 넘는 것을 실제 400 응답으로 확인했다.
+문구 계약을 평면화하고 서버 소유 필드를 출력에서 제외한 뒤 실제 요청이 최종 `CampaignSpec`
+검증까지 통과했다. API 호출은 토큰 사용량에 따라 과금되며, 자동 테스트와 발표 복구는 계속 외부
+호출이 없는 fixture를 사용한다.
 
 ## 근거
 

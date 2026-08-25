@@ -48,7 +48,7 @@ CampaignRepository ── mock: Node.js 프로세스 메모리
 
 Figma renderer는 랜딩·캐러셀의 레이아웃, 타이포·색상 조합, 섹션 순서와 제품의 상태·개인정보·사람 판단 안내를 고정한다. AI는 새 HTML이나 레이아웃을 만들지 않고 허용된 템플릿 ID만 선택한다. 선택된 ID의 실제 색상과 시각 방향은 서버가 Figma 토큰으로 매핑한다.
 
-AI가 채우는 문구는 상품 요약, 검증 가설, 동의 기반 사전예약 CTA, 가치제안, 후킹 3종, 게시 문구, 랜딩 각 섹션과 캐러셀 각 장이다. `lib/ai/campaignPrompts.ts`가 각 슬롯의 목적·길이·금지사항을 따로 정의한 뒤 하나의 system prompt로 조합한다. 사용자 입력은 명령이 아닌 별도 JSON 자료로 전달한다. 전체 `CampaignSpec`은 Anthropic Messages API Structured Outputs 한 번으로 생성해 랜딩·캐러셀·Meta 문구의 고객·문제·특징·CTA가 어긋나지 않게 한다. SDK의 Zod output format을 기존 `CampaignSpec`으로 다시 검증한다.
+AI가 채우는 문구는 상품 요약, 검증 가설, 동의 기반 사전예약 CTA, 가치제안, 후킹 3종, 게시 문구, 랜딩 각 섹션과 캐러셀 각 장이다. `lib/ai/campaignPrompts.ts`가 각 슬롯의 목적·길이·금지사항을 따로 정의한 뒤 하나의 system prompt로 조합한다. 사용자 입력은 명령이 아닌 별도 JSON 자료로 전달한다. Anthropic Messages API Structured Outputs 한 번으로 평면 문구 슬롯과 허용된 선택자를 받아 랜딩·캐러셀·Meta의 고객·문제·특징·CTA를 일치시킨다. 서버가 고정 필드를 조립한 뒤 기존 `CampaignSpec` Zod 계약으로 최종 검증한다.
 
 `schemaVersion`, `generation`, Figma 색상, `validation.decisionRule`, id·slug·공개 URL과 실제 응답은 서버 소유다. 모델 결과를 Zod로 검증한 뒤 서버 값으로 덮어쓰며, 생성 프롬프트의 변경은 `promptVersion`으로 추적한다.
 

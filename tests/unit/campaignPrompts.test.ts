@@ -35,9 +35,9 @@ describe("campaign prompts", () => {
 
     expect(prompt).toContain("같은 고객·문제·상품명·핵심 특징·CTA");
     expect(prompt).toContain("시장검증 광고 카피 생성기");
-    expect(prompt).toContain("Structured Outputs의 CampaignSpec JSON만 반환한다");
+    expect(prompt).toContain("Structured Outputs의 평면 문구 필드와 허용된 선택자만 반환한다");
     expect(prompt).toContain("validation.decisionRule");
-    expect(prompt).toContain("서버가 최종 덮어쓴다");
+    expect(prompt).toContain("서버가 조립하므로 출력하지 않는다");
     expect(prompt).toContain("동의 기반 사전예약");
     expect(prompt).toContain("이름·이메일");
     expect(prompt).toContain("익명·개인정보 미수집");
@@ -66,6 +66,6 @@ describe("campaign prompts", () => {
   });
 
   it("배포 뒤 결과 추적에 사용할 안정된 prompt version을 제공한다", () => {
-    expect(CAMPAIGN_PROMPT_VERSION).toBe("campaign-spec-v2-reservations");
+    expect(CAMPAIGN_PROMPT_VERSION).toBe("campaign-spec-v2-reservations-flat-v1");
   });
 });

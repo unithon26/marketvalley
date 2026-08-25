@@ -28,10 +28,10 @@ Figma 기반 화면과 mock 종단 흐름, Supabase·Anthropic adapter 코드는
 
 완료 조건:
 
-- 서버의 Responses API가 전체 `CampaignSpec`을 Structured Outputs로 한 번에 반환한다.
+- 서버의 Anthropic Messages API가 문법 복잡도를 제한한 평면 문구 슬롯을 Structured Outputs로 한 번에 반환하고, 서버가 최종 `CampaignSpec`으로 조립한다.
 - `lib/ai/campaignPrompts.ts`의 슬롯별 지시를 하나의 developer prompt로 조합하고, 사용자 입력은 명령이 아닌 별도 JSON 자료로 전달한다.
 - 모델이 고른 허용 template·tone에 서버가 Figma 색상을 매핑하고, `generation`과 고정 판단 기준을 서버 값으로 덮어쓴다.
-- Anthropic Zod output format을 기존 `CampaignSpec`으로 다시 검증하고 빈 구조화 응답은 한 번만 재시도한다.
+- Anthropic Zod output format으로 평면 문구 계약을 검증하고, 서버가 기존 `CampaignSpec`으로 다시 검증한다. timeout과 빈 구조화 응답은 자동 재호출하지 않는다.
 - 입력, prompt version과 실패 원인을 안전하게 구분하되 API 키나 민감 정보를 로그에 남기지 않는다.
 - timeout이나 스키마 실패를 명시적 503으로 알리고, 개발·발표는 사전에 fixture 모드를 선택해 외부 실패와 과금을 제거한다.
 - 실제 입력 3종과 긴 한글 문구 회귀 테스트를 통과한다.

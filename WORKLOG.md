@@ -1,5 +1,14 @@
 # 작업 기록
 
+## 2026-08-25 — Anthropic 문구 생성 503 복구
+
+- 목적: 로그인 뒤 `/api/generate`가 503을 반환해 실제 AI 광고 생성이 중단되는 문제를 재현하고 복구한다.
+- 원인: 전체 `CampaignSpec` 71개 속성과 19개 중첩 객체를 Anthropic Structured Outputs에 전달해 내부 문법 복잡도 제한을 넘었다. 스키마를 줄인 뒤에는 정상 생성 약 29초보다 짧은 20초 timeout도 확인됐다.
+- 변경: AI 소유 문구와 allowlist 선택만 담는 평면 출력 계약으로 줄이고 서버가 generation·판단 기준·Figma 필드를 조립한 뒤 최종 `CampaignSpec`을 재검증하게 했다. timeout은 60초, SDK·앱 자동 재시도는 0회로 바꿔 정상 지연을 허용하면서 timeout·빈 응답 뒤 중복 유료 요청 가능성을 줄였다. prompt version을 `campaign-spec-v2-reservations-flat-v1`으로 올리고 신호 문구를 의미가 명시된 3개 필드로 분리했다. 원인·대안·회귀 방지는 `TROUBLESHOOTING.md`와 ADR-0017에 기록했다.
+- 검증: 평면 스키마는 7,425바이트·44개 속성·3개 객체이며 실제 Claude Haiku 4.5 호출은 약 28.8초에 성공해 최종 `CampaignSpec v2`, hook 3개, 문제 카드 3개, visual prompt 5개가 Zod 검증을 통과했다. 최종 `pnpm check`의 lint·typecheck·단위 테스트 24파일 108개, production build, configured server-secret bundle smoke, production Chromium E2E 16개, coverage, high audit와 peer 검사가 통과했다. coverage는 statements 83.65%, branches 74.91%, functions 90.54%, lines 87.88%다. 독립 리뷰의 전체 요청 시간·prompt version·signal 순서·조립·SDK 설정 테스트 지적을 모두 반영하고 재검토에서 기능 결함이 없음을 확인했다.
+- 전달: 로컬 수정과 실제 연결 검증까지 완료했다. commit·push·CI는 이 기록 시점에 진행 중이며 배포는 수행하지 않았다.
+- 남은 일: 대표 입력 3종 품질 eval, Anthropic Console spend limit, Vercel 실제 route 지연 검증을 수행한다.
+
 ## 2026-08-25 — 최신 Figma 로고·로그인 진입·리포트 상태 반영
 
 - 목적: 디자이너의 최신 Figma를 제품 전체와 다시 대조하고, 기능 시작 전에 로그인시키는 흐름과 확정 로고를 실제 화면에 반영한다.

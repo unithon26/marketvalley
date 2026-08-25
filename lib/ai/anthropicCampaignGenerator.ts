@@ -4,7 +4,8 @@ import { z } from "zod";
 
 import {
   campaignSpecSchema,
-  signalOptionSchema,
+  carouselCoverTemplateSchema,
+  landingIntroTemplateSchema,
   type CampaignSpec,
 } from "@/lib/contracts/campaign";
 import {
@@ -18,42 +19,101 @@ import {
   CAMPAIGN_PROMPT_VERSION,
 } from "@/lib/ai/campaignPrompts";
 
-const ANTHROPIC_TIMEOUT_MS = 20_000;
-const ANTHROPIC_MAX_RETRIES = 1;
-const ANTHROPIC_MAX_OUTPUT_TOKENS = 6_000;
-const ANTHROPIC_EMPTY_RESPONSE_ATTEMPTS = 2;
+export const ANTHROPIC_REQUEST_POLICY = {
+  timeoutMs: 60_000,
+  maxRetries: 0,
+} as const;
 
-const uniqueArray = <T extends z.ZodType>(schema: T, length: number, maximum: number) => (
-  z.array(schema).length(length).refine(
+const ANTHROPIC_MAX_OUTPUT_TOKENS = 6_000;
+
+const shortText = (maximum: number) => z.string().trim().min(1).max(maximum);
+
+const uniqueStrings = (length: number, maximum: number) => (
+  z.array(shortText(maximum)).length(length).refine(
     (items) => new Set(items.map((item) => JSON.stringify(item))).size === items.length,
     { message: `${length}개 항목은 서로 달라야 합니다.` },
-  ).refine(
-    (items) => items.every((item) => typeof item !== "string" || item.length <= maximum),
-    { message: `각 항목은 ${maximum}자 이하여야 합니다.` },
   )
 );
 
-const structuredSignalOptionsSchema = z.array(signalOptionSchema).length(3)
-  .refine((options) => new Set(options.map((option) => option.id)).size === 3, {
-    message: "신호 선택지는 positive, neutral, negative를 각각 하나씩 포함해야 합니다.",
-  })
-  .refine((options) => new Set(options.map((option) => option.label)).size === 3, {
-    message: "신호 선택지 문구는 서로 달라야 합니다.",
-  });
+const titleBodySchema = z.object({
+  title: shortText(28),
+  body: shortText(90),
+}).strict();
 
-export const anthropicCampaignSpecSchema = campaignSpecSchema.extend({
-  validation: campaignSpecSchema.shape.validation.extend({
-    signal: campaignSpecSchema.shape.validation.shape.signal.extend({
-      options: structuredSignalOptionsSchema,
-    }),
-  }),
-  messaging: campaignSpecSchema.shape.messaging.extend({
-    hooks: uniqueArray(z.string().trim().min(1).max(70), 3, 70),
-  }),
-  carousel: campaignSpecSchema.shape.carousel.extend({
-    visualPrompts: uniqueArray(z.string().trim().min(1).max(300), 5, 300),
-  }),
-});
+const faqSchema = z.object({
+  question: shortText(100),
+  answer: shortText(240),
+}).strict();
+
+/**
+ * Claude only owns copy and allowlisted style choices. Keeping this contract flat
+ * avoids compiling the complete, deeply nested CampaignSpec into an oversized
+ * Structured Outputs grammar. The server assembles and validates CampaignSpec.
+ */
+export const anthropicCampaignCopySchema = z.object({
+  projectName: shortText(80),
+  projectOneLiner: shortText(120),
+  projectCategory: shortText(80),
+  validationCustomer: shortText(180),
+  validationProblem: shortText(240),
+  validationSolution: shortText(240),
+  validationExpectedSignal: shortText(240),
+  validationInvalidationEvidence: shortText(240),
+  validationAssumptions: z.array(shortText(240)).max(6),
+  signalType: z.enum(["problem_confirmation", "solution_interest"]),
+  signalCtaLabel: shortText(40),
+  signalQuestion: shortText(180),
+  signalPositiveLabel: shortText(80),
+  signalNeutralLabel: shortText(80),
+  signalNegativeLabel: shortText(80),
+  signalSuccessMessage: shortText(160),
+  brandTone: z.enum(["trust", "bold", "warm"]),
+  carouselCoverTemplate: carouselCoverTemplateSchema,
+  landingIntroTemplate: landingIntroTemplateSchema,
+  valueProposition: shortText(40),
+  hooks: uniqueStrings(3, 70),
+  socialCaption: shortText(1_200),
+  hashtags: z.array(shortText(60)).min(1).max(12).refine(
+    (items) => new Set(items).size === items.length,
+    { message: "해시태그는 중복될 수 없습니다." },
+  ),
+  landingSeoTitle: shortText(100),
+  landingHeroEyebrow: shortText(60),
+  landingHeroSupportingText: shortText(180),
+  landingPainPoints: z.array(titleBodySchema).length(3).refine(
+    (items) => new Set(items.map((item) => item.title)).size === items.length,
+    { message: "문제 카드 제목은 서로 달라야 합니다." },
+  ),
+  landingBenefits: z.array(titleBodySchema).length(3).refine(
+    (items) => new Set(items.map((item) => item.title)).size === items.length,
+    { message: "가치 카드 제목은 서로 달라야 합니다." },
+  ),
+  landingSteps: z.array(titleBodySchema).length(3).refine(
+    (items) => new Set(items.map((item) => item.title)).size === items.length,
+    { message: "작동 단계 제목은 서로 달라야 합니다." },
+  ),
+  landingFaq: z.array(faqSchema).length(3).refine(
+    (items) => new Set(items.map((item) => item.question)).size === items.length,
+    { message: "FAQ 질문은 서로 달라야 합니다." },
+  ),
+  carouselHookBody: shortText(180),
+  carouselProblemHeadline: shortText(28),
+  carouselProblemBody: shortText(90),
+  carouselInsightHeadline: shortText(28),
+  carouselInsightBody: shortText(90),
+  carouselSolutionBody: shortText(180),
+  carouselCtaBody: shortText(180),
+  carouselVisualPrompts: uniqueStrings(5, 300),
+  claimsToReview: z.array(shortText(240)).max(8),
+  prohibitedClaimsRemoved: z.array(shortText(240)).max(8),
+}).strict().refine(
+  (copy) => new Set([
+    copy.signalPositiveLabel,
+    copy.signalNeutralLabel,
+    copy.signalNegativeLabel,
+  ]).size === 3,
+  { path: ["signalNeutralLabel"], message: "신호 선택지 문구는 서로 달라야 합니다." },
+);
 
 const FIXED_DECISION_RULE: CampaignSpec["validation"]["decisionRule"] = {
   minimumResponses: 5,
@@ -76,6 +136,11 @@ type AnthropicCampaignGeneratorOptions = {
   apiKey?: string;
   model: string;
   client?: AnthropicMessagesClient;
+  createClient?: (config: {
+    apiKey?: string;
+    maxRetries: number;
+    timeout: number;
+  }) => AnthropicMessagesClient;
   now?: () => Date;
 };
 
@@ -110,18 +175,10 @@ export function applyServerOwnedCampaignFields(
   model: string,
   generatedAt: Date,
 ): CampaignSpec {
-  const parsed = campaignSpecSchema.parse(candidate);
-  const optionsById = new Map(
-    parsed.validation.signal.options.map((option) => [option.id, option] as const),
-  );
-  const canonicalOptions = (["positive", "neutral", "negative"] as const).map((id) => ({
-    id,
-    label: optionsById.get(id)?.label ?? id,
-  })) as CampaignSpec["validation"]["signal"]["options"];
-  const colors = BRAND_COLORS[parsed.brand.tone];
+  const parsed = anthropicCampaignCopySchema.parse(candidate);
+  const colors = BRAND_COLORS[parsed.brandTone];
 
   return campaignSpecSchema.parse({
-    ...parsed,
     schemaVersion: "2",
     generation: {
       promptVersion: CAMPAIGN_PROMPT_VERSION,
@@ -129,21 +186,74 @@ export function applyServerOwnedCampaignFields(
       generatedAt: generatedAt.toISOString(),
     },
     project: {
-      ...parsed.project,
+      name: parsed.projectName,
+      oneLiner: parsed.projectOneLiner,
+      category: parsed.projectCategory,
       language: "ko",
     },
     validation: {
-      ...parsed.validation,
+      customer: parsed.validationCustomer,
+      problem: parsed.validationProblem,
+      solution: parsed.validationSolution,
+      expectedSignal: parsed.validationExpectedSignal,
+      invalidationEvidence: parsed.validationInvalidationEvidence,
+      assumptions: parsed.validationAssumptions,
       signal: {
-        ...parsed.validation.signal,
-        options: canonicalOptions,
+        type: parsed.signalType,
+        ctaLabel: parsed.signalCtaLabel,
+        question: parsed.signalQuestion,
+        options: [
+          { id: "positive", label: parsed.signalPositiveLabel },
+          { id: "neutral", label: parsed.signalNeutralLabel },
+          { id: "negative", label: parsed.signalNegativeLabel },
+        ],
+        successMessage: parsed.signalSuccessMessage,
       },
       decisionRule: FIXED_DECISION_RULE,
     },
     brand: {
-      tone: parsed.brand.tone,
+      tone: parsed.brandTone,
       ...colors,
-      visualDirection: visualDirection(parsed.templates.carouselCover),
+      visualDirection: visualDirection(parsed.carouselCoverTemplate),
+    },
+    templates: {
+      carouselCover: parsed.carouselCoverTemplate,
+      landingIntro: parsed.landingIntroTemplate,
+    },
+    messaging: {
+      valueProposition: parsed.valueProposition,
+      hooks: parsed.hooks,
+      caption: parsed.socialCaption,
+      hashtags: parsed.hashtags,
+    },
+    landing: {
+      seoTitle: parsed.landingSeoTitle,
+      hero: {
+        eyebrow: parsed.landingHeroEyebrow,
+        supportingText: parsed.landingHeroSupportingText,
+      },
+      painPoints: parsed.landingPainPoints,
+      benefits: parsed.landingBenefits,
+      steps: parsed.landingSteps,
+      faq: parsed.landingFaq,
+    },
+    carousel: {
+      hookBody: parsed.carouselHookBody,
+      problem: {
+        headline: parsed.carouselProblemHeadline,
+        body: parsed.carouselProblemBody,
+      },
+      insight: {
+        headline: parsed.carouselInsightHeadline,
+        body: parsed.carouselInsightBody,
+      },
+      solutionBody: parsed.carouselSolutionBody,
+      ctaBody: parsed.carouselCtaBody,
+      visualPrompts: parsed.carouselVisualPrompts,
+    },
+    safety: {
+      claimsToReview: parsed.claimsToReview,
+      prohibitedClaimsRemoved: parsed.prohibitedClaimsRemoved,
     },
   });
 }
@@ -156,10 +266,11 @@ export class AnthropicCampaignGenerator implements CampaignGenerator {
   constructor(options: AnthropicCampaignGeneratorOptions) {
     this.model = options.model;
     this.now = options.now ?? (() => new Date());
-    this.client = options.client ?? new Anthropic({
+    const createClient = options.createClient ?? ((config) => new Anthropic(config));
+    this.client = options.client ?? createClient({
       apiKey: options.apiKey,
-      maxRetries: ANTHROPIC_MAX_RETRIES,
-      timeout: ANTHROPIC_TIMEOUT_MS,
+      maxRetries: ANTHROPIC_REQUEST_POLICY.maxRetries,
+      timeout: ANTHROPIC_REQUEST_POLICY.timeoutMs,
     });
   }
 
@@ -175,14 +286,12 @@ export class AnthropicCampaignGenerator implements CampaignGenerator {
         ],
         max_tokens: ANTHROPIC_MAX_OUTPUT_TOKENS,
         output_config: {
-          format: zodOutputFormat(anthropicCampaignSpecSchema),
+          format: zodOutputFormat(anthropicCampaignCopySchema),
         },
       };
 
-      for (let attempt = 0; attempt < ANTHROPIC_EMPTY_RESPONSE_ATTEMPTS; attempt += 1) {
-        const response = await this.client.messages.parse(request);
-        if (!response.parsed_output) continue;
-
+      const response = await this.client.messages.parse(request);
+      if (response.parsed_output) {
         return applyServerOwnedCampaignFields(
           response.parsed_output,
           this.model,

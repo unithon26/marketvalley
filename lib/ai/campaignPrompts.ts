@@ -3,7 +3,7 @@ import {
   type IdeaInput,
 } from "@/lib/contracts/generator";
 
-export const CAMPAIGN_PROMPT_VERSION = "campaign-spec-v2-reservations";
+export const CAMPAIGN_PROMPT_VERSION = "campaign-spec-v2-reservations-flat-v1";
 
 type PromptSlotGroup = {
   id: string;
@@ -191,15 +191,15 @@ const GLOBAL_GENERATION_RULES = [
   "추론은 validation.assumptions에 표시하고 사실처럼 단정하지 않는다.",
   "project, validation, messaging, landing과 carousel은 같은 고객·문제·상품명·핵심 특징·CTA를 공유한다. 채널별로 새 가설을 만들지 않는다.",
   "사용자 자료가 익명·개인정보 미수집을 특징으로 말하더라도 현재 공개 폼은 이름·이메일을 명시적 동의 후 예약자명단 목적으로 저장한다. 충돌하는 표현은 복사하지 말고 실제 수집 방식으로 고쳐 쓰며 safety.claimsToReview에 불일치를 기록한다.",
-  "모든 문자열과 배열 길이는 CampaignSpec JSON Schema 한도를 지킨다. 글자를 잘라 맞추지 말고 처음부터 짧고 자연스럽게 작성한다.",
+  "모든 문자열과 배열 길이는 출력 스키마 한도를 지킨다. 글자를 잘라 맞추지 말고 처음부터 짧고 자연스럽게 작성한다.",
   "Figma 고정 레이아웃과 renderer 문구는 출력하지 않는다. 허용된 텍스트 슬롯과 선택자만 채운다.",
-  "schemaVersion, generation, project.language, brand 색상·시각 방향, validation.decisionRule과 legacy signal option ID는 서버가 최종 덮어쓴다. 스키마가 요구하면 제공된 기본값을 그대로 반환하고 임의로 바꾸지 않는다.",
+  "schemaVersion, generation, project.language, brand 색상·시각 방향, validation.decisionRule과 legacy signal option ID는 서버가 조립하므로 출력하지 않는다.",
 ] as const;
 
 function formatPromptSection(group: PromptSlotGroup): string {
   return [
     `### ${group.id}`,
-    `출력: ${group.outputPaths.join(", ")}`,
+    `최종 CampaignSpec 매핑: ${group.outputPaths.join(", ")}`,
     group.instruction,
   ].join("\n");
 }
@@ -222,7 +222,7 @@ export function buildCampaignDeveloperPrompt(): string {
     "## 슬롯별 생성 지시",
     AI_COPY_SLOT_GROUPS.map(formatPromptSection).join("\n\n"),
     "",
-    "Structured Outputs의 CampaignSpec JSON만 반환한다.",
+    "Structured Outputs의 평면 문구 필드와 허용된 선택자만 반환한다. 서버가 이를 CampaignSpec으로 조립한다.",
   ].join("\n");
 }
 
