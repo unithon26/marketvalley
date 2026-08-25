@@ -1,5 +1,26 @@
 # Troubleshooting
 
+## 2026-08-26 — Meta v26 캠페인·크리에이티브 생성이 신규 필수 계약에서 거절됨
+
+### 맥락과 영향
+
+원장 정규식 복구 뒤 첫 운영 초안을 재개했다. 이미지 5장은 정상 업로드됐지만 캠페인은 subcode `4834011`, 크리에이티브는 잘못된 Instagram 필드와 앱 개발 모드 때문에 거절됐다. 수동 확인을 거쳐 캠페인과 광고 세트는 `PAUSED`로 생성됐고, 크리에이티브와 광고는 아직 없으며 노출·지출도 없다.
+
+### 증거와 원인
+
+- 캠페인 생성은 `is_adset_budget_sharing_enabled`가 없을 때 `Invalid parameter`를 반환했고 `false`를 명시하자 성공했다.
+- 현재 Meta Business SDK의 `AdCreativeObjectStorySpec`은 `instagram_user_id`를 정의하지만 기존 provider는 `instagram_actor_id`를 보냈다.
+- 올바른 Instagram 필드로 재요청하자 Meta는 앱이 개발 모드라 광고 크리에이티브를 만들 수 없다는 subcode `1885183`을 반환했다.
+- 앱 게시 화면은 개인정보처리방침 URL이 없어 게시 버튼을 비활성화했다.
+
+### 해결과 회귀 방지
+
+provider가 ad set budget sharing을 명시적으로 끄고 현재 `instagram_user_id` 필드를 사용하도록 고친다. 단위 테스트는 두 파라미터의 exact payload를 고정한다. 실제 처리 항목·목적·삭제 요청과 외부 서비스 경계를 설명하는 공개 `/privacy`를 배포해 앱 설정에 등록한 뒤 Live 모드로 전환한다. 기존 operation의 성공한 checkpoint는 보존해 이미 생성된 객체를 다시 만들지 않는다.
+
+### 남은 위험과 예상 질문
+
+앱 게시, 크리에이티브·광고 생성, 모든 객체의 `PAUSED`와 지출 0원 확인이 남았다. 면접에서는 버전이 고정된 API에서도 계정별 rollout과 앱 모드 요구사항을 운영 종단에서 발견했을 때, 실패한 단계만 durable checkpoint로 재개한 이유를 설명할 수 있다.
+
 ## 2026-08-26 — Meta 이미지 업로드 후 원장 체크포인트 저장이 정규식 오류로 중단됨
 
 ### 맥락과 영향

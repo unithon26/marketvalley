@@ -1,5 +1,13 @@
 # 작업 기록
 
+## 2026-08-26 — Meta v26 운영 생성 필수 계약과 앱 게시 준비
+
+- 목적: 운영 `PAUSED` 초안의 캠페인·크리에이티브 생성이 Meta v26 필수 파라미터와 앱 개발 모드에서 중단된 문제를 복구한다.
+- 변경: ad set 예산 캠페인에 `is_adset_budget_sharing_enabled=false`를 명시하고, 현재 Business SDK 계약에 맞춰 크리에이티브 identity를 `instagram_user_id`로 보낸다. Meta 앱 게시 필수 조건과 실제 사용자 정보 처리 경계를 충족하는 공개 `/privacy` 페이지를 추가했다.
+- 운영 확인: 기존 operation에서 이미지 5장, 캠페인, 광고 세트까지 생성·checkpoint를 확인했다. 캠페인과 광고 세트는 `PAUSED`이며 크리에이티브·광고는 아직 생성되지 않았다.
+- 검증·전달: focused provider·migration 테스트와 lint·typecheck, 배포, 앱 Live 전환, 남은 객체 생성 결과는 완료 뒤 갱신한다.
+- 남은 일: 변경을 production에 배포하고 개인정보처리방침 URL을 Meta 앱에 등록해 앱을 게시한 뒤 크리에이티브·광고를 `PAUSED`로 완성한다.
+
 ## 2026-08-26 — Meta 운영 원장 외부 ID 검증 복구
 
 - 목적: 첫 운영 `PAUSED` 초안 생성에서 Meta 이미지 업로드 뒤 체크포인트 저장이 중단된 원인을 제거하고, 이미 만들어진 자산을 중복 생성하지 않고 이어서 처리한다.
