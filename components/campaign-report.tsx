@@ -52,7 +52,7 @@ const scrollRows = [
 
 function MetricCards({ metrics }: { metrics: MarketReportMetrics }) {
   return (
-    <section className="report-metric-cards" aria-label="핵심 광고 지표">
+    <section className="report-metric-cards report-animated-section" aria-label="핵심 광고 지표">
       <article className="report-impression-card">
         <strong>{metrics.impressions.toLocaleString("ko-KR")}회</strong>
         <span>노출 수</span>
@@ -88,7 +88,7 @@ function FunnelAnalysis({ metrics }: { metrics: MarketReportMetrics }) {
   ] as const;
 
   return (
-    <section className="figma-report-card funnel-card">
+    <section className="figma-report-card funnel-card report-animated-section">
       <h2>퍼널 분석</h2>
       <div className="funnel-grid">
         {steps.map(([label, value], index) => (
@@ -106,7 +106,7 @@ function FunnelAnalysis({ metrics }: { metrics: MarketReportMetrics }) {
 
 function DemographicInsights() {
   return (
-    <section className="figma-report-card demographic-card">
+    <section className="figma-report-card demographic-card report-animated-section">
       <h2>인구통계학적 인사이트</h2>
       <div className="demographic-layout">
         <div className="gender-chart">
@@ -134,12 +134,12 @@ function DemographicInsights() {
 
 function RegionInsights() {
   return (
-    <section className="figma-report-card region-card">
+    <section className="figma-report-card region-card report-animated-section">
       <h2>거주지</h2>
       <div className="region-chart-scroll" role="region" aria-label="거주지 비율 그래프" tabIndex={0}>
         <div className="region-chart">
           {regionBars.map((ratio, index) => (
-            <div key={`${ratio}-${index}`}>
+            <div key={`${ratio}-${index}`} aria-label={`지역명 ${ratio}%`}>
               <span className="region-bar-slot"><i style={{ height: `${Math.min(100, Math.max(0, ratio))}%` }} /></span>
               <span>지역명</span>
             </div>
@@ -152,7 +152,7 @@ function RegionInsights() {
 
 function BehaviorInsights() {
   return (
-    <section className="figma-report-card behavior-card">
+    <section className="figma-report-card behavior-card report-animated-section">
       <h2>사용자 행동 패턴</h2>
       <div className="behavior-layout">
         <div className="average-time"><span>평균 체류시간</span><strong>42s</strong></div>
@@ -167,7 +167,7 @@ function BehaviorInsights() {
 
 function ReservationList({ records, onDownload }: { records: readonly ReservationRecord[]; onDownload: () => void }) {
   return (
-    <section className="report-reservations">
+    <section className="report-reservations report-animated-section">
       <div className="report-section-title">
         <h2>예약자 리스트</h2>
         <button type="button" onClick={onDownload}><DownloadIcon size={18} />다운로드</button>
@@ -206,6 +206,7 @@ export function CampaignReport({
   const [loadError, setLoadError] = useState("");
   const [exporting, setExporting] = useState(false);
   const [activeCardIndex, setActiveCardIndex] = useState(0);
+  const reportRootRef = useRef<HTMLElement | null>(null);
   const cardRefs = useRef<Array<HTMLDivElement | null>>([]);
   const cardPreviewRef = useRef<HTMLDivElement | null>(null);
   const refreshInFlightRef = useRef(false);
@@ -245,6 +246,26 @@ export function CampaignReport({
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [refresh]);
+
+  useEffect(() => {
+    const sections = reportRootRef.current?.querySelectorAll<HTMLElement>(".report-animated-section");
+    if (!sections?.length) return;
+    if (!("IntersectionObserver" in window)) {
+      sections.forEach((section) => section.classList.add("is-visible"));
+      return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add("is-visible");
+        observer.unobserve(entry.target);
+      });
+    }, { threshold: 0.12, rootMargin: "0px 0px -8%" });
+
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, []);
 
   async function renderCards() {
     await document.fonts.ready;
@@ -314,7 +335,7 @@ export function CampaignReport({
   }
 
   return (
-    <main className="figma-report-page" data-market-fit={fit}>
+    <main ref={reportRootRef} className="figma-report-page" data-market-fit={fit}>
       <div className="figma-report-container">
         <header className="report-result-heading">
           <span className="report-result-check"><CheckIcon size={20} /></span>
@@ -329,7 +350,7 @@ export function CampaignReport({
         <RegionInsights />
         <BehaviorInsights />
 
-        <section className="report-creative-grid">
+        <section className="report-creative-grid report-animated-section">
           <article className="figma-report-card creative-card">
             <h2>광고 카드뉴스 소재</h2>
             <div className="creative-carousel-shell">

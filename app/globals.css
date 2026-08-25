@@ -283,7 +283,7 @@ body:has(.login-modal-layer) > :not(.login-modal-layer) { filter: blur(3px); }
 .figma-report-page { --report-purple: #8064ec; min-height: calc(100vh - 64px); padding: 96px 0 132px; background: #fff; }
 .figma-report-container { width: min(1200px, calc(100% - 48px)); margin: 0 auto; }
 .report-result-heading { display: flex; align-items: center; flex-direction: column; text-align: center; }
-.report-result-check { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 50%; color: #fff; background: var(--report-purple); }
+.report-result-check { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 50%; color: #fff; background: var(--report-purple); animation: report-check-in .55s cubic-bezier(.2,.8,.2,1) both; }
 .report-result-heading p { margin: 13px 0 7px; color: #7b8491; font-size: 16px; font-weight: 600; }
 .report-result-heading h1 { margin: 0; color: #191f28; font-size: 30px; line-height: 1.25; letter-spacing: -.04em; }
 .figma-report-page[data-market-fit="unsuitable"] .report-result-heading h1 { color: #ff3b30; }
@@ -295,9 +295,9 @@ body:has(.login-modal-layer) > :not(.login-modal-layer) { filter: blur(3px); }
 .report-metric-cards span { position: relative; z-index: 2; display: block; margin-top: 14px; color: #111820; font-size: 17px; font-weight: 700; }
 .report-metric-cards p { position: absolute; z-index: 2; right: 31px; bottom: 24px; left: 31px; padding: 14px 12px; margin: 0; border-radius: 10px; color: var(--report-purple); background: #f3efff; text-align: center; font-size: 16px; font-weight: 700; }
 .report-impression-card svg { position: absolute; right: 0; bottom: 0; width: 58%; height: 58%; overflow: visible; }
-.report-impression-card svg path:first-child { fill: #f2efff; }
-.report-impression-card svg path:nth-child(2) { fill: none; stroke: #8064ec; stroke-width: 2.2; }
-.report-impression-card svg circle { fill: #fff; stroke: #8064ec; stroke-width: 1.5; }
+.report-impression-card svg path:first-child { fill: #f2efff; opacity: 0; }
+.report-impression-card svg path:nth-child(2) { fill: none; stroke: #8064ec; stroke-dasharray: 320; stroke-dashoffset: 320; stroke-width: 2.2; }
+.report-impression-card svg circle { fill: #fff; stroke: #8064ec; stroke-width: 1.5; opacity: 0; }
 .figma-report-card { min-width: 0; border: 1px solid #dfe3e8; border-radius: 20px; background: #fff; }
 .figma-report-card > h2 { margin: 0; color: #171c22; font-size: 20px; line-height: 1.3; letter-spacing: -.025em; }
 .funnel-card { min-height: 508px; padding: 30px 32px 26px; margin-top: 42px; }
@@ -306,7 +306,7 @@ body:has(.login-modal-layer) > :not(.login-modal-layer) { filter: blur(3px); }
 .funnel-value span { display: block; color: #7b8491; font-size: 13px; }
 .funnel-value strong { display: block; margin-top: 7px; color: #151b23; font-size: 20px; }
 .funnel-bar { display: flex; width: 120px; height: 230px; margin: 26px auto 0; overflow: hidden; align-items: flex-end; border-radius: 10px; background: #e9e3ff; }
-.funnel-bar i { display: block; width: 100%; border-radius: 10px 10px 0 0; background: linear-gradient(180deg, #8b6cf1, #8064ec); }
+.funnel-bar i { display: block; width: 100%; border-radius: 10px 10px 0 0; background: linear-gradient(180deg, #8b6cf1, #8064ec); transform: scaleY(0); transform-origin: center bottom; }
 .funnel-step:first-child .funnel-bar i { height: 100%; }
 .funnel-step:nth-child(2) .funnel-bar i { height: 72%; }
 .funnel-step:nth-child(3) .funnel-bar i { height: 48%; }
@@ -319,7 +319,7 @@ body:has(.login-modal-layer) > :not(.login-modal-layer) { filter: blur(3px); }
 .demographic-layout { display: grid; grid-template-columns: 40% 60%; margin-top: 62px; }
 .demographic-layout h3 { margin: 0 0 26px; font-size: 18px; }
 .gender-chart-body { position: relative; width: 380px; max-width: 100%; height: 250px; }
-.gender-donut { position: absolute; top: 0; left: 76px; display: grid; width: 240px; height: 240px; place-items: center; border-radius: 50%; background: conic-gradient(var(--report-purple) 0 35%, #f1effb 35% 100%); }
+.gender-donut { position: absolute; top: 0; left: 76px; display: grid; width: 240px; height: 240px; place-items: center; border-radius: 50%; background: conic-gradient(var(--report-purple) 0 35%, #f1effb 35% 100%); opacity: 0; transform: scale(.82) rotate(-18deg); }
 .gender-donut::after { width: 200px; height: 200px; grid-area: 1 / 1; border-radius: 50%; background: #fff; content: ""; }
 .gender-donut span { z-index: 1; grid-area: 1 / 1; color: var(--report-purple); text-align: center; }
 .gender-donut strong { display: block; margin-top: 5px; font-size: 24px; }
@@ -330,7 +330,7 @@ body:has(.login-modal-layer) > :not(.login-modal-layer) { filter: blur(3px); }
 .age-row { display: grid; grid-template-columns: 1fr 6fr auto; gap: 8px; align-items: center; margin-bottom: 24px; }
 .age-row > span { color: #151b23; font-size: 15px; }
 .age-row > div { height: 12px; overflow: hidden; border-radius: 999px; background: #d6d8dd; }
-.age-row i { display: block; width: 23%; height: 100%; border-radius: inherit; background: var(--report-purple); }
+.age-row i { display: block; width: 23%; height: 100%; border-radius: inherit; background: var(--report-purple); transform: scaleX(0); transform-origin: left center; }
 .age-row b { color: #151b23; font-size: 15px; font-weight: 500; }
 .region-card { min-height: 410px; padding: 30px 32px; margin-top: 42px; }
 .region-chart-scroll { width: 100%; min-width: 0; max-width: 100%; margin-top: 20px; overflow: auto hidden; overscroll-behavior-inline: contain; scrollbar-width: thin; }
@@ -338,7 +338,7 @@ body:has(.login-modal-layer) > :not(.login-modal-layer) { filter: blur(3px); }
 .region-chart { display: grid; width: max(100%, 920px); height: 276px; grid-template-columns: repeat(8, minmax(80px, 1fr)); gap: 34px; padding: 26px 56px 10px; align-items: end; }
 .region-chart > div { display: flex; height: 220px; align-items: center; justify-content: flex-end; flex-direction: column; }
 .region-bar-slot { display: flex; width: 100%; min-height: 0; flex: 1 1 auto; align-items: flex-end; justify-content: center; }
-.region-chart i { display: block; width: 80px; max-width: 100%; flex: 0 0 auto; border-radius: 10px; background: linear-gradient(180deg, #8064ec, #a58cf5); }
+.region-chart i { display: block; width: 80px; max-width: 100%; flex: 0 0 auto; border-radius: 10px; background: linear-gradient(180deg, #8064ec, #a58cf5); transform: scaleY(0); transform-origin: center bottom; }
 .region-chart > div > span:last-child { flex: 0 0 auto; margin-top: 16px; color: #525d6b; font-size: 14px; font-weight: 700; }
 .behavior-card { min-height: 440px; padding: 30px 32px; margin-top: 42px; }
 .behavior-layout { display: grid; grid-template-columns: 360px 1fr; gap: 38px; margin-top: 42px; }
@@ -383,6 +383,70 @@ body:has(.login-modal-layer) > :not(.login-modal-layer) { filter: blur(3px); }
 .report-bottom-actions { display: flex; gap: 14px; justify-content: flex-end; margin-top: 43px; }
 .figma-report-page .report-bottom-actions .button { min-height: 49px; border-radius: 9px; }
 .figma-report-page .button-primary { background: var(--report-purple); box-shadow: none; }
+
+.report-animated-section { opacity: 0; transform: translateY(18px); transition: opacity .55s ease, transform .65s cubic-bezier(.2,.8,.2,1); }
+.report-animated-section.is-visible { opacity: 1; transform: translateY(0); }
+.report-metric-cards.is-visible article { animation: report-card-in .55s cubic-bezier(.2,.8,.2,1) backwards; }
+.report-metric-cards.is-visible article:nth-child(2) { animation-delay: .08s; }
+.report-metric-cards.is-visible article:nth-child(3) { animation-delay: .16s; }
+.report-metric-cards.is-visible .report-impression-card svg path:first-child { animation: report-area-in .6s .35s ease both; }
+.report-metric-cards.is-visible .report-impression-card svg path:nth-child(2) { animation: report-line-draw .9s .22s ease-out both; }
+.report-metric-cards.is-visible .report-impression-card svg circle { animation: report-area-in .3s .85s ease both; }
+.funnel-card.is-visible .funnel-bar i { animation: report-grow-y .75s cubic-bezier(.2,.8,.2,1) both; }
+.funnel-card.is-visible .funnel-step:nth-child(2) .funnel-bar i { animation-delay: .08s; }
+.funnel-card.is-visible .funnel-step:nth-child(3) .funnel-bar i { animation-delay: .16s; }
+.funnel-card.is-visible .funnel-step:nth-child(4) .funnel-bar i { animation-delay: .24s; }
+.demographic-card.is-visible .gender-donut { animation: report-donut-in .75s cubic-bezier(.2,.8,.2,1) both; }
+.demographic-card.is-visible .age-row i { animation: report-grow-x .65s .16s cubic-bezier(.2,.8,.2,1) both; }
+.demographic-card.is-visible .age-row:nth-child(3) i { animation-delay: .24s; }
+.demographic-card.is-visible .age-row:nth-child(4) i { animation-delay: .32s; }
+.demographic-card.is-visible .age-row:nth-child(5) i { animation-delay: .4s; }
+.region-card.is-visible .region-chart i { animation: report-grow-y .65s cubic-bezier(.2,.8,.2,1) both; }
+.region-card.is-visible .region-chart > div:nth-child(2) i { animation-delay: .05s; }
+.region-card.is-visible .region-chart > div:nth-child(3) i { animation-delay: .1s; }
+.region-card.is-visible .region-chart > div:nth-child(4) i { animation-delay: .15s; }
+.region-card.is-visible .region-chart > div:nth-child(5) i { animation-delay: .2s; }
+.region-card.is-visible .region-chart > div:nth-child(6) i { animation-delay: .25s; }
+.region-card.is-visible .region-chart > div:nth-child(7) i { animation-delay: .3s; }
+.region-card.is-visible .region-chart > div:nth-child(8) i { animation-delay: .35s; }
+.behavior-card.is-visible .average-time strong { animation: report-number-pop .6s .2s cubic-bezier(.2,.8,.2,1) both; }
+.behavior-card.is-visible .scroll-time-list > div { animation: report-row-in .45s ease both; }
+.behavior-card.is-visible .scroll-time-list > div:nth-child(3) { animation-delay: .06s; }
+.behavior-card.is-visible .scroll-time-list > div:nth-child(4) { animation-delay: .12s; }
+.behavior-card.is-visible .scroll-time-list > div:nth-child(5) { animation-delay: .18s; }
+.behavior-card.is-visible .scroll-time-list > div:nth-child(6) { animation-delay: .24s; }
+
+@media (hover: hover) {
+  .report-metric-cards article { transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
+  .report-metric-cards article:hover { border-color: #cfc5f5; box-shadow: 0 12px 28px rgba(87,65,164,.12); transform: translateY(-4px); }
+  .funnel-step:hover .funnel-bar i, .region-chart > div:hover i { filter: saturate(1.16) brightness(1.04); box-shadow: 0 8px 18px rgba(128,100,236,.22); }
+  .age-row:hover > div { background: #c9cbd1; }
+  .scroll-time-list > div:hover { color: var(--report-purple); background: #f8f6ff; }
+}
+
+@keyframes report-check-in {
+  0% { opacity: 0; transform: scale(.5) rotate(-18deg); }
+  65% { transform: scale(1.12) rotate(3deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+@keyframes report-card-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes report-line-draw { to { stroke-dashoffset: 0; } }
+@keyframes report-area-in { to { opacity: 1; } }
+@keyframes report-grow-y { to { transform: scaleY(1); } }
+@keyframes report-grow-x { to { transform: scaleX(1); } }
+@keyframes report-donut-in { to { opacity: 1; transform: scale(1) rotate(0); } }
+@keyframes report-number-pop {
+  0% { opacity: 0; transform: translateY(8px) scale(.85); }
+  70% { transform: translateY(0) scale(1.08); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes report-row-in {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
 
 @media (max-width: 900px) {
   .figma-report-page { padding-top: 68px; }
@@ -701,4 +765,8 @@ body:has(.login-modal-layer) > :not(.login-modal-layer) { filter: blur(3px); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  .report-animated-section { opacity: 1; transform: none; }
+  .report-impression-card svg path:first-child, .report-impression-card svg circle, .gender-donut { opacity: 1; }
+  .report-impression-card svg path:nth-child(2) { stroke-dashoffset: 0; }
+  .funnel-bar i, .age-row i, .region-chart i, .gender-donut { transform: none; }
 }

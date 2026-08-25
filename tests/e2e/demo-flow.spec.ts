@@ -319,6 +319,9 @@ test("fixture 생성부터 Figma 리포트, 산출물과 예약까지 실제 API
   await expect(page.locator("body")).not.toContainText(/캠페인|CampaignSpec/u);
   await expect(page.locator(".figma-report-page")).toHaveAttribute("data-market-fit", "very-suitable");
   await expect(page.getByRole("heading", { name: "[매우 적합]" })).toBeVisible();
+  await expect(page.locator(".report-metric-cards")).toHaveClass(/is-visible/);
+  await page.locator(".region-card").scrollIntoViewIfNeeded();
+  await expect(page.locator(".region-card")).toHaveClass(/is-visible/);
   await expect(page.getByText("1,800,820회", { exact: true })).toBeVisible();
   await expect(page.getByText("12.6%", { exact: true })).toBeVisible();
   await expect(page.locator(".reservation-table tbody tr")).toHaveCount(4);
