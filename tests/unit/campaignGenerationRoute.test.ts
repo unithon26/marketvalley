@@ -50,15 +50,16 @@ function dependencies(options: {
 describe("AI campaign generation route", () => {
   it("같은 origin의 로그인 사용자만 AI 문구 생성을 실행한다", async () => {
     const { generator, value } = dependencies();
-    const response = await handleGenerateCampaign(request({
+    const incoming = request({
       origin: "https://marketvalley.example",
       contentType: "application/json; charset=utf-8",
-    }), value);
+    });
+    const response = await handleGenerateCampaign(incoming, value);
 
     expect(response.status).toBe(200);
     expect(value.requireIdentity).toHaveBeenCalledTimes(1);
     expect(value.consumeQuota).toHaveBeenCalledWith("user-1", value.environment);
-    expect(generator.generate).toHaveBeenCalledWith(idea);
+    expect(generator.generate).toHaveBeenCalledWith(idea, { signal: incoming.signal });
   });
 
   it("교차 origin과 JSON이 아닌 AI 요청을 인증·생성 전에 거절한다", async () => {
@@ -100,12 +101,13 @@ describe("AI campaign generation route", () => {
 
   it("명시적 fixture fallback은 인증과 유료 호출 제한 없이 기존 데모를 유지한다", async () => {
     const { generator, value } = dependencies({ mode: "fixture" });
-    const response = await handleGenerateCampaign(request(), value);
+    const incoming = request();
+    const response = await handleGenerateCampaign(incoming, value);
 
     expect(response.status).toBe(200);
     expect(value.requireIdentity).not.toHaveBeenCalled();
     expect(value.consumeQuota).not.toHaveBeenCalled();
-    expect(generator.generate).toHaveBeenCalledWith(idea);
+    expect(generator.generate).toHaveBeenCalledWith(idea, { signal: incoming.signal });
   });
 });
 

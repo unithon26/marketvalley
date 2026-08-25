@@ -175,6 +175,8 @@ body:has(.login-modal-layer) > :not(.login-modal-layer) { filter: blur(3px); }
 .stage-line li > span { display: grid; place-items: center; width: 31px; height: 31px; border: 3px solid white; border-radius: 50%; background: var(--surface-strong); color: white; }
 .stage-line li.done { color: var(--purple-dark); }
 .stage-line li.done > span { background: var(--purple); }
+.stage-line li.active { color: var(--purple-dark); }
+.stage-line li.active > span { background: var(--purple); }
 .processing-visual { display: flex; min-height: 420px; align-items: center; justify-content: center; flex-direction: column; text-align: center; }
 .processing-orb { position: relative; width: 150px; height: 150px; margin: 52px 0 25px; border-radius: 50%; background: var(--surface-strong); transition: background .4s, transform .4s; }
 .processing-orb.stage-1 { background: #dcd2ff; transform: scale(.9); }

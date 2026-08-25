@@ -64,7 +64,7 @@ export async function handleGenerateCampaign(
     }
 
     const campaignGenerator = dependencies.createGenerator(dependencies.environment);
-    const spec = await campaignGenerator.generate(input);
+    const spec = await campaignGenerator.generate(input, { signal: request.signal });
     const response: GenerateCampaignResponse = { spec };
     return jsonResponse(response);
   } catch (error) {

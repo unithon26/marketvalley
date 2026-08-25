@@ -3,6 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRightIcon } from "@/components/icons";
+import {
+  GenerationProgressView,
+  type GenerationProgressStage,
+} from "@/components/generation-progress-view";
 import type { CampaignGeneratorStatus } from "@/lib/ai/generatorConfig";
 import { campaignSpecSchema, type CampaignSpec } from "@/lib/contracts/campaign";
 import { saveCampaignDraftId } from "@/lib/client/demo-store";
@@ -43,6 +47,29 @@ function publishedCampaignId(value: unknown): string {
 type CampaignWizardProps = {
   generatorStatus: CampaignGeneratorStatus;
 };
+
+const unimplementedMarketResearchDelayMs = 2_000;
+const completedStageDelayMs = 700;
+
+function delay(milliseconds: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new DOMException("작업이 취소됐습니다.", "AbortError"));
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      signal.removeEventListener("abort", abort);
+      resolve();
+    }, milliseconds);
+    function abort() {
+      window.clearTimeout(timer);
+      signal.removeEventListener("abort", abort);
+      reject(new DOMException("작업이 취소됐습니다.", "AbortError"));
+    }
+    signal.addEventListener("abort", abort, { once: true });
+  });
+}
 
 function generationErrorMessage(code: string | null): string {
   if (code === "authentication_required") {
@@ -87,7 +114,9 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
   const [solution, setSolution] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [progressStage, setProgressStage] = useState<GenerationProgressStage>(0);
   const publishAttemptRef = useRef<PublishAttempt | null>(null);
+  const requestControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     function syncStep(event: PopStateEvent) {
@@ -96,7 +125,10 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
     }
 
     window.addEventListener("popstate", syncStep);
-    return () => window.removeEventListener("popstate", syncStep);
+    return () => {
+      window.removeEventListener("popstate", syncStep);
+      requestControllerRef.current?.abort();
+    };
   }, []);
 
   const canContinue = step === 1 ? background.trim().length >= 20 : solution.trim().length >= 20;
@@ -128,7 +160,11 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
       setStep(2);
       return;
     }
+    requestControllerRef.current?.abort();
+    const requestController = new AbortController();
+    requestControllerRef.current = requestController;
     setSubmitting(true);
+    setProgressStage(0);
     try {
       const input = { background: background.trim(), solution: solution.trim() };
       const fingerprint = JSON.stringify(input);
@@ -141,11 +177,15 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
       }
       const attempt = publishAttemptRef.current;
 
+      await delay(unimplementedMarketResearchDelayMs, requestController.signal);
+      setProgressStage(1);
+
       if (!attempt.spec) {
         const generateResponse = await fetch("/api/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(input),
+          signal: requestController.signal,
         });
         if (!generateResponse.ok) {
           throw new Error(await responseErrorCode(generateResponse) ?? "generate_failed");
@@ -157,26 +197,36 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
         attempt.spec = campaignSpecSchema.parse(generated.spec);
       }
 
+      setProgressStage(2);
       const publishResponse = await fetch("/api/campaigns", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ draftId: attempt.draftId, spec: attempt.spec }),
+        signal: requestController.signal,
       });
       if (!publishResponse.ok) throw new Error("publish_failed");
       const published: unknown = await publishResponse.json();
       const campaignId = publishedCampaignId(published);
       saveCampaignDraftId(campaignId, attempt.draftId);
 
-      router.push(`/campaigns/${campaignId}/progress`);
+      setProgressStage(3);
+      await delay(completedStageDelayMs, requestController.signal);
+      requestControllerRef.current = null;
+      router.replace(`/campaigns/${campaignId}`);
     } catch (caught) {
+      if (requestController.signal.aborted) return;
       setError(generationErrorMessage(caught instanceof Error ? caught.message : null));
-    } finally {
+      requestControllerRef.current = null;
       setSubmitting(false);
     }
   }
 
   function previous() {
     window.history.back();
+  }
+
+  if (submitting) {
+    return <GenerationProgressView current={progressStage} />;
   }
 
   return (
@@ -220,9 +270,7 @@ export function CampaignWizard({ generatorStatus }: CampaignWizardProps) {
               ? <>다음 <ArrowRightIcon size={17} /></>
               : !generatorStatus.ready
                 ? "AI 설정 필요"
-                : submitting
-                  ? usesLiveAI ? "AI 문구 만드는 중..." : "광고 만드는 중..."
-                  : <>광고 만들기 <ArrowRightIcon size={17} /></>}
+                : <>광고 만들기 <ArrowRightIcon size={17} /></>}
           </button>
         </div>
       </section>

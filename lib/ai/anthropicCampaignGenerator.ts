@@ -10,6 +10,7 @@ import {
 } from "@/lib/contracts/campaign";
 import {
   ideaInputSchema,
+  type CampaignGenerationOptions,
   type CampaignGenerator,
   type IdeaInput,
 } from "@/lib/contracts/generator";
@@ -265,7 +266,7 @@ export class AnthropicCampaignGenerator implements CampaignGenerator {
     });
   }
 
-  async generate(input: IdeaInput): Promise<CampaignSpec> {
+  async generate(input: IdeaInput, options?: CampaignGenerationOptions): Promise<CampaignSpec> {
     const parsedInput = ideaInputSchema.parse(input);
 
     try {
@@ -281,7 +282,7 @@ export class AnthropicCampaignGenerator implements CampaignGenerator {
         },
       };
 
-      const response = await this.client.messages.parse(request);
+      const response = await this.client.messages.parse(request, { signal: options?.signal });
       if (response.parsed_output) {
         return applyServerOwnedCampaignFields(
           response.parsed_output,

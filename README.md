@@ -28,8 +28,8 @@ pnpm dev
 ## 발표용 경로
 
 - `/`: 프로젝트와 사라지는 업무를 보여주는 홈
-- `/new`: 배경과 상품명·핵심 특징을 포함한 솔루션을 받는 2단계 아이디어 입력
-- `/campaigns/[id]/progress`: 게시된 광고의 결정적인 4단계 생성 진행 화면
+- `/new`: 배경과 상품명·핵심 특징을 받는 2단계 입력과 실제 AI 생성·게시 진행 화면
+- `/campaigns/[id]/progress`: 이미 게시된 광고의 직접 접근 호환용 결정적 진행 화면
 - `/campaigns/[id]`: 예약자명단 리포트, PNG ZIP, PNG·문구·절대 URL이 든 Meta 게시 준비 ZIP과 다음 판단
 - `/p/[slug]`: 동의 후 이름·이메일 사전예약을 받는 공개 랜딩
 - `/auth/google`: Google 로그인을 시작하는 서버 endpoint

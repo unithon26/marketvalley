@@ -1,5 +1,12 @@
 # 작업 기록
 
+## 2026-08-25 — 실제 생성 경계와 진행 화면 연결
+
+- 목적: 두 입력을 제출한 사용자가 입력 화면에서 AI 응답을 기다리지 않고 즉시 진행 화면을 보며, 구현된 작업의 실제 완료 뒤에만 다음 단계로 이동하게 한다.
+- 변경: `/new` 제출 직후 입력 UI를 4단계 진행 UI로 교체했다. 미구현 시장 조사 준비만 연결 전임을 밝히고 2초 뒤 통과하며, AI 문구 생성은 실제 `/api/generate`, 광고 구성은 실제 `/api/campaigns` 응답까지 머문다. 게시 완료 뒤 결과 도착을 표시하고 `/campaigns/[id]` 리포트로 자동 이동한다. 실패하면 작성값과 같은 draft의 생성 결과를 보존해 재시도한다. 이탈 시 2초 대기와 브라우저 요청을 취소하고 생성 취소 신호를 서버 Route와 Anthropic SDK까지 전달한다. 친구가 `main`에 올린 예약 추이 시간·Windows 줄바꿈 보완 커밋 `f77e0b1`도 fast-forward로 전부 반영하고 `WORKLOG_A.md`의 최종 검증·전달 상태를 실제 CI 기준으로 정정했다.
+- 검증: 실제 generate·publish 응답을 각각 보류한 단계 대기, 시장 준비 중 이탈, AI 실패 입력 보존·재시도, 게시 응답 유실 멱등 재시도 focused Chromium E2E 4개가 통과했다. 최종 `pnpm check`의 lint·typecheck·단위 테스트 26파일 115개, configured server-secret bundle smoke, production build, Chromium E2E 20개, coverage와 독립 재검토가 통과했다. 커버리지는 statements 83.58%, branches 76.19%, functions 90.13%, lines 87.93%다.
+- 남은 일: commit·push·CI를 완료한다.
+
 ## 2026-08-25 — Anthropic 503 후속 회귀 복구
 
 - 목적: 첫 503 수정과 CI 통과 뒤 사용자가 같은 `/api/generate` 503을 다시 확인한 문제를 최종 push 코드로 재현하고 복구한다.

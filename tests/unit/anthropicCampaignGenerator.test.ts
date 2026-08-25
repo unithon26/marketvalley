@@ -192,10 +192,12 @@ describe("AnthropicCampaignGenerator", () => {
       now: () => new Date("2026-08-25T12:34:56.000Z"),
     });
 
-    const result = await generator.generate(idea);
+    const controller = new AbortController();
+    const result = await generator.generate(idea, { signal: controller.signal });
     const request = parse.mock.calls[0][0];
 
     expect(parse).toHaveBeenCalledTimes(1);
+    expect(parse.mock.calls[0][1]).toEqual({ signal: controller.signal });
     expect(request).toMatchObject({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 6_000,

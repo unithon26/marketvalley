@@ -9,6 +9,10 @@ export const ideaInputSchema = z.object({
 
 export type IdeaInput = z.infer<typeof ideaInputSchema>;
 
+export type CampaignGenerationOptions = {
+  signal?: AbortSignal;
+};
+
 export interface CampaignGenerator {
-  generate(input: IdeaInput): Promise<CampaignSpec>;
+  generate(input: IdeaInput, options?: CampaignGenerationOptions): Promise<CampaignSpec>;
 }
