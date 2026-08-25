@@ -357,18 +357,27 @@ Vercel에는 marketvalley Next.js 애플리케이션 하나를 배포한다. 사
 ```text
 app/
   page.tsx
+  auth/google/route.ts
+  auth/callback/route.ts
+  auth/logout/route.ts
   campaigns/[id]/page.tsx
   p/[slug]/page.tsx
   api/generate/route.ts
   api/campaigns/route.ts
   api/signals/route.ts
+  api/auth/session/route.ts
 components/
+  auth-controls.tsx
   campaign-wizard.tsx
   campaign-report.tsx
   progress-view.tsx
   renderers/public-landing.tsx
   renderers/carousel-card.tsx
 lib/
+  auth/authorization.ts
+  auth/handlers.ts
+  supabase/server.ts
+  client/use-auth-session.ts
   contracts/campaign.ts
   contracts/generator.ts
   contracts/repository.ts
@@ -379,7 +388,7 @@ tests/unit/
 tests/e2e/
 ```
 
-`lib/ai/`, `lib/db/`와 `supabase/migrations/`는 live adapter를 구현할 때 추가한다. 현재 존재하지 않는 경로를 구현 완료로 간주하지 않는다.
+`lib/ai/`의 prompt 계약과 Google OAuth용 `lib/auth/`, `lib/supabase/` 서버 client는 구현했다. `lib/db/`와 `supabase/migrations/`는 live 데이터 adapter를 구현할 때 추가한다. 현재 존재하지 않는 경로를 구현 완료로 간주하지 않는다.
 
 `lib/contracts/campaign.ts`는 두 개발자가 함께 합의한 뒤 한 명만 소유한다. 랜딩과 캐러셀 렌더러는 API를 직접 호출하지 않는다.
 

@@ -1,6 +1,11 @@
 import Link from "next/link";
 
+import { AuthControls } from "@/components/auth-controls";
+import { hasCompleteSupabaseConfig } from "@/lib/supabase/config";
+
 export function SiteHeader({ compact = false }: { compact?: boolean }) {
+  const authEnabled = hasCompleteSupabaseConfig();
+
   return (
     <header className={compact ? "site-header site-header-compact" : "site-header"}>
       <div className="header-inner">
@@ -15,7 +20,7 @@ export function SiteHeader({ compact = false }: { compact?: boolean }) {
         </nav>
         <div className="header-actions">
           <span className="demo-chip">DEMO</span>
-          <span className="avatar" aria-label="팀 계정">MV</span>
+          <AuthControls enabled={authEnabled} />
         </div>
       </div>
     </header>

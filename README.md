@@ -30,8 +30,12 @@ pnpm dev
 - `/campaigns/[id]/progress`: 게시된 광고의 결정적인 4단계 생성 진행 화면
 - `/campaigns/[id]`: 목 응답 리포트, PNG ZIP, PNG·문구·절대 URL이 든 Meta 게시 준비 ZIP과 다음 판단
 - `/p/[slug]`: 개인정보 없이 관심 신호 하나를 받는 공개 랜딩
+- `/auth/google`: Google 로그인을 시작하는 서버 endpoint
+- `/api/auth/session`: 토큰을 노출하지 않고 현재 로그인 상태를 반환하는 endpoint
 
 서버 시작 시 발표용 `/campaigns/demo`와 `/p/demo`가 준비되며, `/new`에서 만든 광고는 기존 탭과 섞이지 않도록 별도 id와 slug를 받는다.
+
+GNB의 임시 Google 로그인·사용자·로그아웃 UI는 인증 상태 hook과 분리되어 있다. Supabase 설정이 비어 있으면 `로그인 준비 중`을 표시하며 기존 fixture 데모에는 영향을 주지 않는다. 디자이너 확정본은 `components/auth-controls.tsx`의 표현만 교체하면 된다.
 
 ## 문서 안내
 
@@ -46,6 +50,7 @@ pnpm dev
 - [사업계획 초안](docs/business-plan.md): 고객 가치, BM 가설과 시장 진입
 - [시장 리서치](docs/market-research.md): 공식 통계, 기관 채널과 TAM·SAM·SOM 원칙
 - [외부 연동 계획](docs/integration-roadmap.md): OpenAI·Supabase 연결 순서
+- [Google 로그인 운영 가이드](docs/authentication.md): redirect URI, Supabase 설정과 서버 인증 계약
 - [목데이터 기준](docs/mock-data.md): fixture와 seed 응답 기준
 - [검증 기록](docs/validation.md): 자동·수동 완료 기준과 확인 결과
 - [결정 기록](docs/decisions/): 제품·아키텍처 선택과 기각 대안
@@ -53,6 +58,7 @@ pnpm dev
 ## 범위 경계
 
 - 모든 화면과 수치는 발표용 mock이다. OpenAI, Supabase, Meta와 배포 환경은 연결하지 않았다.
+- Google OAuth 서버 계약과 테스트는 준비됐지만 Google provider·Supabase 환경변수와 실제 계정은 아직 연결하지 않았다. 기존 fixture 데모에는 로그인을 강제하지 않는다.
 - P0는 개인정보를 받지 않는 선택형 관심 응답만 수집하도록 설계한다.
 - Meta 계정 연결, 광고 활성화와 실제 지출은 해커톤 P0 범위에 넣지 않는다.
 - 광고, 응답과 판단은 현재 Node.js 서버 프로세스 메모리에만 저장돼 서버 재시작 또는 serverless 인스턴스 전환 시 초기화된다. 브라우저에는 중복 응답 확인용 익명 `visitorId`와 자신이 만든 광고의 draft 소유 토큰만 저장한다.
