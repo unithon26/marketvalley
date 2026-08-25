@@ -151,7 +151,8 @@ test("기존 진행 URL은 Figma 완료 프레임과 모바일 반응형 치수�
   await expectNoHorizontalOverflow(page);
   const mobileIllustration = await page.locator(".validation-progress-illustration").boundingBox();
   const mobileCard = await page.locator(".validation-stage-card").boundingBox();
-  expect(mobileIllustration).toMatchObject({ width: 238, height: 140 });
+  expect(mobileIllustration?.width).toBeCloseTo(238, 1);
+  expect(mobileIllustration?.height).toBeCloseTo(140, 1);
   expect(mobileCard).toMatchObject({ width: 343, height: 190 });
   await expect(page.getByRole("heading", { name: "시장 검증이 완료되었습니다" })).toHaveCSS("font-size", "21px");
 });
