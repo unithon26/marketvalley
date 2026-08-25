@@ -148,3 +148,14 @@
 - 검증: 인증 테스트 28개와 `pnpm check`의 lint·typecheck·단위 테스트 66개, `pnpm build`, production Chromium E2E 14개, `pnpm test:coverage`, `pnpm audit --audit-level high`, `pnpm peers check`, `git diff --check`가 통과했다. 커버리지는 statements 81.86%, branches 75.08%, functions 89.92%, lines 84.97%다. 설정 없는 production HTTP smoke에서 홈 200과 직접 호출한 인증 endpoint의 `auth_not_configured` 503·private no-store를 확인했고 GNB는 불필요한 요청 없이 fallback을 표시했다. 독립 보안 검토에서 찾은 로그아웃 오류, 동시 PKCE verifier, callback allow-list 3건을 수정하고 회귀 테스트로 고정했다.
 - 전달: 사용자 Git/GitHub 신원과 계정에 연결된 commit 이메일, 의도한 39개 경로와 staged 비밀정보를 확인한 뒤 기능 커밋 `527888e`를 비공개 `unithon26/marketvalley`의 `main`에 push했다. GitHub Actions run `32807054839`의 install·lint·typecheck·단위 테스트·production build·Chromium E2E가 모두 통과했다. 실제 Google·Supabase 계정 쓰기, 배포와 행사 제출은 수행하지 않았다.
 - 남은 일: [인증 운영 가이드](docs/authentication.md)에 따라 Google Console에 Supabase callback을 등록하고 Supabase provider·Site URL·`sb_flow_id`를 허용하는 Redirect URL 패턴·환경변수를 설정한 뒤 실제 계정으로 로그인·동시 flow·갱신·로그아웃을 검증한다. G3 migration과 RLS에서 `auth.uid()` 광고 소유권을 연결한다. 디자이너 확정본이 오면 `AuthControls` markup과 `auth-*` CSS만 교체한다.
+
+## 2026-08-25 — 개발자 A: 예약자명단 전환(ADR-0013) 병합 알림 — 개발자 B 확인 요청
+
+- 대상: 개발자 B(Codex 세션). 이 항목은 위 Google OAuth 작업과 충돌 없이 병합됐음을 알리고, B의 확인이 필요한 결정을 전달하기 위한 것이다.
+- 목적: 익명 3지선다 신호를 이름+이메일 예약자명단으로 바꾸는 방향을, 이 문서 위쪽 "개발자 A/B 충돌 PR 정리" 항목에서 B가 반려했던 바로 그 방향임을 인지한 상태에서 제품 책임자가 레퍼런스(`proo-landing.vercel.app`)를 근거로 의도적으로 재확정했음을 기록하고 공유
+- 변경: `docs/decisions/0013-switch-anonymous-signal-to-named-reservation.md`(ADR-0013)를 새로 작성하고, `docs/spec.md`(P0-4, 지표 정의, Supabase 스키마 스케치)와 `docs/validation.md`(안전성과 진실성)를 이 ADR 기준으로 갱신했다. 데이터 계약·화면 변경 범위·작업 순서·A/B 분담은 `docs/superpowers/specs/2026-08-25-reservation-list-migration-design.md`에 별도로 기록했다. `WORKLOG_A.md`, `TROUBLESHOOTING_A.md`를 개발자 A 개인 기록으로 신설했다
+- 영향 범위: `docs/decisions/0013-*.md`, `docs/spec.md`, `docs/validation.md`, `docs/superpowers/specs/2026-08-25-*.md`, `WORKLOG_A.md`, `TROUBLESHOOTING_A.md`. 제품 코드(`app/`, `components/`, `lib/`)는 이 항목에서 변경하지 않았다
+- 결정: `docs/decisions/0001-close-the-validation-loop.md`·`docs/validation.md`의 "이름·이메일·전화번호를 받지 않는다" 원칙은 신호(응답) 계층에 한해 ADR-0013으로 대체됐다. ADR 번호 `0012`는 B의 `0012-use-supabase-pkce-auth-behind-server-routes.md`와 겹쳐서 A 쪽을 `0013`으로 재번호했다 — 다음 ADR은 `0014`부터 사용할 것
+- 검증: 문서 전용 변경이라 `pnpm check`는 실행하지 않았다. push 전 `origin/main`을 다시 확인해 B의 `527888e`·`c5a2f90`과 겹치는 파일(`docs/spec.md`, `docs/validation.md`)을 대조했고, 수정 구간이 서로 다른 섹션이라 `git merge-tree`와 실제 병합 모두 충돌 없이 끝났다
+- 전달: 커밋 `59e1c77`, `e7e07af`와 병합 커밋을 `main`에 push했다 (`7cab32f`)
+- 남은 일: B는 착수 전 `docs/superpowers/specs/2026-08-25-reservation-list-migration-design.md` §1(데이터 계약)을 검토해달라. 이후 B-1(Supabase `campaign_reservation` 테이블·repository)과 B-2(`lib/ai/campaignPrompts.ts` 신뢰 문구·OpenAI adapter)를 병렬로 진행하면 된다. `tests/e2e/demo-flow.spec.ts`의 3지선다 관련 검증은 A-1(화면) 단계에서 새 흐름 기준으로 재작성할 예정이라 지금 당장 손대지 않아도 된다.
