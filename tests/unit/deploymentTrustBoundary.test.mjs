@@ -56,6 +56,8 @@ describe("production deployment trust boundary", () => {
     expect(bootstrap).toContain('python3-minimal');
     expect(bootstrap).toContain('MARKETVALLEY_CONFIRM_FORMAT_DEVICE');
     expect(bootstrap).toContain('/dev/oracleoci/oraclevdb');
+    expect(bootstrap).toContain('mkfs.ext4 -F -L marketvalley');
+    expect(bootstrap).toContain('"${filesystem_label}" == "marketvalley"');
     expect(bootstrap).toContain('/opt/marketvalley/docker');
     expect(releaseScript).toContain('dedicated marketvalley volume is not mounted');
   });
@@ -67,10 +69,23 @@ describe("production deployment trust boundary", () => {
     expect(terraform).toContain('resource "oci_core_volume" "marketvalley_data"');
     expect(terraform).toContain('resource "oci_core_volume_attachment" "marketvalley_data"');
     expect(terraform).toContain('attachment_type                     = "paravirtualized"');
-    expect(terraform).toContain('is_pv_encryption_in_transit_enabled = true');
+    expect(terraform).toContain('is_pv_encryption_in_transit_enabled = false');
     expect(terraform).toContain('vpus_per_gb          = 10');
     expect(terraform).toMatch(/lifecycle\s*\{\s*prevent_destroy\s*=\s*true\s*\}/s);
     expect(variables).toContain('default     = "/dev/oracleoci/oraclevdb"');
     expect(variables).toContain('var.data_volume_size_gbs >= 50');
+  });
+
+  it("uses the current OCI CLI NSG identifier without replacing VNIC memberships", () => {
+    for (const path of [
+      "infra/terraform/oci-nlb/attach-backend-nsg.sh",
+      "infra/terraform/oci-nlb/detach-backend-nsg.sh",
+    ]) {
+      const script = readRepositoryFile(path);
+      expect(script).toContain('network nsg get --nsg-id "${backend_nsg_id}"');
+      expect(script).not.toContain("--network-security-group-id");
+      expect(script).toContain('oci network vnic get --vnic-id "${vnic_id}"');
+      expect(script).toContain("--if-match");
+    }
   });
 });

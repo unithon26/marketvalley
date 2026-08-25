@@ -1,5 +1,35 @@
 # Troubleshooting
 
+## 2026-08-26 — A1 capacity와 실제 OCI 제약이 첫 Compose bootstrap을 연속 중단함
+
+### 맥락·기대·실제 영향
+
+기존 4 OCPU·24GB `ssumcp`를 새 VM 없이 그대로 사용하면서 Kubernetes 밖에 NLB와 rootless Docker Compose를 구성해야 했다. SSH 관리키를 복구하려고 승인된 maintenance stop을 수행한 뒤 기존 A1 인스턴스 시작이 `Out of host capacity`로 거절됐다. 4·24와 2·12, 1·6 시작을 차례로 시도했고 1·6에서만 호스트를 다시 확보했다. 기존 K3s는 약 90초 동안 컨테이너 stop job을 정리한 뒤 정상 부팅했지만 1 CPU에서는 `OutOfcpu`가 발생했다. 2·12 증설은 이후 성공했으나 4·24는 계속 거절돼 현재 capacity 위험이 남아 있다.
+
+서비스 접근 복구 뒤 첫 Resource Manager apply와 bootstrap에서도 세 가지 운영 계약 불일치가 드러났다. A1 VM은 paravirtualized Block Volume의 전송 중 암호화 옵션을 지원하지 않아 attachment만 400으로 실패했다. NSG append 스크립트는 OCI CLI의 실제 `network nsg get --nsg-id` 대신 존재하지 않는 옵션을 사용해 변경 전에 종료됐다. ext4는 label을 최대 16자로 제한하므로 17자 `marketvalley-data`를 자동으로 `marketvalley-dat`로 줄였고, bootstrap의 exact label 검사가 포맷 직후 중단됐다. 모두 앱 공개 전 발견됐으며 기존 K3s 데이터나 VNIC 규칙은 덮어쓰지 않았다.
+
+### 증거·원인과 기각한 대안
+
+- 같은 인스턴스의 START·4·24 resize API가 반복해서 `Out of host capacity`를 반환했고 춘천 리전은 하나의 availability domain만 제공했다. 부트 볼륨이나 OS 오류가 아니라 A1 호스트 배정 제약이었다.
+- Tailscale SSH `ubuntu@100.97.34.28`은 동일 SSH host key로 연결됐고 sudo가 가능했다. 새 VM이나 부트 볼륨 교체 대신 기존 경로로 관리자 공개키를 보존 추가했다.
+- 첫 Terraform plan은 create 17, update·delete 0이었다. apply 로그에서 NSG·NLB·볼륨 등 16개는 완료됐고 `is_pv_encryption_in_transit_enabled=true` attachment만 400으로 실패했다. 새 VM, K3s ingress 공유와 host 80·443 재사용은 요구사항·격리 경계를 위반하므로 기각했다.
+- NSG 스크립트는 VNIC update나 백업 생성 전에 CLI option parsing으로 exit 2였다. 실제 VNIC의 NSG 목록은 여전히 빈 배열이라 부분 변경이 없었다.
+- 새 50GiB 디스크는 파티션·signature가 없고 boot disk와 다른 `/dev/sdb`임을 확인한 뒤에만 포맷했다. 실패 뒤 `blkid`가 ext4와 잘린 label을 반환했고 mount는 없었다. 파일시스템을 다시 만들 필요가 없어 `e2label`로 신규 빈 볼륨의 label만 보정했다.
+
+### 해결·검증·회귀 방지
+
+인스턴스는 먼저 1·6으로 복구하고 관리키를 설치한 뒤 2·12로 증설했다. 4·24는 실행 중 resize가 안전하게 거절되는 동안 현재 사양이 유지되는지 확인하고, Oracle 인증·capacity가 확보될 때 재시도한다. Block Volume은 A1에서 지원되지 않는 전송 옵션만 끄고 OCI 기본 저장 암호화와 `prevent_destroy`를 유지했다. 후속 plan은 기존 16개 `no-op`과 attachment 1개 `create`만 보여 그대로 적용했고 최종 attachment가 `ATTACHED`임을 확인했다.
+
+attach·detach 스크립트의 NSG get 옵션을 모두 `--nsg-id`로 고치고 shell 검증 뒤 실행했다. append 직전 VNIC 전체 NSG 배열과 ETag를 mode 0600으로 백업했으며 최종 배열에 backend NSG 하나만 있는 것을 재조회했다. ext4 label 계약은 16자 이하 `marketvalley`로 고정했다. bootstrap은 기존 ext4 UUID·label을 재사용해 idempotent하게 완료됐고 `/opt/marketvalley`가 별도 mount, Docker data-root가 그 아래, rootless user service가 active·enabled인 것을 확인했다. bootstrap 묶음에는 실행 전 source·remote SHA-256 대조와 `production.env.example` 포함 검사를 배포 runbook에 유지한다.
+
+### 남은 위험과 면접 질문
+
+현재 2·12는 기존 K3s와 새 앱의 설계 상한을 동시에 운영하기에 충분하다고 확정할 수 없다. 실제 앱 배포는 4·24 복원 또는 측정 기반 자원 계약 재설계 전까지 fail-closed로 유지한다. A1 전송 중 암호화 미지원은 문서에 공개하고 VM 내부·OCI storage encryption·Supabase 원문 저장 경계로 위험을 줄인다.
+
+- 왜 새 VM을 만들지 않았나? 사용자가 기존 서버 재사용을 명시했고 동일 부트 볼륨·Tailscale 경로로 복구할 수 있었기 때문이다.
+- 왜 실패한 apply를 destroy 후 다시 하지 않았나? 관리형 state에 성공 자원이 기록됐고 새 plan으로 16개 `no-op`, attachment 1개만 증명해 불필요한 교체 위험을 피할 수 있었기 때문이다.
+- 왜 잘린 label을 허용하지 않았나? storage identity를 exact contract로 검증해야 다른 디스크 오인 mount를 막을 수 있어, 도구의 암묵적 truncation이 아니라 명시적인 유효 label로 계약을 고쳤다.
+
 ## 2026-08-25 — 배포 계약 CI가 Compose 타입과 provider 플랫폼을 다르게 가정함
 
 ### 맥락·기대·실제 영향
@@ -52,7 +82,7 @@ SSH key의 `restrict` 옵션만으로는 port forwarding 등을 막을 뿐 임�
 
 압축 해제기는 entry 10,000개, 파일당 64MiB, 전체 1GiB, path 4,096바이트 상한을 적용하고 symlink·hardlink·device·FIFO·중복·경로 이탈을 거절한다. Python 3.10 이상을 bootstrap에서 명시적으로 설치·확인하며 안전 archive와 traversal·symlink·duplicate·entry/file limit 회귀를 별도 단위 테스트로 고정했다.
 
-같은 VM의 boot filesystem을 공유한 채 `IOWeight`와 배포 전 여유 공간만 검사하면 rootless Docker image·build cache나 app cache가 디스크를 채워 Kubernetes까지 중단시킬 수 있었다. OCI home region의 Always Free boot·block volume 합계 200GB 안에서 50GiB Block Volume을 별도로 만들고 기존 VM의 consistent device path에 paravirtualized·전송 중 암호화 방식으로 연결하기로 했다. bootstrap은 non-boot whole disk, 50~150GiB 크기, 기존 filesystem 부재와 명시적 format 확인값을 모두 검사한 뒤에만 ext4로 만들며, UUID mount와 Docker `data-root=/opt/marketvalley/docker`를 매 시작·배포에서 다시 확인한다. volume이 mount되지 않으면 rootless Docker user service와 release 모두 fail-closed한다. Terraform volume에는 `prevent_destroy`를 적용해 NLB 철거나 잘못된 destroy plan이 운영 데이터까지 삭제하지 못하게 했다.
+같은 VM의 boot filesystem을 공유한 채 `IOWeight`와 배포 전 여유 공간만 검사하면 rootless Docker image·build cache나 app cache가 디스크를 채워 Kubernetes까지 중단시킬 수 있었다. 50GiB Block Volume을 별도로 만들고 기존 VM의 consistent device path에 paravirtualized 방식으로 연결하기로 했다. 실제 apply에서 A1 VM이 paravirtualized 전송 중 암호화 옵션을 지원하지 않아 attachment만 실패했고, 지원되지 않는 옵션을 끄되 OCI 저장 암호화는 유지했다. bootstrap은 non-boot whole disk, 50~150GiB 크기, 기존 filesystem 부재와 명시적 format 확인값을 모두 검사한 뒤에만 ext4로 만들며, UUID mount와 Docker `data-root=/opt/marketvalley/docker`를 매 시작·배포에서 다시 확인한다. volume이 mount되지 않으면 rootless Docker user service와 release 모두 fail-closed한다. Terraform volume에는 `prevent_destroy`를 적용해 NLB 철거나 잘못된 destroy plan이 운영 데이터까지 삭제하지 못하게 했다.
 
 ### 검증·회귀 방지·남은 위험
 

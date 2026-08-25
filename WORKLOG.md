@@ -1,5 +1,14 @@
 # 작업 기록
 
+## 2026-08-26 — Oracle Compose 운영 기반 적용과 접근 복구
+
+- 목적: 기존 `ssumcp`의 Kubernetes와 분리된 NLB·전용 볼륨·rootless Docker 운영 기반을 실제 OCI에 적용하고 owner-only GitHub 배포 경로를 서버까지 연결한다.
+- 변경: Tailscale SSH로 기존 관리 경로를 확인한 뒤 `ubuntu`에 새 관리자 Ed25519 공개키를 추가하고 공개 IP 직접 접속을 검증했다. OCI Resource Manager 1.5 stack `marketvalley-oracle-compose`를 만들고 public NLB, NSG 2개와 규칙 6개, backend set·backend·listener 각 2개, `prevent_destroy` 50GiB Block Volume을 적용했다. 기존 VNIC의 NSG 목록을 mode 0600으로 백업한 뒤 backend NSG 하나만 append했다. 빈 비부팅 볼륨을 ext4로 만들고 `/opt/marketvalley`에 UUID mount했으며 전용 `marketvalley` 사용자, 225% CPU·6GiB·swap 0·1024 task cgroup, rootless Docker 29.7.2, 제한된 SSH deploy gateway를 설치했다. NLB IP를 해석하는 `marketvalley-152-67-213-96.sslip.io`와 GitHub deploy secret·variable을 연결하고 서버 환경파일에 Anthropic·Supabase·새 signal secret을 값 노출 없이 설치했다.
+- 실패와 수정: maintenance stop 뒤 춘천 A1 capacity 부족으로 4 OCPU·24GB 시작이 거절돼 1·6으로 복구한 뒤 2·12까지 증설했다. Resource Manager 1.5의 교차 변수 validation 미지원은 resource precondition으로 옮겼다. A1이 paravirtualized 전송 중 암호화를 지원하지 않아 attachment만 실패한 뒤 해당 옵션을 끄고 OCI 저장 암호화는 유지했다. NSG 스크립트의 잘못된 OCI CLI 옵션 `--network-security-group-id`를 `--nsg-id`로 고쳤다. 17자 ext4 label이 16자로 잘려 bootstrap이 중단된 문제는 label 계약을 `marketvalley`로 수정하고 신규 빈 볼륨 label만 보정했다. 누락된 `production.env.example`을 bootstrap 묶음에 추가해 idempotent 재실행을 완료했다.
+- 검증: 첫 plan은 신규 17개와 기존 변경·삭제 0개였고, attachment 수정 plan은 기존 16개 `no-op`과 attachment 1개 `create`였다. 최종 NLB `ACTIVE`, 볼륨 `ATTACHED`, VNIC backend NSG 포함, 서버의 50GiB 비부팅 디스크·ext4 UUID mount, K3s node `Ready`, rootless Docker socket·data-root·자동 시작, deploy key 강제 명령 도달과 환경파일 owner `marketvalley`, mode 0600을 실제 확인했다. Terraform fmt·init·validate와 NSG shell 구문을 통과했다.
+- 전달: OCI Resource Manager가 Terraform state를 관리한다. 개인 배포 저장소에는 production SSH host·user·port·private key·known hosts와 production URL, source read token이 모두 등록됐다. 발표 저장소는 변경하지 않았다.
+- 남은 일: Cloudflare 로그인 뒤 실제 Turnstile site key·secret을 만들고 Supabase·Google production redirect를 등록한다. Oracle MFA로 CLI 세션을 갱신한 뒤 4·24 복원을 재시도한다. 실제 main SHA를 배포하고 production OAuth·Claude·예약·export·rollback과 재부팅 복구를 검증한다. Meta 자동화는 제외한다.
+
 ## 2026-08-25 — 배포 계약 CI 직렬화·provider lock 복구
 
 - 목적: 운영 Compose 자원 상한과 OCI Terraform을 검사하는 source CI·owner-only 배포 workflow가 로컬과 Linux runner에서 같은 계약을 검증하게 한다.

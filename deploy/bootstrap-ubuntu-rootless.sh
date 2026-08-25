@@ -129,11 +129,11 @@ filesystem_label="$(blkid -s LABEL -o value "${device_real}" 2>/dev/null || true
 if [[ -z "${filesystem_type}" ]]; then
   [[ "${MARKETVALLEY_CONFIRM_FORMAT_DEVICE:-}" == "yes" ]] \
     || fail "set MARKETVALLEY_CONFIRM_FORMAT_DEVICE=yes to format the empty dedicated volume"
-  mkfs.ext4 -F -L marketvalley-data -m 0 "${device_real}"
+  mkfs.ext4 -F -L marketvalley -m 0 "${device_real}"
   filesystem_type="$(blkid -s TYPE -o value "${device_real}")"
   filesystem_label="$(blkid -s LABEL -o value "${device_real}")"
 fi
-[[ "${filesystem_type}" == "ext4" && "${filesystem_label}" == "marketvalley-data" ]] \
+[[ "${filesystem_type}" == "ext4" && "${filesystem_label}" == "marketvalley" ]] \
   || fail "the data device contains an unexpected filesystem"
 filesystem_uuid="$(blkid -s UUID -o value "${device_real}")"
 [[ "${filesystem_uuid}" =~ ^[0-9a-fA-F-]{16,64}$ ]] || fail "the data filesystem UUID is invalid"

@@ -2,17 +2,17 @@
 
 ## 현재 확인된 상태
 
-2026-08-25 Oracle Console과 공개 endpoint를 읽기 전용으로 확인했다.
+2026-08-26 실제 OCI와 서버에서 확인했다.
 
-- 인스턴스 `ssumcp`: Ubuntu 22.04 ARM64, VM.Standard.A1.Flex 4 OCPU·24GB, private IP `10.0.0.9`
-- 최근 1시간: CPU 평균 9.07%·최대 9.87%, 메모리 평균 34.5%·최대 35.47%, load average 최대 0.79
+- 인스턴스 `ssumcp`: Ubuntu 22.04 ARM64, VM.Standard.A1.Flex, private IP `10.0.0.9`. 원래 4 OCPU·24GB지만 maintenance stop 뒤 A1 capacity 부족으로 1·6에서 복구해 현재 2·12까지 증설했다.
 - Kubernetes의 Traefik이 host 80·443을 점유하고 기본 인증서를 반환함
 - OCI security list는 80·443 외에 SSH 22와 k3s API 6443을 인터넷 전체에 허용함. host firewall 때문에 6443 외부 연결은 닫혀 있지만 OCI 규칙 자체는 이후 관리 경로 확인 뒤 축소해야 함
-- 기존 OCI Load Balancer는 없고 Network Load Balancer도 0개임
-- 2026-08-31 15:43 UTC에 Oracle maintenance reboot가 예정됨
-- 로컬과 OCI Cloud Shell에는 기존 VM private SSH key가 없음. Ubuntu 이미지에서 Oracle Run Command가 전달되지 않아 현재 서버 내부 bootstrap은 차단됨
+- OCI Resource Manager stack이 public NLB `152.67.213.96`, NLB·backend NSG, 전용 50GiB Block Volume과 attachment를 관리함
+- 관리자 Ed25519 key의 public IP 직접 접속, 별도 강제 명령 deploy key, Tailscale SSH 복구 경로를 확인함
+- 전용 volume은 `/opt/marketvalley`에 ext4 UUID mount되고 rootless Docker 29.7.2 data-root와 release cache를 소유함
+- production origin은 `https://marketvalley-152-67-213-96.sslip.io`이며 server 환경에는 Anthropic·Supabase·signal secret을 적용함. Turnstile과 OAuth production 설정, 첫 앱 release는 남아 있음
 
-새 VM이나 Kubernetes workload는 만들지 않는다. 구현된 코드는 기존 VM의 rootless Compose, OCI NLB, 전용 50GiB Block Volume과 owner-only GitHub 배포 자동화를 준비한 상태이며 실제 production 변경과 첫 배포는 아직 수행하지 않았다.
+새 VM이나 Kubernetes workload는 만들지 않는다. 기존 VM의 rootless Compose 기반과 owner-only GitHub 배포 자동화만 사용하며, 실제 첫 앱 release는 4·24 복원과 production 외부 설정 뒤 수행한다.
 
 ## 운영 구조
 
@@ -104,7 +104,7 @@ sudo env \
 - NLB NSG에서 사설 13080·13443만 받는 backend NSG
 - rootless Docker·release·cache를 boot disk에서 격리하는 50GiB Block Volume과 기존 VM의 paravirtualized attachment
 
-OCI Resource Manager의 managed state를 사용한다. 실제 tfvars와 Terraform state는 Git에 넣지 않는다. 운영 data volume에는 `prevent_destroy`를 적용해 NLB 철거나 잘못된 destroy plan이 데이터를 함께 삭제하지 못하게 한다. 기존 NLB가 0개인지, home region boot·block volume 합계에 Always Free 200GB 한도 여유가 있는지, plan이 위 자원만 추가하는지 다시 확인한 뒤 apply한다.
+OCI Resource Manager의 managed state를 사용한다. 실제 tfvars와 Terraform state는 Git에 넣지 않는다. 운영 data volume에는 `prevent_destroy`를 적용해 NLB 철거나 잘못된 destroy plan이 데이터를 함께 삭제하지 못하게 한다. 기존 NLB가 0개인지, plan이 위 자원만 추가하는지 다시 확인한 뒤 apply한다. 기존 boot volume이 이미 200GB이므로 추가 50GiB Block Volume은 Always Free storage 한도를 넘는 유료 자원으로 분류하고 Billing에서 추적한다.
 
 Terraform은 기존 primary VNIC를 소유하지 않는다. output의 backend NSG ID를 받은 뒤 `attach-backend-nsg.sh`가 VNIC private IP와 VCN을 검증하고 기존 NSG 목록을 보존한 채 하나만 append한다. `MARKETVALLEY_CONFIRM_ATTACH=yes` 없이는 변경하지 않는다.
 
