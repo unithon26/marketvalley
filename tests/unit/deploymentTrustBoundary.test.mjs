@@ -12,6 +12,8 @@ describe("production deployment trust boundary", () => {
     expect(workflow).not.toContain("PRODUCTION_SSH_PRIVATE_KEY");
     expect(workflow).not.toContain("PRODUCTION_SSH_HOST");
     expect(workflow).not.toMatch(/^\s{2}deploy:\s*$/mu);
+    expect(workflow).toContain("(.services.app.mem_limit | tonumber) == 2147483648");
+    expect(workflow).toContain("(.services.proxy.mem_limit | tonumber) == 268435456");
   });
 
   it("dispatches deploy and rollback through a root-owned fixed release script", () => {

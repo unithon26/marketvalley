@@ -1,5 +1,19 @@
 # Troubleshooting
 
+## 2026-08-25 — Compose 자원 상한 CI가 숫자형 가정으로 실패함
+
+### 맥락·기대·실제 영향
+
+메인 source CI는 운영 Compose 설정이 앱 2GiB와 proxy 256MiB 메모리 상한을 유지하는지 렌더링 결과로 검사해야 했다. 통합 커밋 `e04d4b9`의 앱 lint·typecheck·164개 단위 테스트·production build·21개 Chromium E2E는 통과했지만 GitHub Actions run `32857239964`는 `Validate production deployment files`에서 중단돼 이후 Terraform·image smoke가 실행되지 않았다. production 배포 전 CI에서 발견돼 사용자 트래픽이나 서버 영향은 없다.
+
+### 재현·증거·원인
+
+같은 Compose 5.5 렌더러로 `config --format json`을 실행하면 `cpus`는 숫자지만 `mem_limit`과 `memswap_limit`은 바이트 값의 문자열로 반환됐다. CI의 `jq`는 이 값을 JSON 숫자와 직접 비교하고 오류 출력도 버려 `false`와 exit 1만 만들었다. Compose 파일의 실제 2GiB·256MiB 상한은 올바르고, 검증기의 JSON 타입 가정이 잘못됐다. owner-only 배포 workflow에도 같은 비교가 있어 첫 실제 배포 전에 함께 수정했다.
+
+### 해결·검증·회귀 방지
+
+메모리 네 필드를 `tonumber`로 명시적으로 정규화한 뒤 정확한 바이트 수를 비교하게 했다. CPU·port·host IP·protocol의 기존 exact 비교는 유지했다. source와 배포 control-plane 테스트에 이 정규화를 고정해 숫자형 직접 비교가 되돌아오지 못하게 했다. Compose 렌더 결과와 해당 `jq` 조건, 두 저장소의 focused 테스트와 전체 CI를 다시 검증한다. 배포 전 검사는 실제 runtime 계약을 확인하되 도구의 직렬화 타입을 제품 실패로 오인하지 않아야 한다.
+
 ## 2026-08-25 — 기존 Oracle VM의 80·443과 관리 접근이 Compose 배포를 차단함
 
 ### 맥락·기대·실제 영향

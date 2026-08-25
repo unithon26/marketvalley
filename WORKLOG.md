@@ -1,5 +1,14 @@
 # 작업 기록
 
+## 2026-08-25 — Compose 자원 상한 CI 타입 불일치 복구
+
+- 목적: 운영 Compose의 CPU·메모리·사설 port 상한을 검사하는 source CI와 owner-only 배포 workflow가 실제 렌더 형식을 정확히 검증하게 한다.
+- 원인: Compose JSON은 CPU를 숫자로, `mem_limit`·`memswap_limit`을 바이트 문자열로 직렬화했지만 `jq`가 메모리를 JSON 숫자와 직접 비교해 실제 상한이 올바른데도 `false`를 반환했다.
+- 변경: 두 workflow 모두 메모리 네 필드를 `tonumber`로 정규화한 뒤 exact byte를 비교하고, 같은 표현을 source·control-plane 회귀 테스트에 고정했다. CPU·host IP·port·protocol exact 비교는 유지했다.
+- 검증: 실패한 GitHub Actions run `32857239964`에서 앱 lint·typecheck·164개 단위 테스트·production build·21개 E2E까지 성공하고 Compose 단계만 실패했음을 확인했다. Compose 5.5로 같은 JSON 타입과 실패를 재현한 뒤 수정된 `jq` 조건, source focused 테스트와 deploy Node 테스트가 통과했다.
+- 전달: source와 `ghdtjdwn/marketvalley-deploy` 수정에 포함했다. 새 GitHub Actions run의 Terraform·image smoke 통과를 확인해야 한다.
+- 남은 일: 두 저장소 CI 통과를 확인한다.
+
 ## 2026-08-25 — Figma 제품 메인과 생성 랜딩 레퍼런스 경계 복구
 
 - 목적: 생성되는 랜딩의 참고 사이트 `proo-landing.vercel.app`을 Market Valley 제품 홈으로 잘못 이식한 변경을 되돌리고, 공유 Figma의 화면별 제품 플로우를 다시 기준으로 고정한다.
