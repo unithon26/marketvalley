@@ -124,8 +124,8 @@ function environment(): Record<string, string> {
     META_ALLOWED_DESTINATION_ORIGIN: "https://marketvalley.example",
     META_MAX_LIFETIME_BUDGET_MINOR: "50000",
     META_DRAFT_LIFETIME_BUDGET_MINOR: "10000",
-    META_DRAFT_STARTS_AT: "2026-08-26T00:00:00.000Z",
-    META_DRAFT_ENDS_AT: "2026-08-27T00:00:00.000Z",
+    META_DRAFT_LEAD_MINUTES: "10",
+    META_DRAFT_DURATION_HOURS: "24",
   };
 }
 
@@ -164,7 +164,15 @@ describe("Meta PAUSED draft route", () => {
     const response = await handleCreateMetaDraft(request(form()), deps);
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ state: "completed", status: "PAUSED" });
+    expect(await response.json()).toMatchObject({
+      state: "completed",
+      status: "PAUSED",
+      campaignId: "campaign_12345",
+      adSetId: "adset_12345",
+      creativeId: "creative_12345",
+      adId: "ad_12345",
+      adsManagerUrl: "https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=1234567890",
+    });
     expect(deps.requireIdentity).toHaveBeenCalledTimes(1);
     expect(deps.getOwnerRepository).toHaveBeenCalledTimes(1);
     expect(deps.create).toHaveBeenCalledTimes(1);
@@ -177,8 +185,8 @@ describe("Meta PAUSED draft route", () => {
       destinationUrl: `https://marketvalley.example/p/owner-campaign?utm_source=meta&utm_medium=paid_social&utm_campaign=${campaignId}`,
       targeting: { countries: ["KR"], ageMin: 18, ageMax: 65 },
       lifetimeBudgetMinor: 10_000,
-      startsAt: "2026-08-26T00:00:00.000Z",
-      endsAt: "2026-08-27T00:00:00.000Z",
+      startsAt: "2026-08-25T12:10:00.000Z",
+      endsAt: "2026-08-26T12:10:00.000Z",
     });
     expect(input.images.map((image: { filename: string }) => image.filename)).toEqual([
       "01-hook.png", "02-problem.png", "03-insight.png", "04-solution.png", "05-cta.png",
@@ -194,6 +202,21 @@ describe("Meta PAUSED draft route", () => {
     expect(input).not.toHaveProperty("pageId");
     expect(input).not.toHaveProperty("instagramActorId");
     expect(input).not.toHaveProperty("status");
+  });
+
+  it("always points the ad to the configured public site instead of the requesting deployment", async () => {
+    const env = {
+      ...environment(),
+      META_ALLOWED_DESTINATION_ORIGIN: "https://public.marketvalley.example",
+    };
+    const deps = dependencies({ environment: env });
+
+    const response = await handleCreateMetaDraft(request(form()), deps);
+
+    expect(response.status).toBe(200);
+    expect(deps.create.mock.calls[0][0].destinationUrl).toBe(
+      `https://public.marketvalley.example/p/owner-campaign?utm_source=meta&utm_medium=paid_social&utm_campaign=${campaignId}`,
+    );
   });
 
   it("rejects disabled, cross-origin, and untrusted length requests before parsing multipart", async () => {

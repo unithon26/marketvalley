@@ -188,6 +188,12 @@ function requireCampaign(campaign: PublishedCampaign | null): PublishedCampaign 
   return campaign;
 }
 
+function buildAdsManagerUrl(adAccountId: string): string {
+  const url = new URL("https://adsmanager.facebook.com/adsmanager/manage/campaigns");
+  url.searchParams.set("act", adAccountId);
+  return url.toString();
+}
+
 export async function handleCreateMetaDraft(
   request: Request,
   dependencies: MetaDraftRouteDependencies = defaultDependencies,
@@ -214,6 +220,7 @@ export async function handleCreateMetaDraft(
       dependencies.environment,
       dependencies.now(),
     );
+    const binding = readMetaConfiguredBinding(dependencies.environment);
     // These bytes remain caller-supplied. The caller is an allowlisted internal operator,
     // and PNG structure/dimensions are validated below, but renderer provenance is not provable.
     const { campaignId, images } = await parseExactMultipart(
@@ -230,13 +237,18 @@ export async function handleCreateMetaDraft(
     const result = await creator.create(deriveMetaPausedDraftInput({
       campaign,
       images,
-      appOrigin: origin,
+      destinationOrigin: binding.allowedDestinationOrigins[0],
       policy,
     }));
     const response: MetaDraftCompletedResponse = {
       state: "completed",
       status: "PAUSED",
       operationKey: result.operationKey,
+      campaignId: result.campaignId,
+      adSetId: result.adSetId,
+      creativeId: result.creativeId,
+      adId: result.adId,
+      adsManagerUrl: buildAdsManagerUrl(binding.adAccountId),
     };
     return jsonResponse(response);
   } catch (error) {

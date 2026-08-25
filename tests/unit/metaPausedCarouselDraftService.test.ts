@@ -298,6 +298,19 @@ describe("PausedCarouselDraftService", () => {
     expect(provider.calls).toHaveLength(callsAfterOriginal);
   });
 
+  it("keeps the same fingerprint when only the server-relative schedule moves", () => {
+    const original = input();
+    const laterWindow = {
+      ...input(),
+      startsAt: "2026-08-27T01:00:00.000Z",
+      endsAt: "2026-08-29T01:00:00.000Z",
+    };
+
+    expect(deriveMetaOperationDescriptor(laterWindow, binding)).toEqual(
+      deriveMetaOperationDescriptor(original, binding),
+    );
+  });
+
   it("turns a crash-window attempt marker into reconciliation instead of repeating the write", async () => {
     const draft = input();
     const descriptor = deriveMetaOperationDescriptor(draft, binding);

@@ -8,13 +8,13 @@ import type { MetaPausedDraftServerPolicy } from "@/lib/meta/metaConfig";
 export function deriveMetaPausedDraftInput(options: {
   campaign: PublishedCampaign;
   images: readonly MetaPngAsset[];
-  appOrigin: string;
+  destinationOrigin: string;
   policy: MetaPausedDraftServerPolicy;
 }): MetaPausedCarouselDraftInput {
   const { campaign, images, policy } = options;
   const destinationUrl = new URL(
     `/p/${encodeURIComponent(campaign.slug)}`,
-    options.appOrigin,
+    options.destinationOrigin,
   );
   destinationUrl.searchParams.set("utm_source", "meta");
   destinationUrl.searchParams.set("utm_medium", "paid_social");

@@ -49,18 +49,6 @@ function integerInRange(
   return value;
 }
 
-function canonicalIsoTimestamp(environment: Environment, name: string): string {
-  const value = required(environment, name);
-  if (
-    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(value) ||
-    !Number.isFinite(Date.parse(value)) ||
-    new Date(value).toISOString() !== value
-  ) {
-    throw new MetaConfigurationError(`${name}은 canonical UTC ISO timestamp여야 합니다.`);
-  }
-  return value;
-}
-
 export function readMetaAdsMode(environment: Environment = process.env): MetaAdsMode {
   const mode = environment.META_ADS_MODE?.trim() || "disabled";
   if (mode !== "disabled" && mode !== "live") {
@@ -199,25 +187,34 @@ export function readMetaPausedDraftServerPolicy(
     1_000,
     50,
   );
-  const startsAt = canonicalIsoTimestamp(environment, "META_DRAFT_STARTS_AT");
-  const endsAt = canonicalIsoTimestamp(environment, "META_DRAFT_ENDS_AT");
-  const startTime = Date.parse(startsAt);
-  const endTime = Date.parse(endsAt);
+  const leadMinutes = integerInRange(
+    environment,
+    "META_DRAFT_LEAD_MINUTES",
+    5,
+    24 * 60,
+    10,
+  );
+  const durationHours = integerInRange(
+    environment,
+    "META_DRAFT_DURATION_HOURS",
+    1,
+    72,
+    24,
+  );
   const nowTime = now.getTime();
-  if (
-    !Number.isFinite(nowTime) ||
-    startTime < nowTime + 5 * 60 * 1_000 ||
-    startTime > nowTime + 30 * 24 * 60 * 60 * 1_000 ||
-    endTime - startTime < 60 * 60 * 1_000 ||
-    endTime - startTime > 72 * 60 * 60 * 1_000
-  ) {
-    throw new MetaConfigurationError("Meta PAUSED 초안 일정은 5분 이후 시작하는 1~72시간 구간이어야 합니다.");
+  if (!Number.isFinite(nowTime)) {
+    throw new MetaConfigurationError("Meta PAUSED 초안 기준 시각이 올바르지 않습니다.");
   }
+  // Round up to a whole minute so Graph receives a canonical, operator-readable window.
+  // The relative window is intentionally calculated per request: a long-lived deployment
+  // must not become unavailable because a fixed timestamp in its environment expired.
+  const startTime = Math.ceil((nowTime + leadMinutes * 60 * 1_000) / 60_000) * 60_000;
+  const endTime = startTime + durationHours * 60 * 60 * 1_000;
   return {
     targeting: { countries: ["KR"], ageMin: 18, ageMax: 65 },
     lifetimeBudgetMinor,
-    startsAt,
-    endsAt,
+    startsAt: new Date(startTime).toISOString(),
+    endsAt: new Date(endTime).toISOString(),
     dailyOwnerLimit,
     dailyGlobalLimit,
   };

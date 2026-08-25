@@ -2,6 +2,11 @@ export type MetaDraftCompletedResponse = {
   state: "completed";
   status: "PAUSED";
   operationKey: string;
+  campaignId: string;
+  adSetId: string;
+  creativeId: string;
+  adId: string;
+  adsManagerUrl: string;
 };
 
 export type MetaDraftReconciliationResponse = {

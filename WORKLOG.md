@@ -8,14 +8,22 @@
 - 전달: 공식 제품은 `https://marketvaley.vercel.app`, 독립 Oracle 배포는 `https://marketvalley-152-67-213-96.sslip.io`에서 동작한다. Meta 자동화의 운영 migration·secret·광고 객체 생성은 제외했다.
 - 남은 일: 행사 발표 시간·제출 형식과 카드 표지 사진 사용권을 운영진·원저작자에게 확인한다. Oracle A1 capacity가 확보되면 현재 2 OCPU·12GB를 원래 4 OCPU·24GB로 복구한다.
 
+## 2026-08-26 — Meta PAUSED 초안 운영 수명과 확인 경로 보강
+
+- 목적: Meta 연결을 켠 배포가 고정 광고 일정 만료로 비활성화되지 않게 하고, Oracle·Vercel 어느 화면에서 생성해도 공식 공개 랜딩으로 연결하며 생성 결과를 Ads Manager에서 바로 확인한다.
+- 변경: 고정 `META_DRAFT_STARTS_AT`·`META_DRAFT_ENDS_AT` 대신 요청 시각 기준 10분 후부터 기본 24시간인 상대 일정을 사용한다. 서버 계산 일정만 durable operation 지문에서 제외해 기존 checkpoint와 중복 방지를 유지한다. destination은 요청 deployment가 아니라 `META_ALLOWED_DESTINATION_ORIGIN`으로 고정했다. 성공 응답은 비밀값 없이 Meta campaign·ad set·creative·ad ID와 광고계정 Ads Manager 링크를 반환하고 결과 화면에 확인 링크를 표시한다. 기존 production 환경과의 호환성을 위해 누락된 `META_ADS_MODE`는 `disabled`로 처리하고, `live`일 때만 배포 스크립트가 원장·운영자·자산·예산·일정·secret을 fail-closed 검증한다. 환경 예시, 운영 가이드와 ADR-0021을 같은 계약으로 갱신했다.
+- 검증: focused 단위 테스트 4파일 36개, `pnpm check`의 lint·typecheck·단위 테스트 41파일 223개, configured server-secret client bundle smoke, production build, Chromium E2E 22개, coverage, high audit, peer dependency와 diff 검사가 통과했다. 커버리지는 statements 85.34%, branches 77.99%, functions 92.51%, lines 88.49%다. 배포 스크립트 구문과 diff도 확인했다. 실제 Meta 객체는 만들지 않았다.
+- 전달: PR #6의 code CI와 Vercel preview, 개인 owner-only 배포 제어 CI가 통과했다. 운영 Supabase에 migration `202608250003`을 적용했고 Oracle `production.env`에 Meta 자산·운영자·예산·상대 일정과 Keychain의 token·App Secret을 mode 0600으로 등록했다. `META_ADS_MODE=disabled`를 유지해 아직 Meta 쓰기와 서버 재시작은 발생하지 않았다.
+- 남은 일: 최신 `main`을 통합한 PR #6을 병합·배포하고 읽기 preflight → `PAUSED` 1건 → 중복 요청 → Ads Manager 상태·지출 0원을 검증한다.
+
 ## 2026-08-26 — Meta 최소 권한 token과 고정 Page 직접 검증
 
 - 목적: 회사 System User token에 Page 광고 권한을 보완하고, 실제 Meta 자산에서 `PAUSED` 초안 생성 전 검증이 유효한 고정 Page를 잘못 거절하지 않게 한다.
 - 변경: 앱 use case에 `pages_manage_ads`를 추가하고 `ads_management`, `ads_read`, `pages_manage_ads`, `pages_read_engagement`, `pages_show_list`를 가진 60일 token을 발급해 로컬 Keychain에 저장했다. provider는 빈 `promote_pages` 간접 목록 대신 광고계정 ID, 고정 Page 직접 조회, Page→Instagram ID와 광고계정 Instagram 목록을 순서대로 대조한다. 운영 가이드, ADR-0021과 troubleshooting 기록도 실제 응답에 맞췄다.
 - 운영 확인: 새 token의 5개 권한, 활성 광고계정의 `KRW`·`Asia/Seoul`, System User의 `MANAGE`·`ADVERTISE` task, 지정 Page와 Page→Instagram 쌍, 광고계정 Instagram identity를 Graph v26에서 확인했다. token과 App Secret 값은 출력·문서·저장소에 남기지 않았다. 기존 2개 권한 token은 선택 취소 수단이 없어 새 token까지 전체 취소하지 않고 미사용 상태로 만료시킨다.
 - 검증: provider focused 테스트 13개, `pnpm check`의 lint·typecheck·단위 테스트 41파일 220개, configured server-secret client bundle smoke, production build, Chromium E2E 22개, coverage, high audit, peer dependency와 diff 검사가 통과했다. 커버리지는 statements 85.37%, branches 78.16%, functions 92.53%, lines 88.52%다. 실제 광고 객체와 지출은 만들지 않았다.
-- 전달: PR `#5`로 병합됐고 source `main`에 포함됐다. 운영 migration·secret과 광고 객체는 적용하지 않았다.
-- 남은 일: Meta 광고 자동화는 현재 운영 배포 범위에서 제외한다.
+- 전달: 기능 commit `43b079f`를 PR #5로 병합했다. PR Actions run `32874335035`와 main run `32874741143`이 통과했고 Vercel health에서 merge SHA `897313b`를 확인했다.
+- 남은 일: migration과 Oracle Meta secret·운영자 설정은 후속 작업에서 적용했다. 새 코드를 배포한 뒤 읽기 preflight와 실제 `PAUSED` 초안 하나의 상태·중복 방지·지출 0원을 검증한다.
 
 ## 2026-08-26 — 공개 source 기반 Vercel Git 연결과 Turnstile 운영 설정
 
