@@ -1,5 +1,13 @@
 # 작업 기록
 
+## 2026-08-26 — 캠페인별 Meta 동시 집행 전환
+
+- 목적: 실제 광고 1건이 수집 중일 때 뒤 광고가 `AWAITING_ACTIVATION`에 머무는 계정 전체 직렬화 병목을 제거한다.
+- 원인과 변경: Meta 제한이 아니라 자체 partial unique index와 worker 조회가 광고계정당 live run을 하나로 제한하고 있었다. 캠페인마다 운영자·계정·고정 lifetime 예산·종료 시각을 이미 검증하므로 계정 전체 제한을 제거하고 독립된 run과 Insights로 동시 집행하도록 바꿨다. ADR-0024와 발표·운영 문서를 같은 경계로 갱신했다.
+- 운영 상태: 기존 실제 광고 1건은 `ACTIVE`, 뒤의 두 광고는 실제 Meta 객체가 모두 만들어진 `PAUSED` 상태다. migration과 새 worker 배포 뒤 두 건의 `ACTIVE`·`COLLECTING` 전이를 확인한다.
+- 검증·전달: focused lifecycle·migration 테스트 2파일 9개와 lint·typecheck·전체 단위 테스트 42파일 221개가 통과했다. 운영 Supabase에 migration `202608260009`을 적용하고 remote 이력 일치를 확인했다. source PR·CI·병합과 Vercel·Oracle exact-SHA 배포를 이어서 수행한다.
+- 남은 일: 세 광고의 실제 상태와 각 캠페인별 Insights snapshot을 확인하고 최초 수집 종료 뒤 최종 리포트 전이를 검증한다.
+
 ## 2026-08-26 — 프로젝트 삭제와 AI 안전성 오탐 복구
 
 - 목적: 첫 화면에서 소유 프로젝트를 정리할 수 있게 하고, Claude 문구 생성이 같은 `anthropic_unsafe_output`을 반복해 `RETRY_WAIT`에 머무는 운영 문제를 해결한다.

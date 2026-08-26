@@ -23,7 +23,6 @@ import {
 } from "@/lib/meta/metaConfig";
 import {
   getLatestMetaAdRun,
-  hasOtherLiveMetaAdRun,
   registerMetaAdRun,
   type MetaAdRun,
 } from "@/lib/meta/metaAdRun";
@@ -346,18 +345,6 @@ async function processClaimedCampaign(options: {
           return "AWAITING_ACTIVATION";
         }
         assertMetaAutomaticActivationAuthorized(campaign.ownerId, environment);
-        if (await hasOtherLiveMetaAdRun({
-          client,
-          adAccountId: run.adAccountId,
-          runId: run.id,
-        })) {
-          await store.transition(campaign, {
-            status: "AWAITING_ACTIVATION",
-            nextAttemptAt: after(now, 5 * 60_000),
-            clearError: true,
-          });
-          return "AWAITING_ACTIVATION";
-        }
         await activateMetaRun({ client, provider, run, approvedBy: campaign.ownerId });
         await store.transition(campaign, {
           status: "AWAITING_ACTIVATION",

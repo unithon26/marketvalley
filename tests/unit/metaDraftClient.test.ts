@@ -42,6 +42,7 @@ describe("automatic Meta boundary", () => {
     expect(lifecycle).toContain("isMetaDraftOperator(campaign.ownerId");
     expect(lifecycle).toContain("renderCampaignCarouselPngAssets");
     expect(lifecycle).toContain("assertMetaAutomaticActivationAuthorized");
+    expect(lifecycle).not.toContain("hasOtherLiveMetaAdRun");
   });
 
   it("발표용 결과는 별도 모드로 명시되고 운영 제어 기능을 만들지 않는다", () => {

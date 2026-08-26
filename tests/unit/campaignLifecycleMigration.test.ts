@@ -10,6 +10,10 @@ const ownerDeleteMigration = readFileSync(fileURLToPath(new URL(
   "../../supabase/migrations/202608260008_owner_campaign_delete.sql",
   import.meta.url,
 )), "utf8");
+const concurrentRunsMigration = readFileSync(fileURLToPath(new URL(
+  "../../supabase/migrations/202608260009_allow_concurrent_meta_runs.sql",
+  import.meta.url,
+)), "utf8");
 
 describe("campaign lifecycle migration", () => {
   it("이전 캠페인을 먼저 보관하고 실제 Meta run만 현재 lifecycle로 복원한다", () => {
@@ -32,6 +36,12 @@ describe("campaign lifecycle migration", () => {
     expect(migration).toContain("campaign_lifecycle_service_role_required");
     expect(migration).toContain("processing_lease_until > clock_timestamp()");
     expect(migration).toContain("campaigns.processing_token = p_processing_token");
+  });
+
+  it("캠페인별 고정 예산을 유지하면서 광고계정 전체 직렬화는 제거한다", () => {
+    expect(concurrentRunsMigration).toContain(
+      "drop index if exists public.meta_ad_runs_one_live_per_account_idx",
+    );
   });
 
   it("소유자 삭제는 row lock 뒤 처리 lease와 Meta 외부 상태를 확인한다", () => {
