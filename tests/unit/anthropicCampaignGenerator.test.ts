@@ -15,6 +15,7 @@ import {
   CampaignGenerationError,
   AnthropicCampaignGenerator,
   anthropicCampaignCopySchema,
+  isPermanentCampaignGenerationError,
   normalizeAnthropicCopyCandidate,
   type AnthropicMessagesClient,
 } from "@/lib/ai/anthropicCampaignGenerator";
@@ -401,6 +402,32 @@ describe("AnthropicCampaignGenerator", () => {
 
     const result = await generator.generate(idea);
     expect(result.messaging.hashtags).toEqual(["#안내온"]);
+  });
+
+  it("근거 없는 시간 절감 주장이 해시태그에만 있으면 해당 태그만 제거한다", async () => {
+    const candidate = {
+      ...copyCandidate(),
+      hashtags: ["#안내온", "#시간낭비줄이기"],
+    };
+    const { client } = fakeClient(candidate);
+    const generator = new AnthropicCampaignGenerator({
+      client,
+      model: "claude-haiku-4-5-20251001",
+    });
+
+    const result = await generator.generate(idea);
+    expect(result.messaging.hashtags).toEqual(["#안내온"]);
+  });
+
+  it("동일 응답이 반복되는 안전성 거절은 자동 재시도하지 않는다", () => {
+    expect(isPermanentCampaignGenerationError(new CampaignGenerationError(
+      "anthropic_unsafe_output",
+      "unsafe",
+    ))).toBe(true);
+    expect(isPermanentCampaignGenerationError(new CampaignGenerationError(
+      "anthropic_request_failed",
+      "temporary",
+    ))).toBe(false);
   });
 
   it("해시태그 정규화 뒤에도 최종 길이와 빈 값 계약을 지킨다", async () => {

@@ -125,6 +125,13 @@ export class DraftOwnershipError extends Error {
   }
 }
 
+export class CampaignDeletionBlockedError extends Error {
+  constructor(readonly reason: "processing" | "live_ad" | "external_state_unknown") {
+    super(`campaign deletion blocked: ${reason}`);
+    this.name = "CampaignDeletionBlockedError";
+  }
+}
+
 export interface CampaignRepository {
   createSubmission(draftId: string, input: IdeaInput): Promise<CampaignLifecycleRecord>;
   getLifecycle(id: string): Promise<CampaignLifecycleRecord | null>;

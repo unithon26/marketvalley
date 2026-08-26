@@ -76,6 +76,7 @@ SUBMITTED → GENERATING → PREPARING → AWAITING_ACTIVATION
 ```
 
 일시 오류는 입력과 원래 단계를 보존한 `RETRY_WAIT`, 안전하게 자동 복구할 수 없는 오류는 `FAILED`로 남는다.
+첫 화면에서는 소유 프로젝트를 확인 후 삭제할 수 있다. 처리 중이거나 실제 광고가 집행 중인 프로젝트는 외부 광고만 남는 일을 막기 위해 삭제를 차단한다.
 
 ## 기술 스택
 

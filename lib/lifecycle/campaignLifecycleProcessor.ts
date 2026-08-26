@@ -3,7 +3,10 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 
 import { createCampaignGenerator } from "@/lib/ai/campaignGenerator";
-import { CampaignGenerationError } from "@/lib/ai/anthropicCampaignGenerator";
+import {
+  CampaignGenerationError,
+  isPermanentCampaignGenerationError,
+} from "@/lib/ai/anthropicCampaignGenerator";
 import { consumeGenerationQuota } from "@/lib/ai/generationRateLimit";
 import type { CampaignLifecycleStatus, PublishedCampaign } from "@/lib/contracts/repository";
 import { CampaignLifecycleStore, type ClaimedCampaign } from "@/lib/lifecycle/campaignLifecycleStore";
@@ -147,7 +150,7 @@ function isPermanentFailure(error: unknown): boolean {
     || error instanceof MetaInputError
   ) return true;
   if (error instanceof CampaignGenerationError) {
-    return error.code === "anthropic_billing_error" || error.code === "anthropic_schema_error";
+    return isPermanentCampaignGenerationError(error);
   }
   return false;
 }

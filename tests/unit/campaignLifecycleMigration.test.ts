@@ -6,6 +6,10 @@ const migration = readFileSync(fileURLToPath(new URL(
   "../../supabase/migrations/202608260006_campaign_lifecycle.sql",
   import.meta.url,
 )), "utf8");
+const ownerDeleteMigration = readFileSync(fileURLToPath(new URL(
+  "../../supabase/migrations/202608260008_owner_campaign_delete.sql",
+  import.meta.url,
+)), "utf8");
 
 describe("campaign lifecycle migration", () => {
   it("이전 캠페인을 먼저 보관하고 실제 Meta run만 현재 lifecycle로 복원한다", () => {
@@ -28,5 +32,15 @@ describe("campaign lifecycle migration", () => {
     expect(migration).toContain("campaign_lifecycle_service_role_required");
     expect(migration).toContain("processing_lease_until > clock_timestamp()");
     expect(migration).toContain("campaigns.processing_token = p_processing_token");
+  });
+
+  it("소유자 삭제는 row lock 뒤 처리 lease와 Meta 외부 상태를 확인한다", () => {
+    expect(ownerDeleteMigration).toContain("owner_id = auth.uid()");
+    expect(ownerDeleteMigration).toContain("for update");
+    expect(ownerDeleteMigration).toContain("processing_lease_until > clock_timestamp()");
+    expect(ownerDeleteMigration).toContain("status <> 'PAUSED'");
+    expect(ownerDeleteMigration).toContain("from public.meta_ad_operations");
+    expect(ownerDeleteMigration).toContain("return 'external_state_unknown'");
+    expect(ownerDeleteMigration).toContain("to authenticated");
   });
 });

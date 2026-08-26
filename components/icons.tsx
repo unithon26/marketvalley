@@ -12,6 +12,10 @@ export function PlusIcon(props: IconProps) {
   return <Svg {...props}><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></Svg>;
 }
 
+export function TrashIcon(props: IconProps) {
+  return <Svg {...props}><path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v5m4-5v5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></Svg>;
+}
+
 export function ArrowRightIcon(props: IconProps) {
   return <Svg {...props}><path d="m9 5 7 7-7 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></Svg>;
 }

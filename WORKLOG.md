@@ -1,5 +1,14 @@
 # 작업 기록
 
+## 2026-08-26 — 프로젝트 삭제와 AI 안전성 오탐 복구
+
+- 목적: 첫 화면에서 소유 프로젝트를 정리할 수 있게 하고, Claude 문구 생성이 같은 `anthropic_unsafe_output`을 반복해 `RETRY_WAIT`에 머무는 운영 문제를 해결한다.
+- 원인과 변경: 운영 입력과 생성 원문을 노출하지 않은 재현에서 차단 대상이 본문이 아니라 `hashtags[4]`의 입력에 없는 시간 절감 표현임을 확인했다. 서버가 해당 해시태그만 제거한 뒤 나머지 문구를 검증하도록 바꾸고, 동일 출력이 반복되는 안전성 거절은 transient 재시도 대신 영구 오류로 분류했다. 홈 카드에는 확인형 삭제 버튼을 추가했다. 새 owner RPC는 row lock, worker lease, Meta run과 operation을 확인하며, run이 있으면 삭제 직전 Meta Graph의 campaign·ad set·ad도 모두 `PAUSED`인지 재검증한다.
+- 운영 관찰: 새 접수 2건 중 1건은 기존 worker 재시도에서 `AWAITING_ACTIVATION`까지 진행했고, 1건은 3회 오탐 뒤 `FAILED`에 남았다. 수정 배포 뒤 실패 건만 저장된 입력으로 재개한다. 기존 실제 수집 캠페인은 계속 `COLLECTING`이다.
+- 검증: focused 4파일 31개, lint, typecheck, 전체 단위 테스트 42파일 220개와 production build 기반 Chromium E2E 7개가 통과했다. E2E는 여러 동명 프로젝트 중 선택한 한 건만 삭제되고 목록에 즉시 반영되는지 확인한다.
+- 전달: 운영 Supabase에 migration `202608260008`을 적용하고 remote 이력 일치를 확인했다. source PR·CI·병합, Vercel·Oracle exact-SHA 배포와 운영 실패 건 복구를 이어서 수행한다.
+- 남은 일: 실제 수집 종료 뒤 자동 pause·final snapshot·`COMPLETED` 전이 확인.
+
 ## 2026-08-26 — Oracle lifecycle worker와 Meta production 계약 복구
 
 - 목적: source 배포가 성공해도 lifecycle worker가 시작되지 않거나 Meta 비활성 환경이 실제 수집 캠페인을 실패 처리하는 운영 불일치를 제거한다.
