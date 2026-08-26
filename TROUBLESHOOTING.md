@@ -1,10 +1,10 @@
 # Troubleshooting
 
-## 2026-08-26 — 내부 광고 생성 일일 한도를 일시 장애로 재시도해 캠페인이 중단됨
+## 2026-08-26 — 내부 광고 생성 횟수 제한으로 캠페인이 중단됨
 
 ### 맥락과 영향
 
-AI 문구 오류 수정 배포 뒤 같은 제품 흐름을 다시 실행했을 때 진행 화면이 다시 `일시 오류 · 자동 재시도 예약`을 표시했다. 이번 접수는 Claude 생성과 `CampaignSpec` 저장을 통과했지만 `PREPARING` 단계에서 서비스가 비용 보호용으로 설정한 Meta operation 일일 한도에 도달했다. 기존 수집 캠페인과 이미 생성된 Meta 객체에는 영향이 없었다.
+AI 문구 오류 수정 배포 뒤 같은 제품 흐름을 다시 실행했을 때 진행 화면이 다시 `일시 오류 · 자동 재시도 예약`을 표시했다. 이번 접수는 Claude 생성과 `CampaignSpec` 저장을 통과했지만 `PREPARING` 단계에서 내부 Meta operation 일일 횟수 제한에 도달했다. 조사 중 AI 문구 생성에도 별도의 분당·사용자 일일·서비스 전체 일일 횟수 제한이 남아 있음을 확인했다. 기존 수집 캠페인과 이미 생성된 Meta 객체에는 영향이 없었다.
 
 ### 재현과 증거
 
@@ -15,17 +15,23 @@ AI 문구 오류 수정 배포 뒤 같은 제품 흐름을 다시 실행했을 �
 
 ### 원인과 검토한 대안
 
-상태 머신이 reset 시각이 정해진 내부 비용 quota와 짧은 네트워크 장애를 구분하지 않은 것이 근본 원인이다. 서비스의 광고 생성 일일 한도를 무인 증액하면 동시 광고 수와 실제 지출 경계가 함께 커지므로 자동 해결책에서 제외했다. 같은 짧은 backoff를 반복하거나 오류 문구만 바꾸는 방식은 캠페인 중단을 해결하지 못해 기각했다.
+직접 원인은 애플리케이션이 AI 문구 생성과 Meta 광고 등록 횟수를 사용자별·전체 counter로 제한한 것이다. Meta 제한 오류를 일반 네트워크 장애처럼 짧게 재시도해 실제 원인 대신 일시 오류 문구를 보인 점이 장애를 더 불명확하게 했다. 한도 값을 키우거나 다음 날짜까지 기다리게 하는 방식은 제한 자체를 남기므로 기각했다.
 
 ### 해결과 회귀 방지
 
-`MetaOperationQuotaExceededError`를 별도 분류해 다음 UTC 날짜가 시작된 뒤 1분인 09:01 KST까지 `RETRY_WAIT`로 보존한다. canonical 오류 코드를 저장하되 이미 기록된 legacy 코드도 화면에서 인식한다. 진행 화면과 대시보드는 일반 `일시 오류` 대신 설정된 광고 생성 한도 대기와 실제 자동 재개 시각을 표시한다. quota 대기에서 재개할 때만 기존 광고 시작 시각이 지났다면 수집 구간 전체를 새로 계산해 24시간 검증 시간이 줄어들지 않게 한다. 다른 crash 복구에서는 기존 operation 일정을 보존해 외부 Meta 객체와 내부 run의 시간이 어긋나지 않게 한다.
+PR #25에서는 한도 reset 뒤 재시도하도록 일차 보정했지만 Vercel에만 먼저 배포됐고, Oracle 이전 worker가 짧은 재시도를 계속해 최신 캠페인을 `FAILED`로 전환했다. 최종 해결에서는 이 대기 로직까지 제거했다.
+
+애플리케이션은 AI quota 호출과 분당·일일 설정을 더 이상 사용하지 않는다. Meta operation RPC에서도 owner/global count 검사, usage counter 갱신과 quota 거절을 제거했고 새 client는 limit 인자를 보내지 않는다. rolling deploy 중인 이전 worker를 위해 `consume_generation_quota`는 같은 시그니처로 항상 `true`를 반환하고, Meta RPC의 마지막 두 인자는 optional no-op으로 유지한다. release는 service-role 전용 marker RPC가 `true`를 반환해야 활성화되므로 구 DB 함수가 남은 상태에서 새 application이 시작되지 않는다. 한도 전용 오류 타입·날짜 reset 재시도·화면 문구도 삭제했다.
+
+공유 migration은 과거 실패 행을 일괄 변경하지 않는다. 최신 quota 실패 캠페인은 정확한 campaign·owner, `FAILED`, 해당 오류 코드, 만료된 처리 lease, materialized spec, Meta operation·run 없음이 모두 확인될 때만 별도 운영 작업으로 `PREPARING`에 복구한다. tentative 수집 구간을 비워 이전 Oracle worker가 먼저 claim해도 전체 일정을 새로 계산한다. owner/campaign 소유권, operation key·fingerprint, lease, checkpoint와 reconciliation은 계속 유지한다.
 
 ### 검증과 남은 위험
 
-UTC 일일 경계, 월·연도 전환, legacy 오류 코드, 실제 lifecycle 시도 상한, 수집 구간 재계산과 비 quota crash 복구 테스트를 포함해 lint·typecheck·단위 테스트 44파일 230개, configured client bundle production build, Chromium E2E 7개와 high audit가 통과했다. 운영 캠페인은 11:41 KST 읽기 확인에서 아직 `RETRY_WAIT`였으며 운영 배포는 이어서 확인한다. 배포 전에 `FAILED`로 전환된다면 자동 claim 대상이 아니므로 정확한 행의 사전조건을 확인한 복구가 별도로 필요하다.
+PR #25의 일차 보정은 lint·typecheck·단위 테스트 44파일 230개, configured client bundle production build, Chromium E2E 7개와 high audit가 통과했고 source main CI와 Vercel 배포도 성공했다. 11:55 KST 확인에서 최신 캠페인은 Oracle 이전 worker에 의해 `FAILED`였고 Meta operation 오류 뒤 추가 생성 오류는 없었다.
 
-면접에서는 왜 exponential backoff가 모든 transient 실패에 맞지 않는지, 내부 quota의 reset clock과 제품 수집 일정을 어떻게 함께 보존했는지, 자동 quota 증액을 복구 로직과 분리한 이유를 설명할 수 있다.
+최종 count 제거는 lint·typecheck와 단위 테스트 42파일 222개, production build, configured auth bundle, Chromium E2E 7개와 high audit를 통과했다. migration `202608260010`을 application보다 먼저 운영 DB에 적용하고 remote 이력과 DB lint를 확인했다. 실제 함수에서 marker `true`, anon·authenticated 실행 차단, service-role 실행 허용, Meta 6·8인자 호출 호환과 AI·Meta usage counter 접근 부재도 확인했다. Vercel·Oracle 동일 SHA와 복구 캠페인의 새 Meta run은 배포 뒤 검증한다.
+
+면접에서는 애플리케이션 count 제한과 idempotency를 분리한 이유, rolling deploy 중 RPC 호환을 유지하면서 enforcement를 제거한 방법, 외부 operation이 없는 실패 행만 어떻게 복구했는지 설명할 수 있다.
 
 ## 2026-08-26 — 안전성 해시태그 오탐이 AI 생성 재시도를 반복함
 

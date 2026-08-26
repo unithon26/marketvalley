@@ -33,7 +33,6 @@ describe("health route", () => {
       checks: {
         generator: { mode: "fixture", ready: true },
         repository: { mode: "fixture", ready: true },
-        quota: { mode: "memory", ready: true },
         reservations: { mode: "fixture", ready: true },
       },
     });
@@ -77,7 +76,6 @@ describe("health route", () => {
       checks: {
         generator: { mode: "anthropic", ready: true },
         repository: { mode: "supabase", ready: true },
-        quota: { mode: "supabase", ready: true },
         reservations: { mode: "turnstile", ready: true },
       },
     });
@@ -94,21 +92,6 @@ describe("health route", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
       version: vercelSha,
-    });
-  });
-
-  it("잘못된 운영 생성 quota를 준비되지 않은 상태로 표시한다", async () => {
-    const response = createHealthResponse({
-      ...supabaseEnvironment,
-      NODE_ENV: "production",
-      AI_DAILY_USER_LIMIT: "31",
-      AI_DAILY_GLOBAL_LIMIT: "30",
-    });
-
-    expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toMatchObject({
-      status: "not_ready",
-      checks: { quota: { ready: false } },
     });
   });
 

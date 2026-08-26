@@ -9,7 +9,6 @@ import {
   MetaOperationBusyError,
   MetaOperationConflictError,
   MetaOperationLedgerUnavailableError,
-  MetaOperationQuotaExceededError,
   MetaReconciliationResolutionError,
 } from "@/lib/meta/operationLedger";
 import {
@@ -79,8 +78,6 @@ describe("SupabaseMetaOperationLedger RPC adapter", () => {
       p_campaign_id: campaignId,
       p_lease_token: leaseToken,
       p_lease_seconds: 300,
-      p_daily_owner_limit: 3,
-      p_daily_global_limit: 100,
     });
     expect(rpc.mock.calls[1][1]).toMatchObject({ p_action: "begin", p_step: "campaign" });
     expect(rpc.mock.calls[2][1]).toMatchObject({
@@ -95,7 +92,6 @@ describe("SupabaseMetaOperationLedger RPC adapter", () => {
     ["meta_operation_conflict", MetaOperationConflictError],
     ["meta_operation_busy", MetaOperationBusyError],
     ["meta_operation_lease_lost", MetaOperationBusyError],
-    ["meta_operation_quota_exceeded", MetaOperationQuotaExceededError],
     ["upstream leaked internal detail", MetaOperationLedgerUnavailableError],
   ])("maps safe database marker %s without leaking raw errors", async (message, ErrorType) => {
     const client = {

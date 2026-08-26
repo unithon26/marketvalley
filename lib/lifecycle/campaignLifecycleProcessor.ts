@@ -7,7 +7,6 @@ import {
   CampaignGenerationError,
   isPermanentCampaignGenerationError,
 } from "@/lib/ai/anthropicCampaignGenerator";
-import { consumeGenerationQuota } from "@/lib/ai/generationRateLimit";
 import type { CampaignLifecycleStatus, PublishedCampaign } from "@/lib/contracts/repository";
 import { CampaignLifecycleStore, type ClaimedCampaign } from "@/lib/lifecycle/campaignLifecycleStore";
 import { deriveMetaPausedDraftInput } from "@/lib/meta/campaignDraftInput";
@@ -33,16 +32,7 @@ import {
   MetaActivationReconciliationRequiredError,
   pauseMetaRun,
 } from "@/lib/meta/metaRunLifecycle";
-import {
-  MetaOperationNeedsReconciliationError,
-  MetaOperationQuotaExceededError,
-} from "@/lib/meta/operationLedger";
-import {
-  META_OPERATION_QUOTA_ERROR_CODE,
-  isMetaOperationQuotaErrorCode,
-  metaOperationQuotaRetryPlan,
-  needsFreshMetaDraftWindow,
-} from "@/lib/lifecycle/metaOperationQuotaRetry";
+import { MetaOperationNeedsReconciliationError } from "@/lib/meta/operationLedger";
 import { PausedCarouselDraftService } from "@/lib/meta/pausedCarouselDraftService";
 import {
   type MetaOperationRpcClient,
@@ -88,6 +78,20 @@ function after(now: Date, milliseconds: number): string {
   return new Date(now.getTime() + milliseconds).toISOString();
 }
 
+function needsFreshMetaDraftWindow(options: {
+  startsAt: string | null;
+  endsAt: string | null;
+  now: Date;
+}): boolean {
+  const startsAt = options.startsAt === null ? Number.NaN : new Date(options.startsAt).getTime();
+  const endsAt = options.endsAt === null ? Number.NaN : new Date(options.endsAt).getTime();
+  const now = options.now.getTime();
+  return !Number.isFinite(startsAt)
+    || !Number.isFinite(endsAt)
+    || !Number.isFinite(now)
+    || endsAt <= now;
+}
+
 function publishedCampaign(campaign: ClaimedCampaign): PublishedCampaign {
   if (!campaign.spec || !campaign.slug || !campaign.publishedAt) {
     throw new Error("campaign materialization is incomplete");
@@ -118,9 +122,6 @@ function stablePolicy(
 
 function errorCode(error: unknown): string {
   if (error instanceof CampaignGenerationError) return error.code;
-  if (error instanceof MetaOperationQuotaExceededError) {
-    return META_OPERATION_QUOTA_ERROR_CODE;
-  }
   if (error instanceof MetaOperationNeedsReconciliationError) return "meta_reconciliation_required";
   if (error instanceof MetaActivationReconciliationRequiredError) {
     return "meta_activation_reconciliation_required";
@@ -211,8 +212,6 @@ async function prepareMetaDraft(options: {
       client: client as unknown as MetaOperationRpcClient,
       ownerId: campaign.ownerId,
       campaignId: campaign.id,
-      dailyOwnerLimit: policy.dailyOwnerLimit,
-      dailyGlobalLimit: policy.dailyGlobalLimit,
     }),
     binding,
   );
@@ -242,8 +241,6 @@ export async function processClaimedCampaign(options: {
   const client = createSupabaseServiceClient(environment);
   let campaign = options.initialCampaign;
   const stage = targetStage(campaign);
-  const retryingAfterMetaQuota = campaign.status === "RETRY_WAIT"
-    && isMetaOperationQuotaErrorCode(campaign.lastErrorCode);
 
   try {
     if (campaign.stageAttempts >= 10 || (stage === "GENERATING" && campaign.generationAttempts >= 3)) {
@@ -260,15 +257,6 @@ export async function processClaimedCampaign(options: {
 
     if (stage === "GENERATING") {
       if (!campaign.input) throw new MetaInputError("저장된 아이디어 입력이 없습니다.");
-      if (!(await consumeGenerationQuota(campaign.ownerId, environment))) {
-        await store.transition(campaign, {
-          status: "RETRY_WAIT",
-          nextAttemptAt: after(now, 60_000),
-          lastErrorCode: "generation_rate_limited",
-          lastErrorMessage: "AI 생성 요청이 많아 잠시 뒤 자동으로 다시 시도합니다.",
-        });
-        return "RETRY_WAIT";
-      }
       const spec = await createCampaignGenerator(environment).generate(campaign.input);
       await store.transition(campaign, {
         status: "PREPARING",
@@ -303,7 +291,6 @@ export async function processClaimedCampaign(options: {
         startsAt: campaign.collectionStartedAt,
         endsAt: campaign.collectionEndsAt,
         now,
-        afterQuotaWait: retryingAfterMetaQuota,
       })) {
         const policy = readMetaPausedDraftServerPolicy(environment, now);
         await store.transition(campaign, {
@@ -463,14 +450,6 @@ export async function processClaimedCampaign(options: {
       attempt: campaign.stageAttempts,
       code,
     });
-    if (error instanceof MetaOperationQuotaExceededError) {
-      const retry = metaOperationQuotaRetryPlan(options.now());
-      await store.transition(campaign, {
-        status: "RETRY_WAIT",
-        ...retry,
-      });
-      return "RETRY_WAIT";
-    }
     const terminal = isPermanentFailure(error) || campaign.stageAttempts >= (
       stage === "COLLECTING" || stage === "FINALIZING" ? 10 : 3
     );

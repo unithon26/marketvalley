@@ -39,9 +39,6 @@ function generationErrorMessage(code: string | null): string {
   if (code === "authentication_required") {
     return "AI 문구 생성을 위해 먼저 Google로 로그인해주세요.";
   }
-  if (code === "generation_rate_limited") {
-    return "AI 문구 생성 요청이 많아요. 잠시 후 다시 시도해주세요.";
-  }
   if (code === "anthropic_billing_error") {
     return "AI 생성 사용 한도가 부족해요. API 결제·사용 한도를 확인해주세요.";
   }

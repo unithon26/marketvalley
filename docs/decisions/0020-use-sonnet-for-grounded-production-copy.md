@@ -17,7 +17,7 @@ Claude Haiku 4.5는 평면 Structured Outputs 계약과 형식 검증에는 안�
 - timeout은 대표 입력 실측을 반영해 90초로 늘린다. timeout 뒤 자동 재호출하지 않아 중복 과금을 막는다.
 - 모델 출력은 그대로 게시하지 않는다. 서버가 검증 중단 문장, hashtag 형식, 입력에 없는 채널과 금지 주장 기록을 정규화하고, 미확인 수치·성과와 입력에 없는 운영 세부사항은 fail-closed로 거절한다.
 - 자동 테스트와 비상 발표는 계속 외부 호출 없는 fixture를 사용한다.
-- 사용자별·전체 일일 생성 quota와 Anthropic Console 월 $15 spend limit을 비용의 최종 경계로 유지한다.
+- 애플리케이션 생성 횟수 quota는 ADR-0025에서 제거했다. Anthropic 계정의 외부 결제·사용 한도는 애플리케이션 count 제한으로 취급하지 않는다.
 
 ## 기각한 대안
 

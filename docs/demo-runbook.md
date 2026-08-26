@@ -5,7 +5,7 @@
 
 ## 발표 전 확인
 
-1. [공식 서비스](https://marketvaley.vercel.app/api/health)가 `status: ok`이고 generator, repository, quota, reservations가 모두 ready인지 확인한다.
+1. [공식 서비스](https://marketvaley.vercel.app/api/health)가 `status: ok`이고 generator, repository, reservations가 모두 ready인지 확인한다.
 2. 발표용 Google 계정으로 로그인해 실제 진행 중이거나 완료된 광고 한 건이 보이는지 확인한다.
 3. 공개 랜딩, 카드뉴스 5장과 리포트가 같은 상품명·특징·CTA를 쓰는지 확인한다.
 4. 광고 수집이 끝났다면 실제 `/campaigns/[id]` 최종 리포트를 사용한다.

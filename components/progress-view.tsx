@@ -5,7 +5,6 @@ import { useCallback, useEffect, useState } from "react";
 import { ValidationProgress, type ValidationProgressStage } from "@/components/validation-progress";
 import type { CampaignLifecycleResponse } from "@/lib/contracts/api";
 import type { CampaignLifecycleRecord } from "@/lib/contracts/repository";
-import { isMetaOperationQuotaErrorCode } from "@/lib/lifecycle/metaOperationQuotaRetry";
 
 function stage(status: CampaignLifecycleRecord["status"]): ValidationProgressStage {
   switch (status) {
@@ -53,9 +52,7 @@ function statusText(campaign: CampaignLifecycleRecord): string {
     case "COMPLETED":
       return "최종 리포트 작성 완료";
     case "RETRY_WAIT":
-      return isMetaOperationQuotaErrorCode(campaign.lastErrorCode)
-        ? "광고 생성 일일 한도 초기화 대기"
-        : "일시 오류 · 자동 재시도 예약";
+      return "일시 오류 · 자동 재시도 예약";
     case "FAILED":
       return "추가 확인 필요 · 자동 집행 중단";
     case "ARCHIVED":

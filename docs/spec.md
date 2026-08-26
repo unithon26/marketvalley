@@ -163,7 +163,7 @@ fixture는 자동 테스트가 외부 과금 없이 같은 API 경계와 렌더�
 - 수집 종료 시 부모부터 전체를 PAUSED로 확인한 뒤 최종 Insights 반영 시간을 기다린다.
 - 자동 예산 증액, 종료 뒤 재시작, 결제수단 등록은 구현하지 않는다.
 
-상세 결정은 `docs/decisions/0023-run-account-owned-campaigns-as-a-durable-automatic-lifecycle.md`와 동시 집행 경계를 갱신한 `docs/decisions/0024-allow-concurrent-bounded-meta-runs.md`를 따른다.
+상세 결정은 `docs/decisions/0023-run-account-owned-campaigns-as-a-durable-automatic-lifecycle.md`, 동시 집행 경계를 갱신한 `docs/decisions/0024-allow-concurrent-bounded-meta-runs.md`와 생성 횟수 상한을 제거한 `docs/decisions/0025-remove-ad-generation-count-limits.md`를 따른다.
 
 다음 기능은 시작하지 않는다.
 
@@ -440,10 +440,6 @@ campaign_reservations
 - reserved_at timestamptz not null
 - unique (campaign_id, email_hash)
 
-generation_rate_limits / generation_daily_usage / generation_global_daily_usage
-- 사용자 분당, 사용자 일일, 전체 일일 유료 AI 생성 요청 수
-- service-role 전용 원자 RPC `consume_generation_quota`만 갱신
-
 meta_ad_runs / meta_operation_ledgers / meta_insight_snapshots
 - Meta 객체 ID·checkpoint·activation 상태와 실제 수집 구간
 - 캠페인별 고정 lifetime 예산·수집 구간과 Meta 객체 상태
@@ -451,7 +447,8 @@ meta_ad_runs / meta_operation_ledgers / meta_insight_snapshots
 ```
 
 (ADR-0013으로 익명 신호를 이름·이메일 기반 `campaign_reservations`로 대체했다. ADR-0016으로
-소유자 작업에는 `auth.uid()` RLS를 적용하고 공개 예약·분산 quota만 server-only client가 처리한다.)
+소유자 작업에는 `auth.uid()` RLS를 적용하고 공개 예약만 server-only client가 처리한다. 과거 생성
+quota 테이블과 RPC는 migration 호환을 위해 남아 있지만 현재 제품 경로에서 읽거나 갱신하지 않는다.)
 
 `/new`의 입력은 단계 이동과 브라우저 뒤로·앞으로에서 유지된다. 제출하면 입력과 draft ID를 DB에 먼저 저장하므로 Claude나 Meta가 실패해도 아이디어 작성 단계로 되돌리지 않는다. 같은 입력의 재요청은 같은 계정·draft ID의 lifecycle을 반환하고 worker는 저장된 checkpoint에서 재개한다. 게시 시점의 spec만 snapshot이 되며 게시된 snapshot은 수정하지 않는다.
 
