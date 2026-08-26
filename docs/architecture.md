@@ -65,7 +65,7 @@ mock 저장소의 `Map`은 한 Node.js 프로세스 안에서 브라우저 간 �
 
 ## 진행 상황 화면
 
-신규 생성은 접수 성공 뒤 `/campaigns/[id]/progress`로 이동한다. 이 화면은 15초 polling과 focus 갱신으로 DB lifecycle을 보여주며, 사용자가 닫아도 Oracle의 1분 worker가 계속 처리한다. 일시 오류는 입력과 현재 단계를 유지한 `RETRY_WAIT`, 안전하게 복구할 수 없는 오류는 `FAILED`로 남긴다. `COMPLETED` 전에는 리포트 route가 progress로 되돌린다.
+신규 생성은 접수 성공 뒤 `/campaigns/[id]/progress`로 이동한다. 이 화면은 15초 polling과 focus 갱신으로 DB lifecycle을 보여주며, 사용자가 닫아도 Oracle의 1분 worker가 계속 처리한다. 일시 오류는 입력과 현재 단계를 유지한 `RETRY_WAIT`, 안전하게 복구할 수 없는 오류는 `FAILED`로 남긴다. UTC 날짜 단위의 내부 광고 생성 안전 한도는 다음 날짜 시작 직후까지 대기하고, 재개 시 시작 시각이 지난 광고 수집 구간을 새로 계산한다. `COMPLETED` 전에는 리포트 route가 progress로 되돌린다.
 
 ## 배포 모델
 

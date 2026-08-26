@@ -28,6 +28,7 @@ export type ClaimedCampaign = {
   collectionStartedAt: string | null;
   collectionEndsAt: string | null;
   completedAt: string | null;
+  lastErrorCode: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -111,6 +112,7 @@ function parseClaim(value: unknown): ClaimedCampaign {
     collectionStartedAt: optionalString(row, "collection_started_at"),
     collectionEndsAt: optionalString(row, "collection_ends_at"),
     completedAt: optionalString(row, "completed_at"),
+    lastErrorCode: optionalString(row, "last_error_code"),
     createdAt: requiredString(row, "created_at"),
     updatedAt: requiredString(row, "updated_at"),
   };
