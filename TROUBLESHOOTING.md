@@ -1,5 +1,32 @@
 # Troubleshooting
 
+## 2026-08-26 — 내부 광고 생성 일일 한도를 일시 장애로 재시도해 캠페인이 중단됨
+
+### 맥락과 영향
+
+AI 문구 오류 수정 배포 뒤 같은 제품 흐름을 다시 실행했을 때 진행 화면이 다시 `일시 오류 · 자동 재시도 예약`을 표시했다. 이번 접수는 Claude 생성과 `CampaignSpec` 저장을 통과했지만 `PREPARING` 단계에서 서비스가 비용 보호용으로 설정한 Meta operation 일일 한도에 도달했다. 기존 수집 캠페인과 이미 생성된 Meta 객체에는 영향이 없었다.
+
+### 재현과 증거
+
+- 운영 Vercel과 Oracle은 같은 source SHA로 정상 응답했고 Anthropic·Supabase dependency도 ready였다.
+- worker 로그의 최신 실패 단계는 `PREPARING`, 오류 코드는 `meta_operation_quota_exceeded_error`였다.
+- 같은 시간대에 `GENERATING` 또는 Anthropic 오류는 없었다. 따라서 화면 문구와 달리 AI 문구 생성 재발이 아니었다.
+- operation RPC는 사용량을 UTC 날짜로 집계하지만 worker는 모든 일시 오류에 같은 2·4분 backoff를 적용하고 3회째 실패에서 중단했다. 날짜가 바뀌기 전에 재시도를 소진할 수 있었다.
+
+### 원인과 검토한 대안
+
+상태 머신이 reset 시각이 정해진 내부 비용 quota와 짧은 네트워크 장애를 구분하지 않은 것이 근본 원인이다. 서비스의 광고 생성 일일 한도를 무인 증액하면 동시 광고 수와 실제 지출 경계가 함께 커지므로 자동 해결책에서 제외했다. 같은 짧은 backoff를 반복하거나 오류 문구만 바꾸는 방식은 캠페인 중단을 해결하지 못해 기각했다.
+
+### 해결과 회귀 방지
+
+`MetaOperationQuotaExceededError`를 별도 분류해 다음 UTC 날짜가 시작된 뒤 1분인 09:01 KST까지 `RETRY_WAIT`로 보존한다. canonical 오류 코드를 저장하되 이미 기록된 legacy 코드도 화면에서 인식한다. 진행 화면과 대시보드는 일반 `일시 오류` 대신 설정된 광고 생성 한도 대기와 실제 자동 재개 시각을 표시한다. quota 대기에서 재개할 때만 기존 광고 시작 시각이 지났다면 수집 구간 전체를 새로 계산해 24시간 검증 시간이 줄어들지 않게 한다. 다른 crash 복구에서는 기존 operation 일정을 보존해 외부 Meta 객체와 내부 run의 시간이 어긋나지 않게 한다.
+
+### 검증과 남은 위험
+
+UTC 일일 경계, 월·연도 전환, legacy 오류 코드, 실제 lifecycle 시도 상한, 수집 구간 재계산과 비 quota crash 복구 테스트를 포함해 lint·typecheck·단위 테스트 44파일 230개, configured client bundle production build, Chromium E2E 7개와 high audit가 통과했다. 운영 캠페인은 11:41 KST 읽기 확인에서 아직 `RETRY_WAIT`였으며 운영 배포는 이어서 확인한다. 배포 전에 `FAILED`로 전환된다면 자동 claim 대상이 아니므로 정확한 행의 사전조건을 확인한 복구가 별도로 필요하다.
+
+면접에서는 왜 exponential backoff가 모든 transient 실패에 맞지 않는지, 내부 quota의 reset clock과 제품 수집 일정을 어떻게 함께 보존했는지, 자동 quota 증액을 복구 로직과 분리한 이유를 설명할 수 있다.
+
 ## 2026-08-26 — 안전성 해시태그 오탐이 AI 생성 재시도를 반복함
 
 ### 맥락과 영향

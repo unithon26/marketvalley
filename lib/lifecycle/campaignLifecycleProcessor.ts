@@ -35,7 +35,14 @@ import {
 } from "@/lib/meta/metaRunLifecycle";
 import {
   MetaOperationNeedsReconciliationError,
+  MetaOperationQuotaExceededError,
 } from "@/lib/meta/operationLedger";
+import {
+  META_OPERATION_QUOTA_ERROR_CODE,
+  isMetaOperationQuotaErrorCode,
+  metaOperationQuotaRetryPlan,
+  needsFreshMetaDraftWindow,
+} from "@/lib/lifecycle/metaOperationQuotaRetry";
 import { PausedCarouselDraftService } from "@/lib/meta/pausedCarouselDraftService";
 import {
   type MetaOperationRpcClient,
@@ -111,6 +118,9 @@ function stablePolicy(
 
 function errorCode(error: unknown): string {
   if (error instanceof CampaignGenerationError) return error.code;
+  if (error instanceof MetaOperationQuotaExceededError) {
+    return META_OPERATION_QUOTA_ERROR_CODE;
+  }
   if (error instanceof MetaOperationNeedsReconciliationError) return "meta_reconciliation_required";
   if (error instanceof MetaActivationReconciliationRequiredError) {
     return "meta_activation_reconciliation_required";
@@ -222,7 +232,7 @@ async function prepareMetaDraft(options: {
   });
 }
 
-async function processClaimedCampaign(options: {
+export async function processClaimedCampaign(options: {
   initialCampaign: ClaimedCampaign;
   store: CampaignLifecycleStore;
   environment: Environment;
@@ -232,6 +242,8 @@ async function processClaimedCampaign(options: {
   const client = createSupabaseServiceClient(environment);
   let campaign = options.initialCampaign;
   const stage = targetStage(campaign);
+  const retryingAfterMetaQuota = campaign.status === "RETRY_WAIT"
+    && isMetaOperationQuotaErrorCode(campaign.lastErrorCode);
 
   try {
     if (campaign.stageAttempts >= 10 || (stage === "GENERATING" && campaign.generationAttempts >= 3)) {
@@ -287,11 +299,12 @@ async function processClaimedCampaign(options: {
         return "AWAITING_ACTIVATION";
       }
 
-      if (
-        !campaign.collectionStartedAt
-        || !campaign.collectionEndsAt
-        || new Date(campaign.collectionEndsAt).getTime() <= now.getTime()
-      ) {
+      if (needsFreshMetaDraftWindow({
+        startsAt: campaign.collectionStartedAt,
+        endsAt: campaign.collectionEndsAt,
+        now,
+        afterQuotaWait: retryingAfterMetaQuota,
+      })) {
         const policy = readMetaPausedDraftServerPolicy(environment, now);
         await store.transition(campaign, {
           status: "PREPARING",
@@ -450,6 +463,14 @@ async function processClaimedCampaign(options: {
       attempt: campaign.stageAttempts,
       code,
     });
+    if (error instanceof MetaOperationQuotaExceededError) {
+      const retry = metaOperationQuotaRetryPlan(options.now());
+      await store.transition(campaign, {
+        status: "RETRY_WAIT",
+        ...retry,
+      });
+      return "RETRY_WAIT";
+    }
     const terminal = isPermanentFailure(error) || campaign.stageAttempts >= (
       stage === "COLLECTING" || stage === "FINALIZING" ? 10 : 3
     );

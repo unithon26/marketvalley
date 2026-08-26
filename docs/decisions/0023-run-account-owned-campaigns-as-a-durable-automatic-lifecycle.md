@@ -13,7 +13,7 @@
 
 `campaigns`를 계정 소유의 영속 상태 머신으로 사용한다.
 
-`SUBMITTED → GENERATING → PREPARING → AWAITING_ACTIVATION → COLLECTING → FINALIZING → COMPLETED`가 정상 경로다. 일시 오류는 원래 단계와 입력을 보존한 `RETRY_WAIT`, 안전하게 계속할 수 없는 오류는 `FAILED`로 기록한다. service role 전용 claim·lease·transition RPC만 lifecycle을 변경하며 브라우저는 입력 접수와 사람의 최종 판단만 쓸 수 있다.
+`SUBMITTED → GENERATING → PREPARING → AWAITING_ACTIVATION → COLLECTING → FINALIZING → COMPLETED`가 정상 경로다. 일시 오류는 원래 단계와 입력을 보존한 `RETRY_WAIT`, 안전하게 계속할 수 없는 오류는 `FAILED`로 기록한다. reset 시각이 정해진 내부 운영 quota는 짧은 backoff를 소진하지 않고 해당 reset 이후로 재시도를 예약하며, 광고 시작 시각이 지났다면 전체 수집 구간을 새로 계산한다. service role 전용 claim·lease·transition RPC만 lifecycle을 변경하며 브라우저는 입력 접수와 사람의 최종 판단만 쓸 수 있다.
 
 접수 응답을 먼저 저장한 뒤 worker가 Claude 문구, 공개 랜딩 snapshot, 서버 렌더 카드뉴스 5장, Meta 광고 객체, 실제 활성 상태 확인, Insights snapshot, 최종 리포트를 순서대로 처리한다. 동일 광고 계정에는 `ACTIVATING`, `ACTIVE`, `PAUSING` 실행이 하나만 존재하도록 DB unique index와 실행 전 조회를 함께 사용한다. 자동 활성화는 운영자 UUID, 정확한 광고 계정, 고정 lifetime 예산을 환경변수로 모두 재확인할 때만 열린다.
 
