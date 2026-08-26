@@ -56,17 +56,44 @@ async function expectOpenApiSchema(fetchImplementation, url, serverKey) {
     "/campaign_reservations",
     "/meta_ad_runs",
     "/meta_insight_snapshots",
-    "/rpc/consume_generation_quota",
     "/rpc/claim_campaign_lifecycle",
     "/rpc/renew_campaign_lifecycle_lease",
     "/rpc/transition_campaign_lifecycle",
     "/rpc/delete_owned_unstarted_campaign",
     "/rpc/record_campaign_reservation",
+    "/rpc/ad_generation_count_limits_disabled",
   ];
   for (const path of requiredPaths) {
     if (!schema || typeof schema !== "object" || !(path in (schema.paths ?? {}))) {
       throw new Error(`Supabase REST OpenAPI is missing required path ${path}`);
     }
+  }
+}
+
+async function verifyAdGenerationCountLimitsDisabled(fetchImplementation, supabaseUrl, serverKey) {
+  const response = await expectOk(
+    fetchImplementation,
+    "Supabase ad generation count-limit marker",
+    new URL("/rest/v1/rpc/ad_generation_count_limits_disabled", supabaseUrl),
+    {
+      method: "POST",
+      headers: {
+        apikey: serverKey,
+        Authorization: `Bearer ${serverKey}`,
+        "Content-Type": "application/json",
+      },
+      body: "{}",
+    },
+  );
+
+  let disabled;
+  try {
+    disabled = await response.json();
+  } catch {
+    throw new Error("Supabase ad generation count-limit marker returned an invalid response");
+  }
+  if (disabled !== true) {
+    throw new Error("Supabase ad generation count limits are not disabled");
   }
 }
 
@@ -124,6 +151,7 @@ export async function verifyExternalDependencies({
   });
 
   await expectOpenApiSchema(fetchImplementation, new URL("/rest/v1/", supabaseUrl), supabaseKey);
+  await verifyAdGenerationCountLimitsDisabled(fetchImplementation, supabaseUrl, supabaseKey);
   await verifyTurnstileSecret(fetchImplementation, turnstileSecretKey);
 
   return { anthropic: "ready", supabase: "ready", turnstile: "ready" };

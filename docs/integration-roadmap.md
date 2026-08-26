@@ -9,7 +9,7 @@
 - Google OAuth PKCE와 HttpOnly 세션
 - `auth.uid()` 기반 캠페인·예약자명단 RLS
 - 이름·이메일·동의, HMAC 이메일 중복 방지와 소유자 목록 마스킹
-- 사용자 분당·일일·전체 일일 AI quota RPC
+- 계정별 lifecycle와 service-role 상태 전이 RPC
 - Turnstile, canonical origin, 예약 campaign/global rate limit
 - 계정별 lifecycle, service-role lease와 원자 상태 전이 RPC
 - 운영 migration `202608250001`, `202608250002`, `202608260006`
@@ -26,7 +26,7 @@
 - 자동 재시도: 없음
 - 사용자 입력: 명령이 아닌 별도 JSON 자료
 - 실패: 성공 fixture로 대체하지 않고 lifecycle의 재시도·확인 필요 상태로 저장
-- 과금 보호: Supabase 원자 quota 없이 production 호출 불가
+- 애플리케이션 생성 횟수 제한 없음
 
 ## Meta Marketing API
 

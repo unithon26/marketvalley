@@ -48,6 +48,8 @@ describe("production deployment trust boundary", () => {
     expect(releaseScript).toContain('TURNSTILE_VERIFY_TIMEOUT_MS must be an integer between 500 and 10000');
     expect(releaseScript).toContain('RESERVATION_CAMPAIGN_MINUTE_LIMIT must not exceed');
     expect(releaseScript).toContain('production campaign lifecycle requires META_ADS_MODE=live');
+    expect(releaseScript).not.toContain('META_DRAFT_DAILY_OWNER_LIMIT');
+    expect(releaseScript).not.toContain('META_DRAFT_DAILY_GLOBAL_LIMIT');
     expect(releaseScript).toContain('validate-release-archive.py');
     expect(releaseScript).toContain('--cpus 0.75');
     expect(releaseScript).toContain('--memory 1536m');

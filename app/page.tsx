@@ -10,7 +10,6 @@ import { SiteHeader } from "@/components/site-header";
 import { hasBundledAuthMode } from "@/lib/auth/mode";
 import { useAuthSession } from "@/lib/client/use-auth-session";
 import type { CampaignLifecycleResponse } from "@/lib/contracts/api";
-import { isMetaOperationQuotaErrorCode } from "@/lib/lifecycle/metaOperationQuotaRetry";
 
 type ProjectGroup = "ongoing" | "completed";
 
@@ -185,12 +184,7 @@ export default function HomePage() {
                   </div>
                   <div className="project-card-body">
                     <strong>{name}</strong>
-                    <span className="time-chip">{
-                      project.status === "RETRY_WAIT"
-                        && isMetaOperationQuotaErrorCode(project.lastErrorCode)
-                        ? "광고 생성 한도 초기화 대기"
-                        : statusCopy[project.status]
-                    }</span>
+                    <span className="time-chip">{statusCopy[project.status]}</span>
                     <div className="progress-meta"><b>{statusProgress[project.status]}%</b></div>
                     <div className="progress-track"><i style={{ width: `${statusProgress[project.status]}%` }} /></div>
                     {(project.status === "FAILED" || project.status === "RETRY_WAIT")

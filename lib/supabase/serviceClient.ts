@@ -49,7 +49,7 @@ export function getSupabaseServiceConfig(
 
 let cachedClient: SupabaseClient | null = null;
 
-/** RLS를 우회하므로 공개 조회·예약 저장·서버 전용 quota RPC에만 사용한다. */
+/** RLS를 우회하므로 공개 조회·예약 원자 RPC와 lifecycle worker에만 사용한다. */
 export function createSupabaseServiceClient(
   environment: Environment = process.env,
 ): SupabaseClient {

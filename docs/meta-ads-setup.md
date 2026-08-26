@@ -80,8 +80,6 @@ META_PAGE_INSTAGRAM_BINDING_VERIFIED_AT=<CANONICAL_UTC_ISO_TIMESTAMP>
 META_ALLOWED_DESTINATION_ORIGIN=https://<PRODUCTION_DOMAIN>
 META_MAX_LIFETIME_BUDGET_MINOR=<SERVER_HARD_CAP>
 META_DRAFT_LIFETIME_BUDGET_MINOR=<PAUSED_DRAFT_BUDGET>
-META_DRAFT_DAILY_OWNER_LIMIT=2
-META_DRAFT_DAILY_GLOBAL_LIMIT=50
 META_DRAFT_LEAD_MINUTES=10
 META_DRAFT_DURATION_HOURS=24
 META_ACCESS_TOKEN=<SYSTEM_USER_SECRET>
@@ -93,8 +91,8 @@ KRW 광고 계정에서는 budget 숫자를 원 단위로 취급하는지 실제
 
 ## 5. 활성화 순서
 
-1. migration `202608250003_meta_paused_draft_operations.sql`을 staging Supabase에 적용한다.
-2. RPC 권한, owner mismatch, quota, lease 경쟁, rollback과 reconciliation을 실제 PostgreSQL에서 검증한다.
+1. migration `202608260010_remove_ad_generation_count_limits.sql`까지 staging Supabase에 적용한다.
+2. count 검사와 usage counter 갱신이 없고 제한 제거 marker가 `true`인지, RPC 권한, owner mismatch, lease 경쟁, rollback과 reconciliation을 실제 PostgreSQL에서 검증한다.
 3. Oracle proxy가 단일 authoritative `Content-Length`를 보존하고 제한 초과 요청을 앱 버퍼링 전에 거절하는지 검증한다.
 4. 서버에서 Graph v26 자산 조회를 실행해 Page와 Instagram 접근을 확인한다.
 5. `META_ADS_MODE=live`로 바꾸고 내부 운영자 한 명의 캠페인으로 한 번만 실행한다.

@@ -333,8 +333,6 @@ validate_production_environment() {
     meta_allowed_destination_origin="$(read_environment_value META_ALLOWED_DESTINATION_ORIGIN)"
     meta_max_lifetime_budget_minor="$(read_environment_value META_MAX_LIFETIME_BUDGET_MINOR)"
     meta_draft_lifetime_budget_minor="$(read_environment_value META_DRAFT_LIFETIME_BUDGET_MINOR)"
-    meta_draft_daily_owner_limit="$(read_environment_value META_DRAFT_DAILY_OWNER_LIMIT)"
-    meta_draft_daily_global_limit="$(read_environment_value META_DRAFT_DAILY_GLOBAL_LIMIT)"
     meta_draft_lead_minutes="$(read_environment_value META_DRAFT_LEAD_MINUTES)"
     meta_draft_duration_hours="$(read_environment_value META_DRAFT_DURATION_HOURS)"
     meta_insights_finalization_delay_minutes="$(read_environment_value META_INSIGHTS_FINALIZATION_DELAY_MINUTES)"
@@ -362,10 +360,6 @@ validate_production_environment() {
       || fail "META_MAX_LIFETIME_BUDGET_MINOR is invalid"
     is_bounded_integer "${meta_draft_lifetime_budget_minor}" 100 "${meta_max_lifetime_budget_minor}" \
       || fail "META_DRAFT_LIFETIME_BUDGET_MINOR must not exceed the Meta hard cap"
-    is_bounded_integer "${meta_draft_daily_owner_limit}" 1 20 \
-      || fail "META_DRAFT_DAILY_OWNER_LIMIT must be between 1 and 20"
-    is_bounded_integer "${meta_draft_daily_global_limit}" "${meta_draft_daily_owner_limit}" 1000 \
-      || fail "META_DRAFT_DAILY_GLOBAL_LIMIT must cover the owner limit and be at most 1000"
     is_bounded_integer "${meta_draft_lead_minutes}" 5 1440 \
       || fail "META_DRAFT_LEAD_MINUTES must be between 5 and 1440"
     is_bounded_integer "${meta_draft_duration_hours}" 1 72 \

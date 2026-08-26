@@ -107,13 +107,6 @@ export class MetaOperationBusyError extends Error {
   }
 }
 
-export class MetaOperationQuotaExceededError extends Error {
-  constructor() {
-    super("Meta 광고 초안 일일 생성 한도를 초과했습니다.");
-    this.name = "MetaOperationQuotaExceededError";
-  }
-}
-
 export class MetaOperationLedgerUnavailableError extends Error {
   constructor() {
     super("Meta 광고 작업 기록을 안전하게 저장하지 못했습니다.");

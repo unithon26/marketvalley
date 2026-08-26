@@ -41,18 +41,12 @@ vi.mock("@/lib/supabase/serviceClient", () => ({
 }));
 
 import {
-  META_OPERATION_QUOTA_ERROR_CODE,
-} from "@/lib/lifecycle/metaOperationQuotaRetry";
-import {
   processClaimedCampaign,
 } from "@/lib/lifecycle/campaignLifecycleProcessor";
 import type {
   CampaignLifecycleStore,
   ClaimedCampaign,
 } from "@/lib/lifecycle/campaignLifecycleStore";
-import { MetaOperationQuotaExceededError } from "@/lib/meta/operationLedger";
-
-const now = new Date("2026-08-26T02:33:55.000Z");
 
 function claimedCampaign(overrides: Partial<ClaimedCampaign> = {}): ClaimedCampaign {
   return {
@@ -89,60 +83,35 @@ function mockStore(renewed: ClaimedCampaign) {
   };
 }
 
-describe("campaign lifecycle Meta operation quota", () => {
+describe("campaign lifecycle Meta operation preparation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getLatestMetaAdRun.mockResolvedValue(null);
     mocks.readMetaPolicy.mockReturnValue({
-      dailyOwnerLimit: 2,
-      dailyGlobalLimit: 50,
       startsAt: "2026-08-26T03:00:00.000Z",
       endsAt: "2026-08-27T03:00:00.000Z",
     });
   });
 
-  it("keeps a quota failure retryable after the ordinary attempt limit", async () => {
-    const initial = claimedCampaign();
-    const renewed = claimedCampaign({ stageAttempts: 3 });
-    const store = mockStore(renewed);
-    mocks.createMetaDraft.mockRejectedValue(new MetaOperationQuotaExceededError());
-
-    await expect(processClaimedCampaign({
-      initialCampaign: initial,
-      store: store.value,
-      environment: {},
-      now: () => now,
-    })).resolves.toBe("RETRY_WAIT");
-
-    expect(store.transition).toHaveBeenCalledWith(renewed, {
-      status: "RETRY_WAIT",
-      nextAttemptAt: "2026-08-27T00:01:00.000Z",
-      lastErrorCode: META_OPERATION_QUOTA_ERROR_CODE,
-      lastErrorMessage: "설정된 광고 생성 일일 한도에 도달했습니다. 8월 27일 09:01 이후 자동으로 다시 시도합니다.",
-    });
-  });
-
-  it("refreshes an elapsed collection window on the next quota claim", async () => {
+  it("refreshes an elapsed collection window before preparing a draft", async () => {
     const retryNow = new Date("2026-08-27T00:01:00.000Z");
     const initial = claimedCampaign({
       status: "RETRY_WAIT",
       retryFromStatus: "PREPARING",
       stageAttempts: 3,
-      lastErrorCode: META_OPERATION_QUOTA_ERROR_CODE,
+      lastErrorCode: "meta_operation_ledger_unavailable_error",
       collectionStartedAt: "2026-08-26T02:40:00.000Z",
-      collectionEndsAt: "2026-08-27T02:40:00.000Z",
+      collectionEndsAt: "2026-08-26T23:40:00.000Z",
     });
     const renewed = claimedCampaign({
       status: "PREPARING",
       stageAttempts: 4,
       collectionStartedAt: initial.collectionStartedAt,
       collectionEndsAt: initial.collectionEndsAt,
-      lastErrorCode: META_OPERATION_QUOTA_ERROR_CODE,
+      lastErrorCode: initial.lastErrorCode,
     });
     const store = mockStore(renewed);
     mocks.readMetaPolicy.mockReturnValue({
-      dailyOwnerLimit: 2,
-      dailyGlobalLimit: 50,
       startsAt: "2026-08-27T00:11:00.000Z",
       endsAt: "2026-08-28T00:11:00.000Z",
     });

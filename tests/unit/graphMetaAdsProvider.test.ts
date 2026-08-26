@@ -486,7 +486,7 @@ describe("GraphMetaAdsProvider", () => {
     })).toThrow(MetaConfigurationError);
   });
 
-  it("keeps targeting fixed to KR/18–65 and bounds budget, quota, and the short schedule", () => {
+  it("keeps targeting fixed to KR/18–65 and bounds budget and the short schedule", () => {
     const policyEnvironment = {
       META_AD_ACCOUNT_ID: binding.adAccountId,
       META_PAGE_ID: binding.pageId,
@@ -505,8 +505,6 @@ describe("GraphMetaAdsProvider", () => {
       lifetimeBudgetMinor: 10_000,
       startsAt: "2026-08-25T12:10:00.000Z",
       endsAt: "2026-08-26T12:10:00.000Z",
-      dailyOwnerLimit: 2,
-      dailyGlobalLimit: 50,
     });
     expect(() => readMetaPausedDraftServerPolicy({
       ...policyEnvironment,

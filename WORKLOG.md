@@ -1,12 +1,22 @@
 # 작업 기록
 
+## 2026-08-26 — 광고 생성 횟수 제한 제거
+
+- 목적: AI 문구 생성과 Meta 광고 등록의 사용자별·서비스 전체 횟수 상한을 모두 없애 연속 광고 접수가 내부 count 때문에 중단되지 않게 하고, 기존 quota 실패 캠페인을 안전하게 재개한다.
+- 변경: lifecycle의 AI quota 호출과 분당·일일 환경값·상태 점검을 제거했다. Meta policy·Supabase ledger client·환경 예시·Oracle preflight에서도 owner/global count를 제거했다. migration은 이전 worker용 AI RPC를 항상 통과시키고 Meta RPC의 기존 limit 인자를 optional no-op으로 남기되 count 검사, usage counter 갱신과 quota 거절을 없앤다. 배포 전 marker RPC를 직접 호출해 이 migration이 적용되지 않은 release는 활성화하지 않는다.
+- 정리: 한도 초기화까지 기다리던 전용 오류·재시도·화면 분기도 삭제했다. operation 소유권·idempotency·lease·checkpoint·reconciliation은 중복 외부 객체 방지를 위해 유지하며 광고 생성 횟수를 세거나 차단하지 않는다.
+- 복구: 최신 운영 캠페인은 Claude 생성 뒤 quota 오류를 거쳐 Oracle 이전 worker에서 `FAILED`가 됐다. 공유 migration은 과거 행을 바꾸지 않는다. 정확한 campaign·owner, 만료된 lease와 Meta operation·run 없음까지 읽기 검증한 뒤 별도 운영 작업으로 이 한 건만 `PREPARING`에 복구하고 tentative 수집 일정을 비운다.
+- 영향 범위: AI lifecycle·health, Meta policy·ledger RPC adapter, Supabase migration, lifecycle 복구, production preflight·환경 예시, 운영 문서·ADR·테스트
+- 검증: lint·typecheck와 단위 테스트 42파일 222개, production build, configured auth bundle, Chromium E2E 7개와 high audit가 통과했다. 운영 Supabase에 migration `202608260010`을 먼저 적용하고 remote 이력·DB lint를 확인했다. 실제 DB에서 marker `true`, anon·authenticated 차단, service-role 허용, Meta 6·8인자 호환, AI·Meta 함수의 usage counter 접근 부재를 검증했다.
+- 전달: source·control-plane PR과 CI, Vercel·Oracle 동일 SHA 배포, 정확한 실패 캠페인 복구와 새 Meta run 확인을 이어서 기록한다.
+
 ## 2026-08-26 — 내부 광고 생성 일일 한도 대기 복구
 
 - 목적: AI 문구 생성 뒤 서비스의 Meta operation 일일 안전 한도에 도달한 캠페인이 짧은 재시도를 소진해 실패하지 않고, 실제 원인과 재개 시각을 사용자에게 보여주며 자동 진행을 이어가게 한다.
 - 원인과 변경: UTC 날짜 단위의 내부 quota를 일반 transient 오류와 같은 짧은 backoff와 3회 실패 상한으로 처리하고 있었다. 해당 quota 오류는 다음 UTC 날짜 시작 1분 뒤까지 `RETRY_WAIT`로 보존하고 canonical 오류 코드를 기록하도록 분리했다. 진행 화면과 대시보드에는 설정된 광고 생성 한도 대기와 상세 메시지를 표시하며, quota 대기에서 재개할 때만 시작 시각이 지난 수집 구간을 새 24시간 구간으로 계산한다.
 - 영향 범위: lifecycle 오류 분류·재시도 시각, Meta 광고 일정 계산, 진행 화면·대시보드, 단위 테스트, ADR·아키텍처·장애 기록
 - 검증: quota 시각·날짜 경계·legacy 오류 코드·실제 lifecycle 시도 상한·수집 구간·비 quota crash 복구 집중 테스트 4파일 25개가 통과했다. 전체 lint·typecheck·단위 테스트 44파일 230개, configured client bundle production build, Chromium E2E 7개, high audit와 diff 검사도 통과했다. 독립 재검토에서 차단급 잔여 결함은 없었다.
-- 전달과 남은 일: 변경은 로컬 브랜치에 있다. 독립 검토, source PR·CI와 배포 승인을 거쳐 전달한다. 이미 실패 상태가 된 운영 캠페인은 정확한 상태를 확인한 뒤 별도 승인 아래 안전하게 재개해야 한다.
+- 전달과 남은 일: PR #25의 CI와 main CI가 성공했고 merge SHA `84d8c239`를 Vercel에 배포했다. Oracle은 이전 `2b7564a9` worker를 유지해 최신 캠페인이 `FAILED`가 됐다. 후속 ADR-0025와 migration에서 횟수 상한 자체를 제거하고 이 캠페인을 조건부 복구한다.
 
 ## 2026-08-26 — 심사위원용 공개 저장소 정리
 

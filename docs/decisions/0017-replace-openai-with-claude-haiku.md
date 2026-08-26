@@ -23,7 +23,7 @@
   명시적으로 다시 시도하게 해 중복 생성과 과금 가능성을 줄인다.
 - 서버 비밀은 `ANTHROPIC_API_KEY`, 모델 override는 `ANTHROPIC_TEXT_MODEL`로만 받는다.
 - 기존 OpenAI SDK, adapter, 환경변수와 `openai` 생성 모드는 제거한다.
-- 인증, same-origin, 분산 quota, 서버 소유 필드 덮어쓰기와 명시적 `fixture` fallback은 유지한다.
+- 인증, same-origin, 서버 소유 필드 덮어쓰기와 명시적 `fixture` fallback은 유지한다. 당시의 분산 quota는 ADR-0025에서 제거했다.
 - Anthropic의 `billing_error`는 일반 생성 실패와 구분하되 상세 upstream 메시지는 응답에 노출하지
   않는다.
 

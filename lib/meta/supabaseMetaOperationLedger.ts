@@ -14,7 +14,6 @@ import {
   type MetaOperationSession,
   type MetaOperationStatus,
   type MetaOperationStep,
-  MetaOperationQuotaExceededError,
   type MetaReconciliationAudit,
   MetaReconciliationResolutionError,
   metaOperationSteps,
@@ -33,8 +32,6 @@ export type SupabaseMetaOperationLedgerOptions = {
   ownerId: string;
   campaignId: string;
   leaseSeconds?: number;
-  dailyOwnerLimit?: number;
-  dailyGlobalLimit?: number;
   createLeaseToken?: () => string;
 };
 
@@ -194,8 +191,6 @@ function mapRpcError(error: RpcError): Error {
     case "meta_operation_busy":
     case "meta_operation_lease_lost":
       return new MetaOperationBusyError();
-    case "meta_operation_quota_exceeded":
-      return new MetaOperationQuotaExceededError();
     case "meta_reconciliation_conflict":
     case "meta_reconciliation_invalid":
       return new MetaReconciliationResolutionError();
@@ -212,15 +207,13 @@ function assertDescriptor(descriptor: MetaOperationDescriptor): void {
 
 /**
  * Designed as a service-role RPC-only durable ledger. Static SQL tests do not prove
- * PostgreSQL semantics; migration 202608250003 must be applied and integration-tested first.
+ * PostgreSQL semantics; migrations through 202608260010 must be applied and integration-tested first.
  */
 export class SupabaseMetaOperationLedger implements MetaOperationLedger {
   private readonly client: MetaOperationRpcClient;
   private readonly ownerId: string;
   private readonly campaignId: string;
   private readonly leaseSeconds: number;
-  private readonly dailyOwnerLimit: number;
-  private readonly dailyGlobalLimit: number;
   private readonly createLeaseToken: () => string;
 
   constructor(options: SupabaseMetaOperationLedgerOptions) {
@@ -231,14 +224,9 @@ export class SupabaseMetaOperationLedger implements MetaOperationLedger {
     this.ownerId = options.ownerId;
     this.campaignId = options.campaignId;
     this.leaseSeconds = options.leaseSeconds ?? 300;
-    this.dailyOwnerLimit = options.dailyOwnerLimit ?? 3;
-    this.dailyGlobalLimit = options.dailyGlobalLimit ?? 100;
     this.createLeaseToken = options.createLeaseToken ?? randomUUID;
     if (
-      !Number.isInteger(this.leaseSeconds) || this.leaseSeconds < 30 || this.leaseSeconds > 300 ||
-      !Number.isInteger(this.dailyOwnerLimit) || this.dailyOwnerLimit < 1 || this.dailyOwnerLimit > 20 ||
-      !Number.isInteger(this.dailyGlobalLimit) || this.dailyGlobalLimit < this.dailyOwnerLimit ||
-      this.dailyGlobalLimit > 1_000
+      !Number.isInteger(this.leaseSeconds) || this.leaseSeconds < 30 || this.leaseSeconds > 300
     ) {
       throw new MetaOperationLedgerUnavailableError();
     }
@@ -258,8 +246,6 @@ export class SupabaseMetaOperationLedger implements MetaOperationLedger {
       p_campaign_id: this.campaignId,
       p_lease_token: leaseToken,
       p_lease_seconds: this.leaseSeconds,
-      p_daily_owner_limit: this.dailyOwnerLimit,
-      p_daily_global_limit: this.dailyGlobalLimit,
     });
 
     const transition = async (

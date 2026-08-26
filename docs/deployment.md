@@ -125,14 +125,13 @@ NLB가 healthy가 되기 전에는 기존 security list의 22·6443을 건드리
 - `CAMPAIGN_GENERATOR_MODE=anthropic`, model과 Anthropic server key
 - `CAMPAIGN_REPOSITORY_MODE=supabase`, URL·publishable key·server key
 - 배포 뒤 바꾸지 않을 32바이트 이상의 `SIGNAL_HASH_SECRET`
-- 운영 생성 quota
 - `CRON_SECRET`: Oracle lifecycle worker와 내부 endpoint가 공유하는 32바이트 이상 무작위 값
 - `META_AUTO_ACTIVATION_ENABLED=true`와 정확한 광고 계정·lifetime 예산 확인값
 - `META_INSIGHTS_FINALIZATION_DELAY_MINUTES`: 종료 뒤 최종 Insights 반영 대기 시간
 
 `NEXT_PUBLIC_*`만 공개 build argument로 전달한다. Anthropic·Supabase·Turnstile server key와 HMAC secret은 image, Git, Terraform, Actions log에 넣지 않는다.
 
-release는 새 image의 network 없는 `/api/health`를 먼저 확인한다. 이어서 Anthropic Models API에서 설정 model을 조회하고 Supabase Auth와 REST OpenAPI에서 `campaigns`, `campaign_reservations`, 생성 quota RPC와 예약 원자 RPC를 확인하며 Turnstile Siteverify가 server secret을 인식하는지도 검증한다. 이 검사는 Claude 생성을 호출하거나 예약자 원문을 읽지 않으며, credential·migration·network 실패 시 활성화를 막는다. Site key와 hostname까지 묶인 실제 Turnstile 검증은 production 도메인의 브라우저 종단에서 별도로 수행한다.
+release는 새 image의 network 없는 `/api/health`를 먼저 확인한다. 이어서 Anthropic Models API에서 설정 model을 조회하고 Supabase Auth와 REST OpenAPI에서 `campaigns`, `campaign_reservations`, lifecycle RPC와 예약 원자 RPC를 확인하며 Turnstile Siteverify가 server secret을 인식하는지도 검증한다. 이 검사는 Claude 생성을 호출하거나 예약자 원문을 읽지 않으며, credential·migration·network 실패 시 활성화를 막는다. 광고 생성 횟수 제한 제거 marker가 없으면 새 application을 활성화하지 않는다. Site key와 hostname까지 묶인 실제 Turnstile 검증은 production 도메인의 브라우저 종단에서 별도로 수행한다.
 
 ## 5. OAuth production origin
 

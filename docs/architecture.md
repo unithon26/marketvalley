@@ -57,7 +57,7 @@ AI가 채우는 문구는 상품 요약, 검증 가설, 동의 기반 사전예�
 | `anthropic` (제품 기본) | `AnthropicCampaignGenerator` | fixture 또는 Supabase adapter | Anthropic 키 필요, 호출 시 과금 |
 | `fixture` (테스트·fallback) | `FixtureCampaignGenerator` | `FixtureCampaignRepository` | 불필요, 외부 요청·과금 없음 |
 
-생성 모드는 서버 전용 `CAMPAIGN_GENERATOR_MODE`로 바꾼다. 값이 없으면 제품 경로인 `anthropic`을 선택하고, 키가 없거나 upstream이 실패하면 성공으로 대체하지 않고 503으로 반환한다. `/new`는 요청 시점의 서버 환경을 읽어 키 준비 상태를 표시한다. Anthropic 생성 요청은 JSON Content-Type과 same-origin, Google `getClaims()`를 확인한다. Supabase 모드는 원자 DB RPC로 사용자 분당 3회·일일 30회·전체 일일 300회를 기본 제한한다. production Anthropic이 fixture 메모리 제한으로 실행되려 하면 503으로 닫는다. 자동 테스트와 비상 발표는 `fixture`를 명시한다.
+생성 모드는 서버 전용 `CAMPAIGN_GENERATOR_MODE`로 바꾼다. 값이 없으면 제품 경로인 `anthropic`을 선택하고, 키가 없거나 upstream이 실패하면 성공으로 대체하지 않고 503으로 반환한다. `/new`는 요청 시점의 서버 환경을 읽어 키 준비 상태를 표시한다. Anthropic 생성 요청은 Google 계정에 저장된 입력을 별도 JSON 자료로 전달한다. 애플리케이션은 AI 문구 또는 Meta 광고 생성 횟수를 제한하지 않는다. 자동 테스트와 비상 발표는 `fixture`를 명시한다.
 
 mock 저장소의 `Map`은 한 Node.js 프로세스 안에서 브라우저 간 상태를 공유하지만 서버 재시작과 다중 인스턴스 전환에는 유지되지 않는다. 따라서 로컬 발표와 단일 프로세스 QA에만 사용하며 Oracle production의 실제 응답은 Supabase adapter에 저장한다.
 
@@ -65,7 +65,7 @@ mock 저장소의 `Map`은 한 Node.js 프로세스 안에서 브라우저 간 �
 
 ## 진행 상황 화면
 
-신규 생성은 접수 성공 뒤 `/campaigns/[id]/progress`로 이동한다. 이 화면은 15초 polling과 focus 갱신으로 DB lifecycle을 보여주며, 사용자가 닫아도 Oracle의 1분 worker가 계속 처리한다. 일시 오류는 입력과 현재 단계를 유지한 `RETRY_WAIT`, 안전하게 복구할 수 없는 오류는 `FAILED`로 남긴다. UTC 날짜 단위의 내부 광고 생성 안전 한도는 다음 날짜 시작 직후까지 대기하고, 재개 시 시작 시각이 지난 광고 수집 구간을 새로 계산한다. `COMPLETED` 전에는 리포트 route가 progress로 되돌린다.
+신규 생성은 접수 성공 뒤 `/campaigns/[id]/progress`로 이동한다. 이 화면은 15초 polling과 focus 갱신으로 DB lifecycle을 보여주며, 사용자가 닫아도 Oracle의 1분 worker가 계속 처리한다. 일시 오류는 입력과 현재 단계를 유지한 `RETRY_WAIT`, 안전하게 복구할 수 없는 오류는 `FAILED`로 남긴다. AI 문구와 Meta 광고 생성에는 사용자별·전체 횟수 제한을 두지 않는다. durable operation key와 lease는 중복 외부 객체만 차단한다. `COMPLETED` 전에는 리포트 route가 progress로 되돌린다.
 
 ## 배포 모델
 

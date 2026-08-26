@@ -1,5 +1,4 @@
 import { resolveCampaignGeneratorStatus } from "@/lib/ai/generatorConfig";
-import { resolveGenerationQuotaConfig } from "@/lib/ai/generationRateLimit";
 import { resolveCampaignRepositoryMode } from "@/lib/demo/repositoryConfig";
 import { resolveReservationProtectionConfig } from "@/lib/security/reservationProtection";
 
@@ -45,7 +44,6 @@ export function createHealthResponse(environment: Environment = process.env): Re
     const generator = resolveCampaignGeneratorStatus(environment);
     const repositoryMode = resolveCampaignRepositoryMode(environment);
     const reservationProtection = resolveReservationProtectionConfig(repositoryMode, environment);
-    const quota = resolveGenerationQuotaConfig(environment);
     const ready = generator.ready;
 
     return Response.json(
@@ -57,7 +55,6 @@ export function createHealthResponse(environment: Environment = process.env): Re
         checks: {
           generator: { mode: generator.mode, ready: generator.ready },
           repository: { mode: repositoryMode, ready: true },
-          quota: { mode: quota.mode, ready: true },
           reservations: { mode: reservationProtection.mode, ready: true },
         },
       },
@@ -76,7 +73,6 @@ export function createHealthResponse(environment: Environment = process.env): Re
         checks: {
           generator: { ready: false },
           repository: { ready: false },
-          quota: { ready: false },
           reservations: { ready: false },
         },
       },

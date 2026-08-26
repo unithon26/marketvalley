@@ -20,8 +20,6 @@ export type MetaPausedDraftServerPolicy = {
   lifetimeBudgetMinor: number;
   startsAt: string;
   endsAt: string;
-  dailyOwnerLimit: number;
-  dailyGlobalLimit: number;
 };
 const operatorUserIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
@@ -173,20 +171,6 @@ export function readMetaPausedDraftServerPolicy(
     100,
     binding.maxLifetimeBudgetMinor,
   );
-  const dailyOwnerLimit = integerInRange(
-    environment,
-    "META_DRAFT_DAILY_OWNER_LIMIT",
-    1,
-    20,
-    2,
-  );
-  const dailyGlobalLimit = integerInRange(
-    environment,
-    "META_DRAFT_DAILY_GLOBAL_LIMIT",
-    dailyOwnerLimit,
-    1_000,
-    50,
-  );
   const leadMinutes = integerInRange(
     environment,
     "META_DRAFT_LEAD_MINUTES",
@@ -215,8 +199,6 @@ export function readMetaPausedDraftServerPolicy(
     lifetimeBudgetMinor,
     startsAt: new Date(startTime).toISOString(),
     endsAt: new Date(endTime).toISOString(),
-    dailyOwnerLimit,
-    dailyGlobalLimit,
   };
 }
 

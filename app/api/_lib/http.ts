@@ -121,12 +121,8 @@ export function routeErrorResponse(error: unknown): Response {
   if (
     hasErrorName(error, "SupabaseServiceConfigError")
     || hasErrorName(error, "CampaignRepositoryConfigError")
-    || hasErrorName(error, "GenerationRateLimitConfigError")
   ) {
     return errorResponse(503, "campaign_repository_not_configured", "데이터 저장 설정을 확인해주세요.");
-  }
-  if (hasErrorName(error, "GenerationRateLimitUnavailableError")) {
-    return errorResponse(503, "generation_rate_limit_unavailable", "문구 생성 제한을 확인하지 못했습니다. 잠시 후 다시 시도해주세요.");
   }
   if (hasErrorName(error, "CampaignGenerationError")) {
     if (
