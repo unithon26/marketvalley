@@ -23,6 +23,7 @@ import {
 import {
   getLatestMetaAdRun,
   registerMetaAdRun,
+  updateMetaAdRun,
   type MetaAdRun,
 } from "@/lib/meta/metaAdRun";
 import {
@@ -367,6 +368,17 @@ export async function processClaimedCampaign(options: {
       const effectiveStatuses = Object.values(statuses).map((status) => status.effectiveStatus);
       if (effectiveStatuses.some((status) => permanentEffectiveStatuses.has(status))) {
         throw new Error("Meta ad delivery is not eligible");
+      }
+      if (
+        run.status === "ACTIVATING"
+        && Object.values(statuses).every((status) => status.configuredStatus === "ACTIVE")
+      ) {
+        await updateMetaAdRun({
+          client,
+          run,
+          status: "ACTIVE",
+          expectedStatuses: ["ACTIVATING"],
+        });
       }
       if (effectiveStatuses.every((status) => status === "ACTIVE")) {
         await store.transition(campaign, {

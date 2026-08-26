@@ -90,16 +90,9 @@ export async function activateMetaRun(options: {
     await options.provider.setObjectStatus(activating.metaAdId, "ACTIVE");
     await options.provider.setObjectStatus(activating.metaAdSetId, "ACTIVE");
     await options.provider.setObjectStatus(activating.metaCampaignId, "ACTIVE");
-    const statuses = await getMetaRunObjectStatuses(options.provider, activating);
-    if (Object.values(statuses).some((status) => status.configuredStatus !== "ACTIVE")) {
-      throw new Error("Meta 광고 ACTIVE 상태를 확인하지 못했습니다.");
-    }
-    return updateMetaAdRun({
-      client: options.client,
-      run: activating,
-      status: "ACTIVE",
-      expectedStatuses: ["ACTIVATING"],
-    });
+    // Graph status reads can lag behind successful status writes. Keep the run
+    // in ACTIVATING and let the lifecycle poll confirm it on the next pass.
+    return activating;
   } catch (error) {
     let pauseVerified = true;
     try {
