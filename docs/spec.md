@@ -137,7 +137,7 @@ AI는 문구와 선택적 배경 이미지 프롬프트만 만든다. 모든 텍
 - 캡션, 후킹 문구 3개, CTA, 해시태그를 복사할 수 있다.
 - 광고에 업로드한 서버 PNG와 리포트 미리보기·ZIP의 서버 PNG가 같은 endpoint 결과다.
 - 예산, 통화, 기간과 타기팅은 서버 정책으로 고정하며 AI가 임의로 변경하지 않는다.
-- 동일 광고 계정에는 live run을 하나만 허용하고 기존 ACTIVE run이 있으면 새 광고를 만들지 않는다.
+- 각 광고는 서버가 승인한 고정 lifetime 예산과 종료 시각을 독립적으로 적용하며, 여러 검증을 동시에 수집할 수 있다.
 - 이미지 생성 API 없이도 완성된 기본 시각 결과가 나온다.
 
 ### P0-6. 결정적 테스트 fixture
@@ -158,12 +158,12 @@ fixture는 자동 테스트가 외부 과금 없이 같은 API 경계와 렌더�
 - 공유용 Open Graph 이미지
 - Meta 자격증명은 서버에만 두고 브라우저 route나 번들로 전달하지 않는다.
 - 운영자 Google 계정 UUID, 광고 계정 ID, lifetime 예산이 배포 설정의 확인값과 모두 일치해야 활성화한다.
-- DB unique index와 실행 전 조회로 한 광고 계정의 live run을 하나로 제한한다.
+- 운영자·광고계정·캠페인별 lifetime 예산을 실행 직전에 다시 확인하며 계정 전체 직렬화는 하지 않는다.
 - 생성은 PAUSED 객체로 시작하고 자식부터 부모 순서로 활성화하며, 일부 실패 시 부모부터 전체를 PAUSED로 복구한다.
 - 수집 종료 시 부모부터 전체를 PAUSED로 확인한 뒤 최종 Insights 반영 시간을 기다린다.
 - 자동 예산 증액, 종료 뒤 재시작, 결제수단 등록은 구현하지 않는다.
 
-상세 결정은 `docs/decisions/0023-run-account-owned-campaigns-as-a-durable-automatic-lifecycle.md`를 따른다.
+상세 결정은 `docs/decisions/0023-run-account-owned-campaigns-as-a-durable-automatic-lifecycle.md`와 동시 집행 경계를 갱신한 `docs/decisions/0024-allow-concurrent-bounded-meta-runs.md`를 따른다.
 
 다음 기능은 시작하지 않는다.
 
@@ -446,7 +446,7 @@ generation_rate_limits / generation_daily_usage / generation_global_daily_usage
 
 meta_ad_runs / meta_operation_ledgers / meta_insight_snapshots
 - Meta 객체 ID·checkpoint·activation 상태와 실제 수집 구간
-- 동일 광고계정 live run 하나를 보장하는 partial unique index
+- 캠페인별 고정 lifetime 예산·수집 구간과 Meta 객체 상태
 - 중간·최종 Insights snapshot과 fetch 시각
 ```
 

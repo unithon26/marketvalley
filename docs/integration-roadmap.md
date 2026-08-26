@@ -37,7 +37,7 @@ worker는 서버 렌더 PNG 5장, 공개 랜딩 URL과 게시 문구로 `PAUSED`
 - 허용된 운영자 UUID
 - 정확한 광고계정 ID
 - 정확한 lifetime 예산
-- 같은 광고계정에 다른 live run 없음
+- 캠페인별 lifetime 예산과 종료 시각 exact match
 - Page와 Instagram identity binding
 
 수집 중에는 Insights snapshot을 저장한다. 종료 시 child부터 parent 순서로 중지 상태를 확인하고 finalization delay 뒤 최종 snapshot과 리포트를 만든다. 사용자별 Meta OAuth, 결제수단 등록, 자동 예산 증액과 종료 광고 재시작은 구현하지 않는다.

@@ -114,21 +114,6 @@ export async function getLatestMetaAdRun(options: {
   return data ? toRun(data) : null;
 }
 
-export async function hasOtherLiveMetaAdRun(options: {
-  client: SupabaseClient;
-  adAccountId: string;
-  runId: string;
-}): Promise<boolean> {
-  const { count, error } = await options.client
-    .from("meta_ad_runs")
-    .select("id", { count: "exact", head: true })
-    .eq("ad_account_id", options.adAccountId)
-    .neq("id", options.runId)
-    .in("status", ["ACTIVATING", "ACTIVE", "PAUSING"]);
-  if (error) throw new Error("Meta live run lookup failed");
-  return (count ?? 0) > 0;
-}
-
 export async function updateMetaAdRun(options: {
   client: SupabaseClient;
   run: MetaAdRun;
