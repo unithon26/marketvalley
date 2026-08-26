@@ -6,6 +6,7 @@
   "description": "UNITHON 2026 marketvalley planning and development workspace",
   "scripts": {
     "dev": "next dev",
+    "presentation:open": "node scripts/open-presentation.mjs",
     "build": "next build",
     "start": "node scripts/start-standalone.mjs",
     "preview:anthropic": "tsx scripts/preview-anthropic-generation.ts",

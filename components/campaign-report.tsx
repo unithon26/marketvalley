@@ -201,6 +201,7 @@ type CampaignReportProps = {
   initialSummary: ReservationSummary;
   initialAnalytics?: CampaignAnalytics;
   presentationMode?: { collectedHours: number };
+  cardImageBasePath?: string;
 };
 
 export function CampaignReport({
@@ -209,6 +210,7 @@ export function CampaignReport({
   initialSummary,
   initialAnalytics = emptyCampaignAnalytics,
   presentationMode,
+  cardImageBasePath,
 }: CampaignReportProps) {
   const [summary, setSummary] = useState(initialSummary);
   const [metrics, setMetrics] = useState(initialAnalytics);
@@ -223,6 +225,8 @@ export function CampaignReport({
   const landingPreviewPath = `${publicPath}?preview=1`;
   const fit = classifyMarketFit(metrics);
   const isPresentation = presentationMode !== undefined;
+  const resolvedCardImageBasePath = cardImageBasePath?.replace(/\/+$/u, "")
+    ?? `/api/campaigns/${encodeURIComponent(campaignId)}/cards`;
 
   const refresh = useCallback(async () => {
     if (refreshInFlightRef.current) return;
@@ -285,7 +289,7 @@ export function CampaignReport({
     try {
       const images = await Promise.all([1, 2, 3, 4, 5].map(async (index) => {
         const response = await fetch(
-          `/api/campaigns/${encodeURIComponent(campaignId)}/cards/${index}`,
+          `${resolvedCardImageBasePath}/${index}`,
           { cache: "no-store" },
         );
         if (!response.ok) throw new Error("card_download_failed");
@@ -387,7 +391,7 @@ export function CampaignReport({
                     <div className="creative-carousel-scale">
                       <Image
                         className="creative-carousel-image"
-                        src={`/api/campaigns/${encodeURIComponent(campaignId)}/cards/${index + 1}`}
+                        src={`${resolvedCardImageBasePath}/${index + 1}`}
                         width={1080}
                         height={1350}
                         alt={`${index + 1}번째 실제 광고 카드뉴스`}

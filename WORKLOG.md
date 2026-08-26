@@ -1,5 +1,13 @@
 # 작업 기록
 
+## 2026-08-26 — 촬영용 리포트·랜딩 발표 인계
+
+- 목적: 다른 발표 노트북에서도 동영상 촬영에 사용한 마지막 더미 리포트와 같은 캠페인의 공개 랜딩을 찾거나 다시 생성하지 않고 즉시 연다.
+- 변경: 루트 `PRESENTATION.md`에 고정 리포트·랜딩 URL을 기록하고, macOS·Windows·Linux 기본 브라우저에서 두 URL을 함께 여는 `scripts/open-presentation.mjs`와 `pnpm presentation:open` 명령을 추가했다. 로그인 없는 `/presentation/report`는 운영 공개 snapshot과 기존 리포트 renderer를 사용하되 발표용 Meta 수치·예약자만 전달하고, 카드 5장은 별도 공개 route가 같은 서버 PNG renderer로 만든다.
+- 영향 범위: 공개 발표 리포트·카드 route, 리포트 이미지 경로 주입, 발표 인계 문서, 로컬 브라우저 실행 helper, package script
+- 검증·전달: URL 출력 모드, Node 문법, focused 단위 테스트, lint·typecheck·전체 단위 테스트, production build와 공개 HTTP·브라우저 화면을 확인하고 GitHub main과 Vercel에 배포한다.
+- 남은 일: 없음.
+
 ## 2026-08-26 — 광고 생성 횟수 제한 제거
 
 - 목적: AI 문구 생성과 Meta 광고 등록의 사용자별·서비스 전체 횟수 상한을 모두 없애 연속 광고 접수가 내부 count 때문에 중단되지 않게 하고, 기존 quota 실패 캠페인을 안전하게 재개한다.
