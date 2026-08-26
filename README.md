@@ -131,13 +131,9 @@ CI는 위 검사에 더해 배포 shell, Terraform, production container build�
 
 ## 저장소 안내
 
-- [제품 브리프](docs/brief.md): 사용자, 사라질 일과 성공 기준
+- [제품 브리프](docs/brief.md): 사용자, 사라지는 일과 성공 기준
 - [MVP 스펙](docs/spec.md): 기능·데이터·API 계약
 - [아키텍처](docs/architecture.md): 상태 머신과 외부 시스템 경계
-- [사용자 흐름](docs/user-flow-and-wireframes.md): Before/After와 화면 요구사항
 - [검증 기록](docs/validation.md): 실행한 자동·운영 검증
-- [발표 실행서](docs/demo-runbook.md): 3분 데모 순서와 실패 대응
-- [배포 가이드](docs/deployment.md): Vercel·Oracle release와 rollback
-- [결정 기록](docs/decisions/): 주요 선택, 기각 대안과 이유
-- [트러블슈팅](TROUBLESHOOTING.md): 실제 장애의 증거·원인·회귀 방지
-- [작업 기록](WORKLOG.md): 날짜별 구현·검증·전달 내역
+- [3분 발표 구성](docs/pitch-outline.md) · [발표 실행서](docs/demo-runbook.md)
+- [전체 문서 안내](docs/README.md): 제품·설계·운영 문서 지도

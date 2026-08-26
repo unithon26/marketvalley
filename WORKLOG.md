@@ -1,5 +1,12 @@
 # 작업 기록
 
+## 2026-08-26 — 심사위원용 공개 저장소 정리
+
+- 목적: 저장소 첫 화면과 문서 구조에서 현재 제품·아키텍처·검증 근거를 빠르게 찾게 하고, 완료된 내부 작업 흔적과 운영에서 제거된 목데이터 설명을 없앤다.
+- 변경: README 문서 진입점을 제품·발표·검증 중심으로 줄이고 `docs/README.md`에 목적별 문서 지도를 추가했다. 루트에 중복되던 개인 작업·트러블슈팅 로그 3개, 완료된 내부 구현 계획 4개와 더 이상 사실이 아닌 목데이터 문서 1개를 제거했다. 공식 ADR, 통합 작업 기록, 실제 장애 기록과 운영 문서는 보존했다.
+- 검증·전달: 끊어진 Markdown 링크, 추적 파일의 내부 도구 표현과 Git diff를 확인한 뒤 source PR·CI·병합으로 전달한다.
+- 남은 일: 없음.
+
 ## 2026-08-26 — 캠페인별 Meta 동시 집행 전환
 
 - 목적: 실제 광고 1건이 수집 중일 때 뒤 광고가 `AWAITING_ACTIVATION`에 머무는 계정 전체 직렬화 병목을 제거한다.
@@ -208,7 +215,7 @@
 ## 2026-08-25 — 실제 생성 경계와 진행 화면 연결
 
 - 목적: 두 입력을 제출한 사용자가 입력 화면에서 AI 응답을 기다리지 않고 즉시 진행 화면을 보며, 구현된 작업의 실제 완료 뒤에만 다음 단계로 이동하게 한다.
-- 변경: `/new` 제출 직후 입력 UI를 4단계 진행 UI로 교체했다. 미구현 시장 조사 준비만 연결 전임을 밝히고 2초 뒤 통과하며, AI 문구 생성은 실제 `/api/generate`, 광고 구성은 실제 `/api/campaigns` 응답까지 머문다. 게시 완료 뒤 결과 도착을 표시하고 `/campaigns/[id]` 리포트로 자동 이동한다. 실패하면 작성값과 같은 draft의 생성 결과를 보존해 재시도한다. 이탈 시 2초 대기와 브라우저 요청을 취소하고 생성 취소 신호를 서버 Route와 Anthropic SDK까지 전달한다. 친구가 `main`에 올린 예약 추이 시간·Windows 줄바꿈 보완 커밋 `f77e0b1`도 fast-forward로 전부 반영하고 `WORKLOG_A.md`의 최종 검증·전달 상태를 실제 CI 기준으로 정정했다.
+- 변경: `/new` 제출 직후 입력 UI를 4단계 진행 UI로 교체했다. 미구현 시장 조사 준비만 연결 전임을 밝히고 2초 뒤 통과하며, AI 문구 생성은 실제 `/api/generate`, 광고 구성은 실제 `/api/campaigns` 응답까지 머문다. 게시 완료 뒤 결과 도착을 표시하고 `/campaigns/[id]` 리포트로 자동 이동한다. 실패하면 작성값과 같은 draft의 생성 결과를 보존해 재시도한다. 이탈 시 2초 대기와 브라우저 요청을 취소하고 생성 취소 신호를 서버 Route와 Anthropic SDK까지 전달한다. 예약 추이 시간·Windows 줄바꿈 보완 커밋 `f77e0b1`도 fast-forward로 반영했다.
 - 검증: 실제 generate·publish 응답을 각각 보류한 단계 대기, 시장 준비 중 이탈, AI 실패 입력 보존·재시도, 게시 응답 유실 멱등 재시도 focused Chromium E2E 4개가 통과했다. 최종 `pnpm check`의 lint·typecheck·단위 테스트 26파일 115개, configured server-secret bundle smoke, production build, Chromium E2E 20개, coverage와 독립 재검토가 통과했다. 커버리지는 statements 83.58%, branches 76.19%, functions 90.13%, lines 87.93%다.
 - 전달: 기능 커밋 `edbb9c4`를 비공개 `main`에 push했다. GitHub Actions run `32826662309`에서 install·lint·typecheck·단위 테스트 115개·server-secret bundle·production build·Chromium E2E 20개가 모두 통과했다. 제품 배포와 행사 제출은 수행하지 않았다.
 - 남은 일: 없음.
@@ -460,17 +467,6 @@
 - 검증: 설치된 Next.js 16 환경변수 로더에서 키 존재와 형식을 확인했다. `.env`의 Git 제외 여부, 권한 `600`, Git 추적 파일 전체의 비밀키 패턴 부재와 `.env.example` diff 형식을 확인했다. 실제 OpenAI API 호출은 수행하지 않았다.
 - 전달: 로컬 환경 설정만 완료했다. 현재 작업 트리에 다른 진행 중 변경이 있어 commit·push하지 않았다.
 - 남은 일: G4 OpenAI adapter 구현 시 서버 전용 `OPENAI_API_KEY`를 사용해 실제 호출과 실패 fallback을 검증하고, 노출된 키는 OpenAI에서 회전한다.
-
-## 2026-08-25 — 개발자 A: 예약자명단 전환(ADR-0013) 병합 알림 — 개발자 B 확인 요청
-
-- 대상: 개발자 B(Codex 세션). 이 항목은 위 Google OAuth 작업과 충돌 없이 병합됐음을 알리고, B의 확인이 필요한 결정을 전달하기 위한 것이다.
-- 목적: 익명 3지선다 신호를 이름+이메일 예약자명단으로 바꾸는 방향을, 이 문서 위쪽 "개발자 A/B 충돌 PR 정리" 항목에서 B가 반려했던 바로 그 방향임을 인지한 상태에서 제품 책임자가 레퍼런스(`proo-landing.vercel.app`)를 근거로 의도적으로 재확정했음을 기록하고 공유
-- 변경: `docs/decisions/0013-switch-anonymous-signal-to-named-reservation.md`(ADR-0013)를 새로 작성하고, `docs/spec.md`(P0-4, 지표 정의, Supabase 스키마 스케치)와 `docs/validation.md`(안전성과 진실성)를 이 ADR 기준으로 갱신했다. 데이터 계약·화면 변경 범위·작업 순서·A/B 분담은 `docs/superpowers/specs/2026-08-25-reservation-list-migration-design.md`에 별도로 기록했다. `WORKLOG_A.md`, `TROUBLESHOOTING_A.md`를 개발자 A 개인 기록으로 신설했다
-- 영향 범위: `docs/decisions/0013-*.md`, `docs/spec.md`, `docs/validation.md`, `docs/superpowers/specs/2026-08-25-*.md`, `WORKLOG_A.md`, `TROUBLESHOOTING_A.md`. 제품 코드(`app/`, `components/`, `lib/`)는 이 항목에서 변경하지 않았다
-- 결정: `docs/decisions/0001-close-the-validation-loop.md`·`docs/validation.md`의 "이름·이메일·전화번호를 받지 않는다" 원칙은 신호(응답) 계층에 한해 ADR-0013으로 대체됐다. ADR 번호 `0012`는 B의 `0012-use-supabase-pkce-auth-behind-server-routes.md`와 겹쳐서 A 쪽을 `0013`으로 재번호했다 — 다음 ADR은 `0014`부터 사용할 것
-- 검증: 문서 전용 변경이라 `pnpm check`는 실행하지 않았다. push 전 `origin/main`을 다시 확인해 B의 `527888e`·`c5a2f90`과 겹치는 파일(`docs/spec.md`, `docs/validation.md`)을 대조했고, 수정 구간이 서로 다른 섹션이라 `git merge-tree`와 실제 병합 모두 충돌 없이 끝났다
-- 전달: 커밋 `59e1c77`, `e7e07af`와 병합 커밋을 `main`에 push했다 (`7cab32f`)
-- 남은 일: B는 착수 전 `docs/superpowers/specs/2026-08-25-reservation-list-migration-design.md` §1(데이터 계약)을 검토해달라. 이후 B-1(Supabase `campaign_reservation` 테이블·repository)과 B-2(`lib/ai/campaignPrompts.ts` 신뢰 문구·OpenAI adapter)를 병렬로 진행하면 된다. `tests/e2e/demo-flow.spec.ts`의 3지선다 관련 검증은 A-1(화면) 단계에서 새 흐름 기준으로 재작성할 예정이라 지금 당장 손대지 않아도 된다.
 
 ## 2026-08-25 — 무과금 개발 모드와 OpenAI 문구 생성 adapter 준비
 
