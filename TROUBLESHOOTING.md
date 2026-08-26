@@ -23,13 +23,13 @@ PR #25에서는 한도 reset 뒤 재시도하도록 일차 보정했지만 Verce
 
 애플리케이션은 AI quota 호출과 분당·일일 설정을 더 이상 사용하지 않는다. Meta operation RPC에서도 owner/global count 검사, usage counter 갱신과 quota 거절을 제거했고 새 client는 limit 인자를 보내지 않는다. rolling deploy 중인 이전 worker를 위해 `consume_generation_quota`는 같은 시그니처로 항상 `true`를 반환하고, Meta RPC의 마지막 두 인자는 optional no-op으로 유지한다. release는 service-role 전용 marker RPC가 `true`를 반환해야 활성화되므로 구 DB 함수가 남은 상태에서 새 application이 시작되지 않는다. 한도 전용 오류 타입·날짜 reset 재시도·화면 문구도 삭제했다.
 
-공유 migration은 과거 실패 행을 일괄 변경하지 않는다. 최신 quota 실패 캠페인은 정확한 campaign·owner, `FAILED`, 해당 오류 코드, 만료된 처리 lease, materialized spec, Meta operation·run 없음이 모두 확인될 때만 별도 운영 작업으로 `PREPARING`에 복구한다. tentative 수집 구간을 비워 이전 Oracle worker가 먼저 claim해도 전체 일정을 새로 계산한다. owner/campaign 소유권, operation key·fingerprint, lease, checkpoint와 reconciliation은 계속 유지한다.
+공유 migration은 과거 실패 행을 일괄 변경하지 않는다. 최종 배포 시점에는 `FAILED` 또는 quota 오류 캠페인 행이 남아 있지 않아 임의 상태 복구를 수행하지 않았다. owner/campaign 소유권, operation key·fingerprint, lease, checkpoint와 reconciliation은 계속 유지한다.
 
 ### 검증과 남은 위험
 
 PR #25의 일차 보정은 lint·typecheck·단위 테스트 44파일 230개, configured client bundle production build, Chromium E2E 7개와 high audit가 통과했고 source main CI와 Vercel 배포도 성공했다. 11:55 KST 확인에서 최신 캠페인은 Oracle 이전 worker에 의해 `FAILED`였고 Meta operation 오류 뒤 추가 생성 오류는 없었다.
 
-최종 count 제거는 lint·typecheck와 단위 테스트 42파일 222개, production build, configured auth bundle, Chromium E2E 7개와 high audit를 통과했다. migration `202608260010`을 application보다 먼저 운영 DB에 적용하고 remote 이력과 DB lint를 확인했다. 실제 함수에서 marker `true`, anon·authenticated 실행 차단, service-role 실행 허용, Meta 6·8인자 호출 호환과 AI·Meta usage counter 접근 부재도 확인했다. Vercel·Oracle 동일 SHA와 복구 캠페인의 새 Meta run은 배포 뒤 검증한다.
+최종 count 제거는 lint·typecheck와 단위 테스트 42파일 222개, production build, configured auth bundle, Chromium E2E 7개와 high audit를 통과했다. migration `202608260010`을 application보다 먼저 운영 DB에 적용하고 remote 이력과 DB lint를 확인했다. 실제 함수에서 marker `true`, anon·authenticated 실행 차단, service-role 실행 허용, Meta 6·8인자 호출 호환과 AI·Meta usage counter 접근 부재도 확인했다. source PR #26과 control-plane PR #1의 CI가 성공했고 Vercel·Oracle은 동일 source `587d742b`를 서비스한다. 두 운영 환경의 AI·Meta count 환경값도 제거했다.
 
 면접에서는 애플리케이션 count 제한과 idempotency를 분리한 이유, rolling deploy 중 RPC 호환을 유지하면서 enforcement를 제거한 방법, 외부 operation이 없는 실패 행만 어떻게 복구했는지 설명할 수 있다.
 

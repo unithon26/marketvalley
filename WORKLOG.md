@@ -2,13 +2,13 @@
 
 ## 2026-08-26 — 광고 생성 횟수 제한 제거
 
-- 목적: AI 문구 생성과 Meta 광고 등록의 사용자별·서비스 전체 횟수 상한을 모두 없애 연속 광고 접수가 내부 count 때문에 중단되지 않게 하고, 기존 quota 실패 캠페인을 안전하게 재개한다.
+- 목적: AI 문구 생성과 Meta 광고 등록의 사용자별·서비스 전체 횟수 상한을 모두 없애 연속 광고 접수가 내부 count 때문에 중단되지 않게 한다.
 - 변경: lifecycle의 AI quota 호출과 분당·일일 환경값·상태 점검을 제거했다. Meta policy·Supabase ledger client·환경 예시·Oracle preflight에서도 owner/global count를 제거했다. migration은 이전 worker용 AI RPC를 항상 통과시키고 Meta RPC의 기존 limit 인자를 optional no-op으로 남기되 count 검사, usage counter 갱신과 quota 거절을 없앤다. 배포 전 marker RPC를 직접 호출해 이 migration이 적용되지 않은 release는 활성화하지 않는다.
 - 정리: 한도 초기화까지 기다리던 전용 오류·재시도·화면 분기도 삭제했다. operation 소유권·idempotency·lease·checkpoint·reconciliation은 중복 외부 객체 방지를 위해 유지하며 광고 생성 횟수를 세거나 차단하지 않는다.
-- 복구: 최신 운영 캠페인은 Claude 생성 뒤 quota 오류를 거쳐 Oracle 이전 worker에서 `FAILED`가 됐다. 공유 migration은 과거 행을 바꾸지 않는다. 정확한 campaign·owner, 만료된 lease와 Meta operation·run 없음까지 읽기 검증한 뒤 별도 운영 작업으로 이 한 건만 `PREPARING`에 복구하고 tentative 수집 일정을 비운다.
+- 복구 확인: 공유 migration은 과거 행을 바꾸지 않았다. 최종 배포 시점에는 `FAILED` 또는 quota 오류 캠페인 행이 남아 있지 않아 임의 상태 복구를 수행하지 않았고, 기존 실제 캠페인은 `ACTIVE`·`COLLECTING`을 유지했다.
 - 영향 범위: AI lifecycle·health, Meta policy·ledger RPC adapter, Supabase migration, lifecycle 복구, production preflight·환경 예시, 운영 문서·ADR·테스트
 - 검증: lint·typecheck와 단위 테스트 42파일 222개, production build, configured auth bundle, Chromium E2E 7개와 high audit가 통과했다. 운영 Supabase에 migration `202608260010`을 먼저 적용하고 remote 이력·DB lint를 확인했다. 실제 DB에서 marker `true`, anon·authenticated 차단, service-role 허용, Meta 6·8인자 호환, AI·Meta 함수의 usage counter 접근 부재를 검증했다.
-- 전달: source·control-plane PR과 CI, Vercel·Oracle 동일 SHA 배포, 정확한 실패 캠페인 복구와 새 Meta run 확인을 이어서 기록한다.
+- 전달: source PR #26을 merge SHA `587d742b`로 병합했고 PR·main CI와 Vercel production 배포가 성공했다. control-plane PR #1은 merge SHA `30a471ab`로 병합해 CI를 통과했다. 운영 DB migration, Vercel·Oracle count 환경값 제거와 root release script 교체 뒤 Oracle deploy run `32926387957`이 성공해 Vercel·Oracle이 source `587d742b`를 서비스한다. 교체 전 Oracle script와 환경은 root 전용 backup으로 보존했다.
 
 ## 2026-08-26 — 내부 광고 생성 일일 한도 대기 복구
 
