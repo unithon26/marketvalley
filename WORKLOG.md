@@ -3,10 +3,10 @@
 ## 2026-08-26 — 촬영용 리포트·랜딩 발표 인계
 
 - 목적: 다른 발표 노트북에서도 동영상 촬영에 사용한 마지막 더미 리포트와 같은 캠페인의 공개 랜딩을 찾거나 다시 생성하지 않고 즉시 연다.
-- 변경: 루트 `PRESENTATION.md`에 고정 리포트·랜딩 URL과 로그인 확인 사항을 기록하고, macOS·Windows·Linux 기본 브라우저에서 로그인 복귀 URL과 랜딩을 함께 여는 `scripts/open-presentation.mjs`와 `pnpm presentation:open` 명령을 추가했다. 화면은 별도 복제본이 아니라 촬영 때 확인한 운영 URL을 직접 사용한다.
-- 영향 범위: 발표 인계 문서, 로컬 브라우저 실행 helper, package script
-- 검증·전달: URL 출력 모드, Node 문법, 로그인 진입·랜딩 HTTP 응답, Markdown 링크와 비밀정보 diff를 확인한 뒤 `codex/presentation-handoff` 브랜치에 commit·push한다. 운영 배포와 DB는 변경하지 않는다.
-- 남은 일: 발표 노트북에서 발표용 Google 계정 로그인과 두 탭 열기를 한 번 확인한다.
+- 변경: 루트 `PRESENTATION.md`에 고정 리포트·랜딩 URL을 기록하고, macOS·Windows·Linux 기본 브라우저에서 두 URL을 함께 여는 `scripts/open-presentation.mjs`와 `pnpm presentation:open` 명령을 추가했다. 로그인 없는 `/presentation/report`는 운영 공개 snapshot과 기존 리포트 renderer를 사용하되 발표용 Meta 수치·예약자만 전달하고, 카드 5장은 별도 공개 route가 같은 서버 PNG renderer로 만든다.
+- 영향 범위: 공개 발표 리포트·카드 route, 리포트 이미지 경로 주입, 발표 인계 문서, 로컬 브라우저 실행 helper, package script
+- 검증·전달: URL 출력 모드, Node 문법, focused 단위 테스트, lint·typecheck·전체 단위 테스트, production build와 공개 HTTP·브라우저 화면을 확인하고 GitHub main과 Vercel에 배포한다.
+- 남은 일: 없음.
 
 ## 2026-08-26 — 광고 생성 횟수 제한 제거
 

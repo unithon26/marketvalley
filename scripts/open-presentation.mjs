@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 
 const presentationUrls = [
-  "https://marketvaley.vercel.app/login?next=%2Fcampaigns%2F38403915-28e3-4643-844c-5c7388ab7e6c%2Fpresentation",
+  "https://marketvaley.vercel.app/presentation/report",
   "https://marketvaley.vercel.app/p/campaign-fa5197f4",
 ];
 

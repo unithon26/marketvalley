@@ -54,4 +54,14 @@ describe("automatic Meta boundary", () => {
     expect(report).toContain("발표용 수집 완료 예시");
     expect(report).not.toContain("실제 광고 활성화");
   });
+
+  it("공개 발표 리포트는 소유자 API 대신 공개 카드 route를 사용한다", () => {
+    const report = renderToStaticMarkup(createElement(CampaignReport, {
+      ...props,
+      presentationMode: { collectedHours: 24 },
+      cardImageBasePath: "/api/presentation/cards/",
+    }));
+    expect(report).toContain("/api/presentation/cards/1");
+    expect(report).not.toContain(`/api/campaigns/${props.campaignId}/cards/1`);
+  });
 });
