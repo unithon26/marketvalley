@@ -6,7 +6,7 @@
 - 변경: UNITHON 2026 매니패스트 특별상 수상을 명시하고 서비스·발표 리포트·공개 랜딩·카드 결과를 첫 화면에 연결했다. Before/After, 실제 lifecycle, Mermaid 아키텍처, 핵심 구현·근거, 기술 스택, 진실성 경계와 문서 지도를 다시 구성했다. 팀 역할은 공개 Git commit, 병합 PR, 파일 소유권 문서에서 확인되는 범위만 구체화했고 비개발 디자인 기여는 실명 없이 구분했다.
 - 영향 범위: 루트 README와 외부 지원·포트폴리오에서 참조하는 프로젝트 설명
 - 검증: `pnpm check`의 lint·typecheck·단위 테스트 43파일 224개, production build와 Chromium E2E 7개가 통과했다. README 상대 링크 24개에 누락이 없고 공개 서비스·발표 리포트·랜딩·카드 5장과 근거 PR의 HTTP 응답을 확인했다.
-- 전달: source PR의 GitHub CI와 main 병합 결과를 최종 근거로 확인한다.
+- 전달: PR #30을 merge SHA `a8a65c08`로 병합했다. PR CI `32971231515`와 main CI `32971558366`의 전체 quality job이 성공했고 Vercel production 배포 완료를 확인했다.
 - 남은 일: 없음.
 
 ## 2026-08-26 — 촬영용 리포트·랜딩 발표 인계
