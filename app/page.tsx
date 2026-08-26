@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { CampaignEntryLink } from "@/components/campaign-entry-link";
-import { PlusIcon } from "@/components/icons";
+import { PlusIcon, TrashIcon } from "@/components/icons";
 import { SiteHeader } from "@/components/site-header";
 import { hasBundledAuthMode } from "@/lib/auth/mode";
 import { useAuthSession } from "@/lib/client/use-auth-session";
@@ -59,6 +59,8 @@ export default function HomePage() {
   const [projects, setProjects] = useState<CampaignLifecycleResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(() => new Set());
 
   const loadProjects = useCallback(async () => {
     setLoading(true);
@@ -73,6 +75,43 @@ export default function HomePage() {
       setLoadError(true);
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  const deleteProject = useCallback(async (
+    project: CampaignLifecycleResponse,
+    name: string,
+  ) => {
+    const confirmed = window.confirm(
+      `“${name}” 프로젝트와 예약자 데이터를 삭제할까요? 삭제한 데이터는 복구할 수 없습니다.`,
+    );
+    if (!confirmed) return;
+
+    setDeleteError(null);
+    setDeletingIds((current) => new Set(current).add(project.id));
+    try {
+      const query = new URLSearchParams({ id: project.id, draftId: project.draftId });
+      const response = await fetch(`/api/campaigns?${query.toString()}`, {
+        method: "DELETE",
+        cache: "no-store",
+      });
+      const body = await response.json() as { error?: { message?: unknown } };
+      if (!response.ok) {
+        throw new Error(
+          typeof body.error?.message === "string"
+            ? body.error.message
+            : "프로젝트를 삭제하지 못했습니다.",
+        );
+      }
+      setProjects((current) => current.filter((item) => item.id !== project.id));
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : "프로젝트를 삭제하지 못했습니다.");
+    } finally {
+      setDeletingIds((current) => {
+        const next = new Set(current);
+        next.delete(project.id);
+        return next;
+      });
     }
   }, []);
 
@@ -115,6 +154,7 @@ export default function HomePage() {
             <button className="text-button" type="button" onClick={() => void loadProjects()}>다시 불러오기</button>
           </div>
         ) : null}
+        {deleteError ? <p className="dashboard-error" role="alert">{deleteError}</p> : null}
         {!loading && !loadError && visibleProjects.length === 0 ? (
           <div className="project-empty">
             <p>{anonymous
@@ -135,24 +175,37 @@ export default function HomePage() {
             const image = project.spec
               ? `/api/campaigns/${encodeURIComponent(project.id)}/cards/1`
               : statusImage[project.status];
+            const deleting = deletingIds.has(project.id);
             return (
-              <Link href={href} className="project-card" key={project.id}>
-                <div className="project-visual">
-                  <Image src={image} width={560} height={330} alt="" unoptimized />
-                </div>
-                <div className="project-card-body">
-                  <strong>{name}</strong>
-                  <span className="time-chip">{statusCopy[project.status]}</span>
-                  <div className="progress-meta"><b>{statusProgress[project.status]}%</b></div>
-                  <div className="progress-track"><i style={{ width: `${statusProgress[project.status]}%` }} /></div>
-                  {project.status === "FAILED" && project.lastErrorMessage ? (
-                    <small className="project-error">{project.lastErrorMessage}</small>
-                  ) : null}
-                  {completed && project.status === "ARCHIVED" ? (
-                    <small className="project-archive-note">새 자동 수집 이전에 만든 프로젝트입니다.</small>
-                  ) : null}
-                </div>
-              </Link>
+              <article className="project-card-shell" key={project.id}>
+                <Link href={href} className="project-card">
+                  <div className="project-visual">
+                    <Image src={image} width={560} height={330} alt="" unoptimized />
+                  </div>
+                  <div className="project-card-body">
+                    <strong>{name}</strong>
+                    <span className="time-chip">{statusCopy[project.status]}</span>
+                    <div className="progress-meta"><b>{statusProgress[project.status]}%</b></div>
+                    <div className="progress-track"><i style={{ width: `${statusProgress[project.status]}%` }} /></div>
+                    {project.status === "FAILED" && project.lastErrorMessage ? (
+                      <small className="project-error">{project.lastErrorMessage}</small>
+                    ) : null}
+                    {completed && project.status === "ARCHIVED" ? (
+                      <small className="project-archive-note">새 자동 수집 이전에 만든 프로젝트입니다.</small>
+                    ) : null}
+                  </div>
+                </Link>
+                <button
+                  className="project-delete-button"
+                  type="button"
+                  aria-label={`${name} 프로젝트 삭제`}
+                  disabled={deleting}
+                  onClick={() => void deleteProject(project, name)}
+                >
+                  <TrashIcon size={18} />
+                  <span>{deleting ? "삭제 중" : "삭제"}</span>
+                </button>
+              </article>
             );
           })}
         </section>

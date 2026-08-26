@@ -2,7 +2,9 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
+import { routeErrorResponse } from "@/app/api/_lib/http";
 import {
+  CampaignDeletionBlockedError,
   CampaignNotFoundError,
   DraftOwnershipError,
   DuplicateSignalError,
@@ -170,12 +172,28 @@ class FakeQuery implements PromiseLike<{ data: unknown; error: null | { code: st
   }
 }
 
-function fakeClient(state: FakeState, role: Role) {
+function fakeClient(
+  state: FakeState,
+  role: Role,
+  deletionResult: "deleted" | "processing" | "live_ad" | "external_state_unknown" = "deleted",
+) {
   return {
     from(table: TableName) {
       return new FakeQuery(state, role, table);
     },
     async rpc(name: string, input: Record<string, unknown>) {
+      if (name === "delete_owned_inactive_campaign" && role.kind === "owner") {
+        const campaign = state.campaigns.find((row) => (
+          row.id === input.p_campaign_id
+          && row.draft_id === input.p_draft_id
+          && row.owner_id === role.userId
+        ));
+        if (!campaign) return { data: "not_found", error: null };
+        if (deletionResult !== "deleted") return { data: deletionResult, error: null };
+        state.campaigns = state.campaigns.filter((row) => row.id !== campaign.id);
+        state.reservations = state.reservations.filter((row) => row.campaign_id !== campaign.id);
+        return { data: "deleted", error: null };
+      }
       if (name === "record_campaign_reservation" && role.kind === "service") {
         const campaign = state.campaigns.find((row) => row.id === input.p_campaign_id);
         if (!campaign) return { data: "not_found", error: null };
@@ -206,9 +224,10 @@ function repository(
   state: FakeState,
   userId: string,
   serviceClient: ReturnType<typeof fakeClient>,
+  deletionResult?: "deleted" | "processing" | "live_ad" | "external_state_unknown",
 ) {
   return new SupabaseCampaignRepository({
-    ownerClient: fakeClient(state, { kind: "owner", userId }) as never,
+    ownerClient: fakeClient(state, { kind: "owner", userId }, deletionResult) as never,
     serviceClient: serviceClient as never,
     hashSecret: "0123456789abcdef0123456789abcdef",
     reservationLimits: { campaignMinute: 10, globalMinute: 120, campaignTotal: 1_000 },
@@ -271,6 +290,38 @@ describe("SupabaseCampaignRepository", () => {
     await expect(ownerB.getReservationSummary(campaign.id))
       .rejects.toBeInstanceOf(CampaignNotFoundError);
     await expect(ownerB.getBySlug(campaign.slug)).resolves.toMatchObject({ id: campaign.id });
+  });
+
+  it("소유 프로젝트만 삭제하고 live 광고가 있으면 데이터 삭제를 막는다", async () => {
+    const state: FakeState = { campaigns: [], reservations: [], sequence: 0 };
+    const serviceClient = fakeClient(state, { kind: "service" });
+    const owner = repository(state, "user-a", serviceClient);
+    const campaign = await owner.publish("draft-delete", demoCampaign);
+
+    await owner.delete({ campaignId: campaign.id, draftId: "draft-delete" });
+    await expect(owner.getById(campaign.id)).resolves.toBeNull();
+
+    const blockedOwner = repository(state, "user-a", serviceClient, "live_ad");
+    const liveCampaign = await blockedOwner.publish("draft-live", demoCampaign);
+    await expect(blockedOwner.delete({
+      campaignId: liveCampaign.id,
+      draftId: "draft-live",
+    })).rejects.toBeInstanceOf(CampaignDeletionBlockedError);
+    await expect(blockedOwner.getById(liveCampaign.id)).resolves.toMatchObject({
+      id: liveCampaign.id,
+    });
+  });
+
+  it("live 광고 삭제 차단을 사용자가 이해할 수 있는 409 응답으로 반환한다", async () => {
+    const response = routeErrorResponse(new CampaignDeletionBlockedError("live_ad"));
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: "campaign_deletion_blocked",
+        message: "실제 광고 수집이 끝난 뒤 프로젝트를 삭제할 수 있습니다.",
+      },
+    });
   });
 });
 

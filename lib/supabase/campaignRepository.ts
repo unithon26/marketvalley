@@ -8,6 +8,7 @@ import {
 } from "@/lib/contracts/campaign";
 import { ideaInputSchema, type IdeaInput } from "@/lib/contracts/generator";
 import {
+  CampaignDeletionBlockedError,
   CampaignNotFoundError,
   DraftConflictError,
   DraftOwnershipError,
@@ -352,14 +353,19 @@ export class SupabaseCampaignRepository implements CampaignRepository {
     const stored = await this.requireOwnerCampaign(input.campaignId);
     this.assertDraftOwnership(stored, input.draftId);
     const { data, error } = await this.requireOwnerClient().rpc(
-      "delete_owned_unstarted_campaign",
+      "delete_owned_inactive_campaign",
       {
         p_campaign_id: input.campaignId,
         p_draft_id: input.draftId.trim(),
       },
     );
     if (error) throw databaseFailure("campaign delete", error);
-    if (data !== true) throw new CampaignNotFoundError();
+    const result = Array.isArray(data) ? data[0] : data;
+    if (result === "deleted") return;
+    if (result === "processing" || result === "live_ad" || result === "external_state_unknown") {
+      throw new CampaignDeletionBlockedError(result);
+    }
+    throw new CampaignNotFoundError();
   }
 
   private requireOwnerClient(): SupabaseClient {

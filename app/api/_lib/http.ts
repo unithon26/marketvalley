@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import type { ApiErrorResponse } from "@/lib/contracts/api";
 import {
+  CampaignDeletionBlockedError,
   CampaignNotFoundError,
   DraftConflictError,
   DraftOwnershipError,
@@ -95,6 +96,18 @@ export function routeErrorResponse(error: unknown): Response {
   }
   if (error instanceof DraftOwnershipError || hasErrorName(error, "DraftOwnershipError")) {
     return errorResponse(403, "draft_mismatch", "이 광고를 변경할 수 없는 초안입니다.");
+  }
+  if (
+    error instanceof CampaignDeletionBlockedError
+    || hasErrorName(error, "CampaignDeletionBlockedError")
+  ) {
+    const reason = error instanceof CampaignDeletionBlockedError ? error.reason : null;
+    const message = reason === "live_ad"
+      ? "실제 광고 수집이 끝난 뒤 프로젝트를 삭제할 수 있습니다."
+      : reason === "processing"
+        ? "프로젝트를 처리 중입니다. 잠시 뒤 다시 삭제해주세요."
+        : "외부 광고 상태를 먼저 확인해야 이 프로젝트를 삭제할 수 있습니다.";
+    return errorResponse(409, "campaign_deletion_blocked", message);
   }
   if (hasErrorName(error, "CampaignGeneratorConfigError")) {
     return errorResponse(503, "campaign_generator_not_configured", "문구 생성 설정을 확인해주세요.");

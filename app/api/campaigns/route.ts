@@ -11,6 +11,11 @@ import { createCampaignGenerator } from "@/lib/ai/campaignGenerator";
 import { isSameOriginMutation, resolveAppOrigin } from "@/lib/auth/security";
 import { getCampaignRepository } from "@/lib/demo/repository";
 import { resolveCampaignRepositoryMode } from "@/lib/demo/repositoryConfig";
+import {
+  CampaignNotFoundError,
+  DraftOwnershipError,
+} from "@/lib/contracts/repository";
+import { assertCampaignMetaDeletionSafe } from "@/lib/meta/campaignDeletion";
 import { processCampaignLifecycle } from "@/lib/lifecycle/campaignLifecycleProcessor";
 import {
   ApiRequestError,
@@ -130,6 +135,12 @@ export async function DELETE(request: Request): Promise<Response> {
       draftId: url.searchParams.get("draftId"),
     };
     const input = deleteCampaignRequestSchema.parse(queryInput);
+    const campaign = await campaignRepository.getLifecycle(input.campaignId);
+    if (!campaign) throw new CampaignNotFoundError();
+    if (campaign.draftId !== input.draftId) throw new DraftOwnershipError();
+    if (resolveCampaignRepositoryMode() !== "fixture") {
+      await assertCampaignMetaDeletionSafe(input.campaignId);
+    }
     await campaignRepository.delete(input);
     return jsonResponse({ deleted: true, campaignId: input.campaignId });
   } catch (error) {

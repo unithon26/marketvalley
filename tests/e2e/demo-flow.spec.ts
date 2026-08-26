@@ -114,3 +114,18 @@ test("로그인한 계정은 새로고침 뒤에도 기존 진행·완료 상태
   await page.getByRole("button", { name: "검증 완료" }).click();
   await expect(page.getByText("공방온", { exact: true }).first()).toBeVisible();
 });
+
+test("첫 화면에서 소유 프로젝트를 확인 후 삭제한다", async ({ page }) => {
+  await createCampaignThroughUi(page);
+  await page.goto("/");
+  await page.getByRole("button", { name: "검증 완료" }).click();
+  await expect(page.getByText("공방온", { exact: true }).first()).toBeVisible();
+
+  const deleteButtons = page.getByRole("button", { name: "공방온 프로젝트 삭제" });
+  const countBeforeDelete = await deleteButtons.count();
+  expect(countBeforeDelete).toBeGreaterThan(0);
+  page.once("dialog", async (dialog) => dialog.accept());
+  await deleteButtons.first().click();
+
+  await expect(deleteButtons).toHaveCount(countBeforeDelete - 1);
+});

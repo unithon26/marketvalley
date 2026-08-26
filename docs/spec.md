@@ -186,6 +186,7 @@ P1 때문에 P0 통합이나 발표 준비가 1시간 이상 밀리면 즉시 P1
 - 전체 프로젝트 대시보드와 상태 필터
 - 로그인 계정이 소유한 실제 프로젝트만 표시
 - 비로그인·빈 목록·오류 상태를 더미 카드 없이 표시
+- 확인창을 거쳐 소유 프로젝트를 개별 삭제하되 처리 중이거나 실제 광고가 ACTIVE인 프로젝트는 차단
 - `/new`로 이동하는 `새 광고` CTA
 - 제품이 없애는 기존 작업을 짧은 `before/after`로 표시
 
@@ -401,7 +402,7 @@ tests/e2e/
 - `GET /api/campaigns/[id]/cards/[index]`: 같은 서버 renderer로 1080×1350 PNG 한 장을 반환한다.
 - `POST /api/reservations`: `{ campaignId, name, email, consent, utm? }`를 검증해 동의된 예약 한 건을 기록한다. fixture는 `(campaignId, email)` hash, live는 서버 HMAC email hash와 DB unique constraint로 중복을 막는다.
 - `PATCH /api/campaigns`: `{ campaignId, draftId, nextAction }`을 받아 소유 draft가 맞을 때만 사람의 선택 `continue`, `revise`, `pause`를 저장한다.
-- `DELETE /api/campaigns?id=...&draftId=...`: 소유권을 검증하고 Meta run이 없는 미시작·실패 접수만 안전하게 삭제한다.
+- `DELETE /api/campaigns?id=...&draftId=...`: 소유권과 row lock을 확인한다. worker lease가 없고 Meta run이 없거나 DB와 Meta Graph의 campaign·ad set·ad가 모두 `PAUSED`일 때만 프로젝트와 종속 예약·집계 데이터를 삭제한다. 불확실한 외부 operation·Graph 응답이나 실제 광고가 남아 있으면 `409`로 차단한다.
 - `POST /api/analytics/visits`: 공개 랜딩의 고유 방문을 privacy-preserving identifier로 집계한다.
 
 모든 route handler에서 입력 크기와 Zod 스키마를 검사한다. `POST /api/reservations`는 동의가 없는 제출을 거절하고 같은 캠페인의 같은 이메일 중복을 `alreadyReserved` 결과로 변환한다. 원문 이메일은 소유자 조회에만 사용하고 목록 화면에는 마스킹한다. Anthropic 키와 Supabase 서버 키는 클라이언트 번들에 포함하지 않는다.

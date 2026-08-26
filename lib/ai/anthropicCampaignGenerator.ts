@@ -205,6 +205,14 @@ export class CampaignGenerationError extends Error {
   }
 }
 
+export function isPermanentCampaignGenerationError(
+  error: CampaignGenerationError,
+): boolean {
+  return error.code === "anthropic_billing_error"
+    || error.code === "anthropic_schema_error"
+    || error.code === "anthropic_unsafe_output";
+}
+
 function shortenGeneratedText(value: string, maximum: number): string {
   const normalized = value.trim();
   if (normalized.length <= maximum) return normalized;
@@ -373,9 +381,13 @@ function removeUngroundedHashtags(
     .filter((hashtag) => !INPUT_GROUNDED_TERMS.some(
       (term) => hashtag.includes(term) && !source.includes(term),
     ))
+    .filter((hashtag) => !PROHIBITED_PUBLIC_CLAIM_PATTERN.test(hashtag))
     .map(normalizeHashtag)
     .filter((hashtag): hashtag is string => hashtag !== null)));
-  const fallback = normalizeHashtag(candidate.projectName) ?? "#시장검증";
+  const projectFallback = normalizeHashtag(candidate.projectName);
+  const fallback = projectFallback && !PROHIBITED_PUBLIC_CLAIM_PATTERN.test(projectFallback)
+    ? projectFallback
+    : "#시장검증";
   return {
     ...candidate,
     hashtags: hashtags.length > 0 ? hashtags : [fallback],
