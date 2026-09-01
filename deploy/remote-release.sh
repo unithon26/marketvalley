@@ -13,7 +13,7 @@ readonly previous_release_file="${shared_directory}/previous-release"
 readonly deployment_lock="${shared_directory}/deployment.lock"
 readonly buildx_builder="marketvalley-production-v2"
 readonly buildkit_image="moby/buildkit:buildx-stable-1@sha256:28a898719c18a33f4e8000685287fa36fd0dd9560c6440227d3a732d79bb41d8"
-readonly required_release_contract="marketvalley-production-v1"
+readonly required_release_contract="marketvalley-production-v2"
 
 compose_file=""
 compose_tag=""
@@ -214,6 +214,12 @@ validate_production_environment() {
   local bind_address=""
   local cron_secret=""
   local generator_mode=""
+  local geuneul_backend_host=""
+  local geuneul_backend_port=""
+  local geuneul_backend_upstream=""
+  local geuneul_frontend_origin=""
+  local geuneul_object_storage_host=""
+  local geuneul_site_address=""
   local hash_secret=""
   local http_port=""
   local https_port=""
@@ -273,6 +279,10 @@ validate_production_environment() {
   bind_address="$(read_environment_value MARKETVALLEY_BIND_ADDRESS)"
   http_port="$(read_environment_value MARKETVALLEY_HTTP_PORT)"
   https_port="$(read_environment_value MARKETVALLEY_HTTPS_PORT)"
+  geuneul_site_address="$(read_environment_value GEUNEUL_SITE_ADDRESS)"
+  geuneul_frontend_origin="$(read_environment_value GEUNEUL_FRONTEND_ORIGIN)"
+  geuneul_backend_upstream="$(read_environment_value GEUNEUL_BACKEND_UPSTREAM)"
+  geuneul_object_storage_host="$(read_environment_value GEUNEUL_OBJECT_STORAGE_HOST)"
   meta_ads_mode="$(read_optional_environment_value META_ADS_MODE)"
   meta_ads_mode="${meta_ads_mode:-disabled}"
 
@@ -385,6 +395,29 @@ validate_production_environment() {
     || fail "MARKETVALLEY_HTTPS_PORT must be a high TCP port"
   [[ "${http_port}" != "${https_port}" ]] \
     || fail "MARKETVALLEY_HTTP_PORT and MARKETVALLEY_HTTPS_PORT must differ"
+  [[ "${geuneul_site_address}" =~ ^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$ \
+    && "${geuneul_site_address}" == *.* \
+    && "${geuneul_site_address}" != *.example.com \
+    && "${geuneul_site_address}" != "${site_address}" ]] \
+    || fail "GEUNEUL_SITE_ADDRESS must be a distinct non-example production domain"
+  [[ "${geuneul_frontend_origin}" =~ ^https://[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?(:[0-9]{1,5})?$ \
+    && "${geuneul_frontend_origin}" != *example.com* ]] \
+    || fail "GEUNEUL_FRONTEND_ORIGIN must be a non-example HTTPS origin"
+  if [[ "${geuneul_backend_upstream}" =~ ^http://([^:/]+):([0-9]{4,5})$ ]]; then
+    geuneul_backend_host="${BASH_REMATCH[1]}"
+    geuneul_backend_port="${BASH_REMATCH[2]}"
+  else
+    fail "GEUNEUL_BACKEND_UPSTREAM must be an HTTP private IPv4 high-port origin"
+  fi
+  is_private_ipv4 "${geuneul_backend_host}" \
+    || fail "GEUNEUL_BACKEND_UPSTREAM must use a private IPv4 address"
+  is_bounded_integer "${geuneul_backend_port}" 1024 65535 \
+    || fail "GEUNEUL_BACKEND_UPSTREAM must use a high TCP port"
+  [[ "${geuneul_backend_port}" != "${http_port}" && "${geuneul_backend_port}" != "${https_port}" ]] \
+    || fail "GEUNEUL backend port must not collide with the Caddy bind ports"
+  [[ "${geuneul_object_storage_host}" =~ ^[a-zA-Z0-9.-]+\.compat\.objectstorage\.[a-z0-9-]+\.oci\.customer-oci\.com$ \
+    && "${geuneul_object_storage_host}" != namespace.* ]] \
+    || fail "GEUNEUL_OBJECT_STORAGE_HOST must be an exact OCI S3 compatibility hostname"
 }
 
 acquire_deployment_lock() {

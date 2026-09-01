@@ -33,8 +33,8 @@ describe("production deployment trust boundary", () => {
     expect(gateway).toContain('SSH_ORIGINAL_COMMAND');
     expect(gateway).toContain('maximum_archive_bytes=268435456');
     expect(gateway).not.toContain("eval ");
-    expect(runtimeContract).toBe("marketvalley-production-v1");
-    expect(releaseScript).toContain('required_release_contract="marketvalley-production-v1"');
+    expect(runtimeContract).toBe("marketvalley-production-v2");
+    expect(releaseScript).toContain('required_release_contract="marketvalley-production-v2"');
     expect(releaseScript).toContain('release runtime contract is incompatible with this server');
     expect(releaseScript).toContain('--driver-opt memory=2g');
     expect(releaseScript).not.toContain('--driver-opt memory=3g');
@@ -48,6 +48,10 @@ describe("production deployment trust boundary", () => {
     expect(releaseScript).toContain('TURNSTILE_VERIFY_TIMEOUT_MS must be an integer between 500 and 10000');
     expect(releaseScript).toContain('RESERVATION_CAMPAIGN_MINUTE_LIMIT must not exceed');
     expect(releaseScript).toContain('production campaign lifecycle requires META_ADS_MODE=live');
+    expect(releaseScript).toContain('GEUNEUL_BACKEND_UPSTREAM must use a private IPv4 address');
+    expect(releaseScript).toContain('GEUNEUL_OBJECT_STORAGE_HOST must be an exact OCI S3 compatibility hostname');
+    expect(readRepositoryFile("deploy/Caddyfile")).toContain("@rejected_object_storage");
+    expect(readRepositoryFile("deploy/Caddyfile")).toContain("header_up Host {$GEUNEUL_OBJECT_STORAGE_HOST}");
     expect(releaseScript).not.toContain('META_DRAFT_DAILY_OWNER_LIMIT');
     expect(releaseScript).not.toContain('META_DRAFT_DAILY_GLOBAL_LIMIT');
     expect(releaseScript).toContain('validate-release-archive.py');

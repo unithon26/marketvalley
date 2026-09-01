@@ -554,3 +554,10 @@
 - 실패와 해결: `main` push `9d6c4d5`의 GitHub Actions run `32827728636`은 이전 `/` HTML에서 인증 초기 상태를 찾다가 실패했다. 인증 검사를 삭제하지 않고 실제 경계인 `/dashboard` build artifact를 검사하도록 수정했으며 자세한 원인은 `TROUBLESHOOTING.md`에 기록했다.
 - 검증: focused `pnpm test:auth-bundle`, `pnpm check`의 lint·typecheck·단위 테스트 26파일 115개, 루트 랜딩 production Chromium E2E 1개가 통과했다. 첫 전체 production E2E는 이전 route를 참조한 3개가 실패하고 18개가 통과해 테스트 경로를 보정했다. 최종 configured bundle smoke, production build, Chromium E2E 21개, coverage, high audit, peer dependency와 diff 검사가 모두 통과했다. 커버리지는 statements 83.58%, branches 76.19%, functions 90.13%, lines 87.93%다.
 - 전달과 남은 일: 변경은 로컬 작업 트리에 있다. `main` push와 GitHub Actions 성공을 확인한 뒤 해당 커밋을 별도 발표 저장소의 무자격증명 fixture snapshot으로 고정한다.
+## 2026-09-01 — 공유 OCI Caddy에 격리된 Geuneul edge route 준비
+
+- 목적: MarketValley가 소유한 기존 OCI NLB·Caddy 80/443를 Geuneul 마이그레이션에서도 재사용하되, 다음 MarketValley 배포가 새 route를 덮어쓰거나 두 애플리케이션의 runtime·credential을 결합하지 않게 한다.
+- 변경: source `deploy/`와 owner-only control plane의 Caddy·Compose·production env 계약을 함께 runtime contract v2로 올렸다. 별도 Geuneul hostname은 host private high-port의 독립 rootless backend로 전달한다. `/object-storage/*`는 exact Vercel Origin의 preflight와 PUT만 받고 다른 Origin/method는 403으로 거부하며, prefix만 제거한 signed path/query와 정확한 OCI upstream Host를 전달한다. Caddy에는 storage credential을 추가하지 않았다.
+- 안전 경계: 기존 MarketValley site, app network, secret, NLB listener와 backend set은 바꾸지 않는다. source와 control-plane contract가 다르면 owner-only deploy가 거부한다. 실제 server env 수정·Caddy reload·DNS 변경은 production 변경 승인 전이라 수행하지 않았다.
+- 검증: source/control-plane의 Caddy·Compose·remote release 사본이 byte-identical이다. 두 Compose config, pin된 Caddy 2.10.2 validate, 양쪽 remote release `bash -n`, owner-only control-plane Node 4개·Python 4개 테스트와 source deployment trust test 4개가 통과했다. 로컬 Colima에는 Compose plugin 대신 호환 `docker-compose`만 있어 해당 명령으로 같은 config를 렌더했다.
+- 남은 일: 두 저장소의 전체 gate·secret scan·PR/CI를 통과시킨 뒤, Geuneul backend stage와 live bucket 준비 후 production env에 실제 nonsecret endpoint 값을 넣고 검증된 Caddy를 reload한다. reload 전후 기존 MarketValley health와 Geuneul preflight/PUT을 모두 확인한다.

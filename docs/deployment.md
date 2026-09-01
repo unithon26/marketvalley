@@ -122,6 +122,9 @@ NLB가 healthy가 되기 전에는 기존 security list의 22·6443을 건드리
 - `SITE_ADDRESS`, `NEXT_PUBLIC_SITE_URL`: 같은 production HTTPS origin
 - `MARKETVALLEY_BIND_ADDRESS=10.0.0.9`
 - `MARKETVALLEY_HTTP_PORT=13080`, `MARKETVALLEY_HTTPS_PORT=13443`
+- `GEUNEUL_SITE_ADDRESS`, `GEUNEUL_FRONTEND_ORIGIN`: 같은 NLB/Caddy가 제공하는 별도 Geuneul API hostname과 허용할 Vercel exact origin
+- `GEUNEUL_BACKEND_UPSTREAM=http://10.0.0.9:13880`: 별도 rootless stack의 사설 high-port origin
+- `GEUNEUL_OBJECT_STORAGE_HOST`: scheme·path 없는 OCI S3 compatibility hostname
 - `CAMPAIGN_GENERATOR_MODE=anthropic`, model과 Anthropic server key
 - `CAMPAIGN_REPOSITORY_MODE=supabase`, URL·publishable key·server key
 - 배포 뒤 바꾸지 않을 32바이트 이상의 `SIGNAL_HASH_SECRET`
@@ -130,6 +133,8 @@ NLB가 healthy가 되기 전에는 기존 security list의 22·6443을 건드리
 - `META_INSIGHTS_FINALIZATION_DELAY_MINUTES`: 종료 뒤 최종 Insights 반영 대기 시간
 
 `NEXT_PUBLIC_*`만 공개 build argument로 전달한다. Anthropic·Supabase·Turnstile server key와 HMAC secret은 image, Git, Terraform, Actions log에 넣지 않는다.
+
+Caddy runtime contract v2는 기존 MarketValley site와 별도 Geuneul site를 함께 소유한다. `/object-storage/*`는 exact Geuneul frontend Origin의 OPTIONS/PUT만 허용하고 그 외 method·Origin은 403으로 막는다. prefix만 제거하고 presigned path/query와 고정 upstream Host를 OCI로 전달하며 Caddy에는 Object Storage credential을 두지 않는다. source와 owner-only control-plane의 Caddy·Compose·runtime contract가 함께 바뀌지 않으면 배포를 거부해 다음 MarketValley release가 이 route를 지우지 못하게 한다.
 
 release는 새 image의 network 없는 `/api/health`를 먼저 확인한다. 이어서 Anthropic Models API에서 설정 model을 조회하고 Supabase Auth와 REST OpenAPI에서 `campaigns`, `campaign_reservations`, lifecycle RPC와 예약 원자 RPC를 확인하며 Turnstile Siteverify가 server secret을 인식하는지도 검증한다. 이 검사는 Claude 생성을 호출하거나 예약자 원문을 읽지 않으며, credential·migration·network 실패 시 활성화를 막는다. 광고 생성 횟수 제한 제거 marker가 없으면 새 application을 활성화하지 않는다. Site key와 hostname까지 묶인 실제 Turnstile 검증은 production 도메인의 브라우저 종단에서 별도로 수행한다.
 

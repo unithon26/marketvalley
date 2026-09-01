@@ -867,3 +867,28 @@ Business Settings에서 추가 연결을 추측해 변경하거나 `business_man
 - 왜 `promote_pages` 실패를 무시하지 않았는가? Page 검증을 없애지 않고 서버에 고정된 Page를 직접 확인해 더 강한 fail-closed 계약으로 교체했다.
 - 왜 권한을 더 추가하지 않았는가? 직접 조회로 필요한 자산 접근이 이미 증명됐고, 불필요한 `business_management`는 최소 권한 원칙을 약화하기 때문이다.
 - 실제 광고 생성은 어떻게 안전하게 확인하는가? 내부 운영자 allowlist, durable ledger, `PAUSED` 고정, 예산 상한과 단일 종단·중복·0원 지출 검증을 함께 사용한다.
+## 2026-09-01 — Geuneul Caddy route를 한 저장소만 바꾸면 다음 MarketValley 배포가 제거함
+
+### 상황과 기대 동작
+
+기존 OCI NLB와 MarketValley Caddy를 Geuneul API에도 재사용하려 했다. 새 site block은 현재 운영 Caddy에 남아야 하고 이후 MarketValley release도 이를 보존해야 한다.
+
+### 실제 위험과 영향
+
+운영 Caddyfile은 서버에서 독립 관리되는 파일이 아니라 MarketValley owner-only release가 source `deploy/`에 control-plane `runtime/` overlay를 씌운 뒤 매 배포마다 shared Caddyfile로 복사한다. Geuneul 저장소의 예시나 서버 파일만 수정하면 당장은 동작해도 다음 MarketValley 배포가 route를 제거해 Geuneul API와 사진 업로드가 동시에 중단된다. production 적용 전 구조 검토에서 발견해 실제 중단은 없었다.
+
+### 원인과 해결
+
+공유 edge의 소유권과 변경 전파 경로가 Geuneul 저장소 밖에 있다는 점이 원인이다. source `deploy/Caddyfile`·Compose·environment example과 owner-only control-plane 사본을 함께 바꾸고 runtime contract를 v2로 올렸다. release는 source와 control-plane contract가 다르면 fail-closed한다. exact-origin PUT gateway는 다른 method·Origin을 403으로 막고 OCI upstream Host를 명시하며 credential을 보유하지 않는다.
+
+### 검증과 회귀 방지
+
+양쪽 Caddy·Compose·remote release·environment template의 byte 일치를 확인했다. pin된 Caddy validate, Compose render, remote script syntax와 source/control-plane trust tests를 통과했다. production에서는 Geuneul backend와 bucket이 준비된 뒤에만 env를 추가하고, reload 전후 기존 MarketValley health와 Geuneul origin/preflight/PUT을 함께 검증한다.
+
+### 남은 위험과 면접 질문
+
+하나의 edge process 장애가 두 hostname에 영향을 주는 결합은 남는다. 별도 load balancer 비용과 운영 복잡도보다 현재 트래픽·비용에 적합하다고 판단했으며, 장애 빈도나 부하가 커지면 edge 분리를 재검토한다.
+
+- 공유 인프라의 실제 source of truth를 어떻게 찾았는가?
+- runtime contract가 단순 파일 복사보다 rollback과 재배포 안전성을 어떻게 높이는가?
+- 자격증명 없는 upload gateway에서도 Origin·Host를 엄격히 고정해야 하는 이유는 무엇인가?

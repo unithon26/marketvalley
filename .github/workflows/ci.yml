@@ -42,7 +42,7 @@ jobs:
           bash -n infra/terraform/oci-nlb/detach-backend-nsg.sh
           node --check deploy/verify-external-dependencies.mjs
           test "$(head -n 1 deploy/Dockerfile)" = '# syntax=docker/dockerfile:1.7.1@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e'
-          test "$(cat deploy/runtime-contract)" = 'marketvalley-production-v1'
+          test "$(cat deploy/runtime-contract)" = 'marketvalley-production-v2'
           APP_IMAGE_TAG=0000000000000000000000000000000000000000 \
           MARKETVALLEY_ENV_FILE="$PWD/deploy/production.env.example" \
           MARKETVALLEY_CADDYFILE="$PWD/deploy/Caddyfile" \
@@ -73,6 +73,10 @@ jobs:
           ' <<<"$rendered_compose" >/dev/null
           docker run --rm \
             --env SITE_ADDRESS=marketvalley.example.com \
+            --env GEUNEUL_SITE_ADDRESS=geuneul-api.example.com \
+            --env GEUNEUL_FRONTEND_ORIGIN=https://geuneul.example.com \
+            --env GEUNEUL_BACKEND_UPSTREAM=http://10.0.0.9:13880 \
+            --env GEUNEUL_OBJECT_STORAGE_HOST=namespace.compat.objectstorage.ap-chuncheon-1.oci.customer-oci.com \
             --volume "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" \
             caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d \
             caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
