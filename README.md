@@ -44,7 +44,7 @@ marketvalley는 첫 시장 반응을 확인하려는 예비창업가와 1인 사
 | 기존 흐름 | marketvalley 이후 |
 | --- | --- |
 | 고객·문제·가치 제안을 채널마다 다시 작성 | 문제 배경과 솔루션을 한 번 입력 |
-| 웹 빌더에서 랜딩을 조립하고 별도로 배포 | 같은 `CampaignSpec`에서 공개 URL 생성 |
+| 웹 빌더에서 랜딩을 조립하고 별도로 배포 | 한 번 입력한 검증 기획으로 공개 URL 생성 |
 | 카드 5장을 직접 조판하고 파일로 정리 | 1080×1350 PNG 5장과 ZIP 생성 |
 | 캡션·CTA·링크의 메시지를 다시 맞춤 | 랜딩·카드·광고가 하나의 검증 가설 사용 |
 | 소재와 설정을 Ads Manager에 옮김 | 승인된 계정·예산 경계에서 자동 등록·활성화 |
@@ -124,7 +124,7 @@ SUBMITTED → GENERATING → PREPARING → AWAITING_ACTIVATION
 
 | 팀원 | 역할 | 맡은 범위와 핵심 성과 |
 | --- | --- | --- |
-| [홍성주](https://github.com/ghdtjdwn) | Backend · AI · Platform | `CampaignSpec`, Anthropic 생성 계약, Supabase schema·RLS, 내부 API와 공개 route 데이터 경계, Meta·Insights, durable lifecycle, Vercel·Oracle 전달과 CI를 구현·통합해 입력부터 실제 광고·리포트까지 연결 · [PR #15](https://github.com/unithon26/marketvalley/pull/15) · [PR #17](https://github.com/unithon26/marketvalley/pull/17) |
+| [홍성주](https://github.com/ghdtjdwn) | Backend · AI · Platform | 검증 가설·랜딩·카드뉴스·광고 문구를 하나의 데이터 구조로 설계하고, Anthropic 생성부터 Supabase 권한·API, Meta 광고·Insights, 장기 실행 상태 관리, Vercel·Oracle 배포·CI까지 통합해 아이디어 입력이 실제 광고와 결과 리포트로 이어지게 구현 · [PR #15](https://github.com/unithon26/marketvalley/pull/15) · [PR #17](https://github.com/unithon26/marketvalley/pull/17) |
 | [박지성](https://github.com/jisung1017) | Product Frontend · UX | Figma 기반 홈·입력·진행·리포트 UI, 결정적 랜딩·카드 renderer, PNG·ZIP export, Google 로그인 진입과 production E2E를 구현 · [PR #1](https://github.com/unithon26/marketvalley/pull/1) · [PR #3](https://github.com/unithon26/marketvalley/pull/3) |
 | Product Design | Visual System · Templates | 디자인 토큰, 랜딩 도입부 7종, 카드뉴스 표지 3종과 상태·발표 화면의 Figma 기준 제공 |
 
