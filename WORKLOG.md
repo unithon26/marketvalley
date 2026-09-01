@@ -6,7 +6,7 @@
 - 변경: README의 팀 역할을 검증 가설·랜딩·카드뉴스·광고 문구를 잇는 데이터 구조, AI 생성, 데이터·권한, API, Meta 광고·Insights, 장기 실행 상태 관리와 배포 책임으로 풀어 썼다. Before/After의 내부 타입명도 사용자 관점의 검증 기획으로 바꿨다.
 - 영향 범위: 루트 README의 Before/After와 팀 역할 설명
 - 검증: 세 README 모두 `git diff --check`와 GitHub GFM 렌더링을 통과했고, 조직·개인 프로필의 `CampaignSpec` 노출이 0건임을 확인했다.
-- 전달: 프로젝트 PR #32, 조직 프로필 PR #4, 개인 프로필 PR #19를 열었다.
+- 전달: 프로젝트 PR #32를 merge SHA `dd416a8`로, 조직 프로필 PR #4를 `92eb22f`로, 개인 프로필 PR #19를 `17b4ce3`으로 병합했다. 프로젝트 PR과 main의 전체 `quality` job, Vercel preview·production 배포가 모두 성공했다.
 - 남은 일: 없음.
 
 ## 2026-08-26 — 수상·제품·팀 역할 중심 README 재구성
