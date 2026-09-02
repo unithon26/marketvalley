@@ -10,6 +10,14 @@
 - 운영 시도: 명시적 중단 승인 뒤 첫 cutover는 존재하지 않는 rootless `docker.socket` unit 정지 오류를 만나 데이터 전환 전에 자동 복구했다. 두 번째는 Docker 정지 뒤 open-file 0을 즉시 요구해 종료됐고, 명시적 `exit`가 Bash `ERR` trap을 실행하지 않아 기존 전용 mount를 확인한 뒤 Docker를 수동 재시작했다. 세 번째의 bounded wait는 gateway·deployment lock 자체가 이전 volume 안의 open file이라 0이 될 수 없음을 드러냈고 `EXIT` rollback이 정상 동작했다. 네 번째는 final sync·checksum·bind mount·새 Docker health까지 통과했지만 마지막 host 검증 파일이 업로드 묶음에서 누락돼 rollback됐다. 이때 새 mount 변경분을 이전 volume으로 역동기화하고 전용 mount·컨테이너 4개·공개 health·gateway를 복구했다.
 - 결정과 남은 일: 운영 목표는 AWS 0원·OCI 0원이다. 기존 K3s workload 2개의 CPU 부족 Pending은 재부팅 전후 동일했다. 새 release manager는 아직 없는 Geuneul production 변수 때문에 `current`를 fail-closed하므로 Geuneul 환경 반영 전까지 deploy gateway 운영을 중지한다. 다음은 OCI 로그인 뒤 Resource Manager state handoff와 Geuneul restore이며, data volume detach·삭제는 별도 파괴 승인 뒤 수행한다.
 
+## 2026-09-02 — OCI Resource Manager storage state handoff 완료
+
+- 목적: boot-backed 전환을 완료한 운영 host와 Terraform managed state를 일치시켜 이후 Plan이 유료 Block Volume을 재생성하지 않게 한다.
+- 작업: OCI Resource Manager에서 Terraform 1.5.7 state를 mode 0600으로 내려받아 전용 volume·attachment 정확한 두 주소만 제거했다. 원본과 byte-identical backup을 보존한 뒤 state import job을 성공시켰고, volume resource가 없는 5파일 Terraform 구성 ZIP을 ETag 조건으로 stack에 반영했다. 기존 stack 변수는 변경하지 않았다.
+- 검증: import state는 serial 22, Terraform 1.5.7, retired resource 0개였다. 첫 Plan의 JSON과 로그에서 실제 resource add·change·destroy가 모두 0임을 확인하고, 이 plan을 적용해 이전 volume output 2개를 지우고 `marketvalley_storage_layout=boot-bind-v1`을 저장했다. post-apply state는 serial 23, retired resource·output 0개, 실제 resource 변경 0개였고 독립 후속 Plan이 `No changes` 및 resource·output 변경 0을 반환했다.
+- 전달: Resource Manager import·Plan·Apply·No Changes Plan job이 모두 `SUCCEEDED`했다. Chrome 파일 chooser가 로컬 state·ZIP 전달을 거부해 60분 만료 OCI CLI session으로 구성 ZIP만 전송했고, 전송용 Downloads 복사본은 검증 후 제거했다.
+- 남은 일: 기존 50GiB volume은 아직 unmounted·attached rollback 본으로 남아 있다. 별도 파괴 승인 뒤 attachment·volume을 삭제하고 boot+block 합계 200GB 이하와 Cost Analysis 0원을 재확인한다. Geuneul production 변수·데이터 restore, Vercel cutover·종단 검증과 AWS 안전 정리도 이어서 완료한다.
+
 ## 2026-09-01 — 공개 프로필의 marketvalley 역할 설명 개선
 
 - 목적: 저장소와 GitHub 프로필을 보는 외부인이 내부 타입명 없이 홍성주의 Backend·AI·Platform 책임과 제품 기여를 이해하게 한다.

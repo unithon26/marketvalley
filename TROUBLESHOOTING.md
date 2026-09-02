@@ -1,5 +1,33 @@
 # Troubleshooting
 
+## 2026-09-02 — OCI Console 파일 chooser가 Resource Manager 구성 업로드를 반영하지 않음
+
+### 맥락과 영향
+
+boot-backed storage cutover 뒤 Resource Manager state에서 기존 50GiB volume·attachment를 관리 대상에서 제외하고, volume resource가 없는 Terraform 구성으로 stack을 갱신해야 했다. state import는 Console에서 성공했지만 이어진 Edit stack에서 ZIP 선택이 반영되지 않았다. 이 상태에서 Plan을 실행하면 이전 구성이 volume을 재생성할 수 있어 Plan·Apply를 중지했다.
+
+### 기대·실제 동작과 증거
+
+- 기대: Chrome의 로컬 파일 접근을 허용하고 state 또는 ZIP을 선택하면 OCI form의 `input[type=file]` 목록에 파일 1개가 나타나야 한다.
+- 실제: 자동 `setFiles`는 Chrome에서 `Not allowed`로 거부됐고, 사용자가 네이티브 picker에서 ZIP을 두 번 선택한 뒤에도 DOM의 file list는 0개였다.
+- state import job은 이와 별개로 `SUCCEEDED`했고 Terraform 1.5.7 state에 volume·attachment resource가 0개임을 확인했다. 따라서 state 내용 문제가 아니라 Console 파일 전달 경로의 문제로 격리했다.
+
+### 원인 판단과 검토한 대안
+
+직접 원인은 Chrome extension과 OCI cross-origin plugin iframe 사이의 로컬 file chooser가 선택 결과를 plugin input에 전달하지 못한 것이다. 브라우저 재연결·페이지 새로고침·Downloads 경로 복사·수동 picker를 순서대로 시도했지만 같은 결과였다. state 내용을 Cloud Shell에 paste하거나 Console 페이지 내부 인증 상태를 추출하는 방법은 비밀 노출 경계를 넓히므로 기각했다.
+
+### 해결과 회귀 방지
+
+사용자의 명시적 승인 뒤 60분 만료 OCI CLI security-token session을 격리된 mode 0700 임시 디렉터리에 생성했다. CLI로 대상 ACTIVE stack이 정확히 1개임을 확인하고 동시 Resource Manager job 0개, 기존 ETag와 구성 ZIP SHA-256를 대조한 뒤 `stack update`를 수행했다. 기존 variables는 API omission semantics로 보존하고 configuration source와 Terraform 1.5.x만 바꿨다.
+
+첫 Plan JSON은 실제 resource mutation 0개, 이전 volume output 2개 delete와 `boot-bind-v1` output 1개 create만 보였다. 검증한 plan job ID를 그대로 Apply한 뒤 state serial 23, retired resource·output 0개, 실제 resource 0 added·0 changed·0 destroyed를 확인했다. 후속 독립 Plan은 `No changes`와 resource·output mutation 0을 반환했다.
+
+CLI 인증 callback URL은 단기 token을 포함할 수 있으므로 title·URL·raw auth log를 수집하거나 문서에 남기지 않는다. 인증 탭을 즉시 닫고 작업 종료 뒤 session config·token·key·raw state·plan을 함께 폐기하며, 공개 작업 기록에는 상태·건수·해시 검증 결과만 남긴다.
+
+### 남은 위험과 예상 질문
+
+기존 50GiB volume은 rollback을 위해 아직 unmounted·attached 상태이므로 별도 파괴 승인 전에는 삭제하지 않는다. 면접에서는 Terraform 1.5.7에 `removed` block이 없을 때 어떻게 exact-address state handoff를 제한했는지, 왜 output-only Plan을 적용한 뒤 다시 No Changes Plan을 실행했는지, 단기 인증 자료의 노출 범위를 어떻게 축소했는지 설명할 수 있다.
+
 ## 2026-08-26 — 내부 광고 생성 횟수 제한으로 캠페인이 중단됨
 
 ### 맥락과 영향
