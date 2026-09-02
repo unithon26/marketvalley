@@ -86,7 +86,7 @@ sudo env \
 
 실제 중단 전에는 `findmnt`, `lsblk`, `df -Pk`, `df -Pi`, `fuser`, rootless Docker와 NLB health를 mode 0600 기록으로 남긴다. `/var/lib/marketvalley`가 symlink·mount가 아니고 boot ext4에 있으며 40GiB 이상 여유가 있는지 확인한다. 첫 복사는 서비스를 켠 채 root로 `rsync -aHAXS --numeric-ids --delete --one-file-system /opt/marketvalley /var/lib/`를 사용한다.
 
-컷오버는 배포 gateway와 release lock을 모두 잡고 `marketvalley`의 rootless Docker만 정지한다. socket과 해당 UID의 `dockerd`, `containerd`, `buildkitd`가 사라지고 source mount의 open file이 0인지 확인한 뒤 같은 rsync를 다시 실행한다. 이어 checksum dry-run `rsync -aHAXSnic --numeric-ids --delete --one-file-system /opt/marketvalley/ /var/lib/marketvalley/`의 출력이 비어 있어야 한다.
+컷오버는 배포 gateway와 release lock을 모두 잡아 진행 중 작업이 없음을 확인한 상태에서 root-owned forced-command gateway를 mode 000으로 잠시 닫는다. gateway·manager·release process가 0인지 확인한 뒤 volume 내부 lock FD를 해제하고 `marketvalley`의 rootless Docker만 정지한다. source mount의 open file이 bounded wait 뒤 0인지 확인하고 같은 rsync를 다시 실행한다. 이어 checksum dry-run `rsync -aHAXSnic --numeric-ids --delete --one-file-system /opt/marketvalley/ /var/lib/marketvalley/`의 출력이 비어 있어야 한다. 성공과 rollback 모두 검증된 gateway를 mode 0755로 복원한다. volume 안의 lock을 잡은 채 같은 volume의 open file 0이나 unmount를 기다리면 안 된다.
 
 `/etc/fstab`은 mode 0600 timestamp backup을 만든 뒤 기존 `/opt/marketvalley` entry 하나만 다음 줄로 교체한다.
 
