@@ -3,6 +3,12 @@
 	servers {
 		protocols h1 h2
 	}
+	log default {
+		format filter {
+			request>uri regexp `\?.*$` `?REDACTED`
+			wrap json
+		}
+	}
 }
 
 :80 {
@@ -37,6 +43,9 @@
 
 {$GEUNEUL_SITE_ADDRESS} {
 	encode zstd gzip
+
+	@presigned_upload_path path /object-storage/*
+	log_skip @presigned_upload_path
 
 	@upload_preflight {
 		method OPTIONS
@@ -87,6 +96,9 @@
 
 	log {
 		output stdout
-		format json
+		format filter {
+			request>uri regexp `\?.*$` `?REDACTED`
+			wrap json
+		}
 	}
 }

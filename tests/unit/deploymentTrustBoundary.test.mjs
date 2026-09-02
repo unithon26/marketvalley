@@ -54,6 +54,8 @@ describe("production deployment trust boundary", () => {
     expect(releaseScript).toContain('GEUNEUL_OBJECT_STORAGE_HOST must be an exact OCI S3 compatibility hostname');
     expect(readRepositoryFile("deploy/Caddyfile")).toContain("@rejected_object_storage");
     expect(readRepositoryFile("deploy/Caddyfile")).toContain("header_up Host {$GEUNEUL_OBJECT_STORAGE_HOST}");
+    expect(readRepositoryFile("deploy/Caddyfile")).toContain("log_skip @presigned_upload_path");
+    expect(readRepositoryFile("deploy/Caddyfile")).toContain('request>uri regexp `\\?.*$` `?REDACTED`');
     expect(releaseScript).not.toContain('META_DRAFT_DAILY_OWNER_LIMIT');
     expect(releaseScript).not.toContain('META_DRAFT_DAILY_GLOBAL_LIMIT');
     expect(releaseScript).toContain('validate-release-archive.py');
