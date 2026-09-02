@@ -897,7 +897,7 @@ Business Settings에서 추가 연결을 추측해 변경하거나 `business_man
 
 ### 상황과 실제 영향
 
-MarketValley가 실행 중인 OCI A1을 Geuneul도 재사용해 정상 운영비를 0원으로 유지하려 했다. live compute는 Always Free 크기인 2 OCPU·12GB였지만 boot 200GB에 전용 data volume 50GB가 붙어 boot+block 합계가 250GB였다. Oracle의 Always Free 합계 200GB보다 50GB 커 새 앱을 올리기 전부터 비용 조건을 충족하지 못했다. 조사와 코드 준비 중에는 OCI 자원·서비스·데이터를 변경하지 않았다.
+MarketValley가 실행 중인 OCI A1을 Geuneul도 재사용해 정상 운영비를 0원으로 유지하려 했다. live compute는 Always Free 크기인 2 OCPU·12GB였지만 boot 200GB에 전용 data volume 50GB가 붙어 boot+block 합계가 250GB였다. Oracle의 Always Free 합계 200GB보다 50GB 커 새 앱을 올리기 전부터 비용 조건을 충족하지 못했다. 초기 조사와 코드 준비 중에는 OCI 자원·서비스·데이터를 변경하지 않았다.
 
 ### 증거와 근본 원인
 
@@ -909,7 +909,7 @@ SSH read-only 점검에서 boot는 약 145GiB free, 전용 volume은 약 2GiB us
 
 ### 검증·회귀 방지와 남은 위험
 
-source와 owner-only control-plane 사본 일치, shell syntax, 전체 43 files·224 tests, production build와 high audit를 통과했다. OCI Resource Manager와 같은 공식 Terraform 1.5.7 바이너리의 체크섬을 검증한 뒤 state fixture, fmt·validate를 통과했다. Linux ephemeral runner에서 올바른 bind, 잘못된 marker, 저용량 fail-closed를 실행하는 통합 테스트를 CI에 추가했다. 첫 실행은 예상한 capacity 실패가 부모 test의 `EXIT` cleanup trap까지 실행해 fixture를 제거했다. fail-closed assertion을 별도 Bash process로 격리해 실패 효과가 부모 mount namespace의 test lifecycle로 전파되지 않게 했다. 실제 cutover는 rootless Docker stop, open-file 0, checksum dry-run 0, mode 0600 fstab backup, health·K3s baseline, controlled reboot와 reverse-sync rollback rehearsal가 남았다. 이전 volume과 backup 삭제는 별도 파괴 승인이 필요하다.
+source와 owner-only control-plane 사본 일치, shell syntax, 전체 43 files·224 tests, production build와 high audit를 통과했다. OCI Resource Manager와 같은 공식 Terraform 1.5.7 바이너리의 체크섬을 검증한 뒤 state fixture, fmt·validate를 통과했다. Linux ephemeral runner에서 올바른 bind, 잘못된 marker, 저용량 fail-closed를 실행하는 통합 테스트를 CI에 추가했다. 첫 실행은 예상한 capacity 실패가 부모 test의 `EXIT` cleanup trap까지 실행해 fixture를 제거했다. fail-closed assertion을 별도 Bash process로 격리했고 후속 CI가 통과했다. production에서는 약 51,000개 파일·2.02GB를 boot-backed target으로 무중단 1차 복사했고 boot free 약 140GiB, rootless 컨테이너 4개와 공개 health가 정상이었다. 기존 K3s workload 2개는 CPU 부족으로 Pending이라 reboot 위험으로 분리 기록했다. 실제 cutover는 rootless Docker stop, open-file 0, checksum dry-run 0, mode 0600 fstab backup, health·K3s baseline, controlled reboot와 reverse-sync rollback rehearsal가 남았다. 이전 volume과 backup 삭제는 별도 파괴 승인이 필요하다.
 
 ### 면접 질문
 
