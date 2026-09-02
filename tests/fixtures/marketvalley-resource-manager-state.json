@@ -1,0 +1,49 @@
+{
+  "version": 4,
+  "terraform_version": "1.5.7",
+  "serial": 12,
+  "lineage": "00000000-0000-4000-8000-000000000000",
+  "outputs": {},
+  "resources": [
+    {
+      "mode": "managed",
+      "type": "oci_core_network_security_group",
+      "name": "backend",
+      "provider": "provider[\"registry.terraform.io/oracle/oci\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {"id": "fixture-retained-nsg"},
+          "sensitive_attributes": []
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "oci_core_volume",
+      "name": "marketvalley_data",
+      "provider": "provider[\"registry.terraform.io/oracle/oci\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {"id": "fixture-retired-volume"},
+          "sensitive_attributes": []
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "oci_core_volume_attachment",
+      "name": "marketvalley_data",
+      "provider": "provider[\"registry.terraform.io/oracle/oci\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {"id": "fixture-retired-attachment"},
+          "sensitive_attributes": []
+        }
+      ]
+    }
+  ],
+  "check_results": null
+}

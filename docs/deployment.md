@@ -2,14 +2,14 @@
 
 ## 현재 확인된 상태
 
-2026-08-26 실제 OCI와 서버에서 확인했다.
+2026-09-02 실제 OCI와 서버에서 다시 확인했다.
 
 - 인스턴스 `ssumcp`: Ubuntu 22.04 ARM64, VM.Standard.A1.Flex, private IP `10.0.0.9`. 원래 4 OCPU·24GB지만 maintenance stop 뒤 A1 capacity 부족으로 1·6에서 복구해 현재 2·12까지 증설했다.
 - Kubernetes의 Traefik이 host 80·443을 점유하고 기본 인증서를 반환함
 - OCI security list는 80·443 외에 SSH 22와 k3s API 6443을 인터넷 전체에 허용함. host firewall 때문에 6443 외부 연결은 닫혀 있지만 OCI 규칙 자체는 이후 관리 경로 확인 뒤 축소해야 함
-- OCI Resource Manager stack이 public NLB `152.67.213.96`, NLB·backend NSG, 전용 50GiB Block Volume과 attachment를 관리함
+- OCI Resource Manager stack이 public NLB, NLB·backend NSG와 전용 50GiB Block Volume attachment를 관리한다. boot 200GB와 합계 250GB라 Always Free 200GB를 넘으므로 boot-backed cutover 뒤 volume 관리를 state에서 인계하고 별도 승인으로 삭제해야 한다.
 - 관리자 Ed25519 key의 public IP 직접 접속, 별도 강제 명령 deploy key, Tailscale SSH 복구 경로를 확인함
-- 전용 volume은 `/opt/marketvalley`에 ext4 UUID mount되고 rootless Docker 29.7.2 data-root와 release cache를 소유함
+- 전용 volume은 아직 `/opt/marketvalley`에 ext4 UUID mount되고 rootless Docker 29.7.2 data-root와 release cache를 소유한다. 목표 layout은 200GB boot의 `/var/lib/marketvalley`를 같은 target에 bind mount하는 `boot-bind-v1`이다.
 - 공식 사용자 origin용 Vercel 프로젝트 `marketvaley`를 생성했고 `https://marketvaley.vercel.app`에 Turnstile을 제외한 production 환경변수를 등록함. Vercel 계정의 GitHub 앱에 `unithon26/marketvalley` 비공개 저장소 권한을 추가해야 Git 자동 배포가 연결됨
 - Oracle 검증 origin은 `https://marketvalley-152-67-213-96.sslip.io`이며 server 환경에는 Anthropic·Supabase·signal secret을 적용함. Turnstile과 OAuth production 설정, 두 대상의 첫 앱 release는 남아 있음
 
@@ -30,13 +30,14 @@ Internet
 기존 ssumcp public IP TCP 80 / 443
   → 기존 Kubernetes Traefik 그대로 유지
 
-OCI 50GiB Block Volume
+OCI 200GiB boot ext4
+  → /var/lib/marketvalley bind mount
   → /opt/marketvalley
       rootless Docker data-root·image·build cache
       release·app cache
 ```
 
-앱과 isolated preflight는 각각 0.75 CPU·1.5GiB, Caddy 0.15 CPU·192MiB, BuildKit 1 CPU·2GiB가 상한이다. 전용 rootless user cgroup은 CPU 125%, 메모리 3GiB, swap 0, task 1024로 한 번 더 묶고 BuildKit은 병렬 1과 1GiB GC cache를 넘기지 않는다. 현재 Oracle host는 4 OCPU·24GB 복구가 capacity 부족으로 거절된 2 OCPU·12GB 상태이므로 이 보수적 상한으로 K3s에 최소 0.75 CPU와 9GiB 메모리를 남긴다. rootless Docker data-root와 release·app cache는 Kubernetes boot disk가 아니라 전용 50GiB volume 안에 둔다. Next.js와 Caddy는 별도 Compose network를 사용하고 host에 앱 3000을 publish하지 않는다. Caddy는 사설 고포트에만 bind하고 HTTP/3를 끈다. NLB가 표준 포트를 전달하므로 production URL에는 포트 번호가 없다.
+앱과 isolated preflight는 각각 0.75 CPU·1.5GiB, Caddy 0.15 CPU·192MiB, BuildKit 1 CPU·2GiB가 상한이다. 전용 rootless user cgroup은 CPU 125%, 메모리 3GiB, swap 0, task 1024로 한 번 더 묶고 BuildKit은 병렬 1과 1GiB GC cache를 넘기지 않는다. 현재 Oracle host는 4 OCPU·24GB 복구가 capacity 부족으로 거절된 2 OCPU·12GB 상태이므로 이 보수적 상한으로 K3s에 최소 0.75 CPU와 9GiB 메모리를 남긴다. rootless Docker data-root와 release·app cache는 검증된 boot-backed bind mount 안에 두고 boot free 40GiB·inode 사용률 90% 보호선을 유지한다. Next.js와 Caddy는 별도 Compose network를 사용하고 host에 앱 3000을 publish하지 않는다. Caddy는 사설 고포트에만 bind하고 HTTP/3를 끈다. NLB가 표준 포트를 전달하므로 production URL에는 포트 번호가 없다.
 
 구조와 기각 대안은 [ADR-0019](decisions/0019-self-host-on-oracle-with-verified-ssh-releases.md)에 기록했다.
 
@@ -68,18 +69,34 @@ bootstrap은 처음 만든 전용 사용자만 `/etc/marketvalley-deploy-user` m
 
 서버 control plane의 권위 있는 사본은 개인 비공개 `ghdtjdwn/marketvalley-deploy`의 `server/`에 둔다. source 저장소의 사본은 코드 검증과 문서화를 위한 mirror이며, bootstrap에는 개인 배포 저장소에서 검토한 파일을 사용한다.
 
-Terraform attachment 뒤 `/dev/oracleoci/oraclevdb`가 새 50GiB data disk이고 기존 filesystem이 없는지 확인한다. 검증한 release archive에서 Ubuntu 22.04 ARM64 전용 bootstrap을 root로 한 번 실행한다. `MARKETVALLEY_CONFIRM_FORMAT_DEVICE=yes`는 이 dedicated disk를 최초 ext4 포맷하는 명시적 승인값이며 다른 device에는 사용하지 않는다.
+신규 설치의 기본 bootstrap은 전용 non-boot volume만 포맷한다. 현재 운영 host는 Always Free boot+block 200GB를 지키기 위해 아래 storage cutover를 먼저 완료하고 `boot-bind-v1`을 사용한다. 전용 volume 포맷 확인값은 이 이전 절차에서 사용하지 않는다.
 
 ```bash
 sudo env \
   MARKETVALLEY_DEPLOY_USER=marketvalley \
   MARKETVALLEY_DEPLOY_PUBLIC_KEY_FILE=/absolute/path/marketvalley-deploy.pub \
-  MARKETVALLEY_DATA_DEVICE=/dev/oracleoci/oraclevdb \
-  MARKETVALLEY_CONFIRM_FORMAT_DEVICE=yes \
+  MARKETVALLEY_STORAGE_MODE=boot-bind-v1 \
+  MARKETVALLEY_CONFIRM_BOOT_BIND=yes \
   deploy/bootstrap-ubuntu-rootless.sh
 ```
 
-스크립트는 Docker 공식 저장소에서 현재 검증한 버전의 CLI·Compose·Buildx·rootless extras만 설치한다. ARM64 rootless engine archive와 apt signing key의 SHA-256을 고정 검증하고 rootful Docker daemon은 설치하지 않는다. 전용 사용자의 subordinate UID/GID, systemd linger, cgroup v2의 CPU·memory·PID delegation과 rootless socket을 확인한 뒤 `/opt/marketvalley`만 준비한다.
+스크립트는 Docker 공식 저장소에서 현재 검증한 버전의 CLI·Compose·Buildx·rootless extras만 설치한다. ARM64 rootless engine archive와 apt signing key의 SHA-256을 고정 검증하고 rootful Docker daemon은 설치하지 않는다. 전용 사용자의 subordinate UID/GID, systemd linger, cgroup v2의 CPU·memory·PID delegation과 rootless socket을 확인한 뒤 검증된 `/opt/marketvalley`만 사용한다.
+
+### Always Free storage cutover
+
+실제 중단 전에는 `findmnt`, `lsblk`, `df -Pk`, `df -Pi`, `fuser`, rootless Docker와 NLB health를 mode 0600 기록으로 남긴다. `/var/lib/marketvalley`가 symlink·mount가 아니고 boot ext4에 있으며 40GiB 이상 여유가 있는지 확인한다. 첫 복사는 서비스를 켠 채 root로 `rsync -aHAXS --numeric-ids --delete --one-file-system /opt/marketvalley /var/lib/`를 사용한다.
+
+컷오버는 배포 gateway와 release lock을 모두 잡고 `marketvalley`의 rootless Docker만 정지한다. socket과 해당 UID의 `dockerd`, `containerd`, `buildkitd`가 사라지고 source mount의 open file이 0인지 확인한 뒤 같은 rsync를 다시 실행한다. 이어 checksum dry-run `rsync -aHAXSnic --numeric-ids --delete --one-file-system /opt/marketvalley/ /var/lib/marketvalley/`의 출력이 비어 있어야 한다.
+
+`/etc/fstab`은 mode 0600 timestamp backup을 만든 뒤 기존 `/opt/marketvalley` entry 하나만 다음 줄로 교체한다.
+
+```fstab
+/var/lib/marketvalley /opt/marketvalley none bind,nosuid,nodev,noatime 0 0
+```
+
+기존 volume을 unmount하고 새 entry를 mount한 뒤 `/etc` 안의 root-owned mode 0644 임시 파일에 `boot-bind-v1`을 쓰고 검증한 다음 `/etc/marketvalley-storage-layout`로 원자적으로 rename한다. source/target device·inode, ext4, `FSROOT`, mount option, boot free·inode gate를 확인하고 rootless Docker를 시작한다. app·worker·proxy, 공개 health, K3s baseline을 확인한 다음 controlled reboot에서도 같은 상태가 재현돼야 한다.
+
+rollback은 기존 volume을 삭제하지 않은 상태에서 수행한다. 새 layout의 Docker를 먼저 정지하고 boot-backed source의 최신 내용을 임시 mount한 이전 volume으로 reverse rsync·checksum한 뒤 fstab backup과 `dedicated-volume-v1` marker를 복원한다. 데이터가 다시 쓰이기 시작한 뒤 이전 volume을 단순 remount하면 안 된다.
 
 버전이나 checksum이 바뀌면 자동 우회하지 않고 실패한다. Docker 공식 배포물과 release note를 검토해 저장소의 pin을 갱신한 뒤 다시 실행한다.
 
@@ -95,7 +112,7 @@ sudo env \
     previous-release
 ```
 
-## 3. OCI NLB·NSG와 data volume
+## 3. OCI NLB·NSG와 storage state handoff
 
 [`infra/terraform/oci-nlb`](../infra/terraform/oci-nlb/README.md)는 기존 VCN·subnet·VM을 생성하거나 소유하지 않고 다음만 만든다.
 
@@ -103,9 +120,9 @@ sudo env \
 - HTTP·HTTPS backend set, backend와 TCP listener 각 2개
 - public 80·443만 받는 NLB NSG
 - NLB NSG에서 사설 13080·13443만 받는 backend NSG
-- rootless Docker·release·cache를 boot disk에서 격리하는 50GiB Block Volume과 기존 VM의 paravirtualized attachment
+- rootless Docker·release·cache를 담는 검증된 boot-backed bind mount와 40GiB·inode 보호선
 
-OCI Resource Manager의 managed state를 사용한다. 실제 tfvars와 Terraform state는 Git에 넣지 않는다. 운영 data volume에는 `prevent_destroy`를 적용해 NLB 철거나 잘못된 destroy plan이 데이터를 함께 삭제하지 못하게 한다. 기존 NLB가 0개인지, plan이 위 자원만 추가하는지 다시 확인한 뒤 apply한다. 기존 boot volume이 이미 200GB이므로 추가 50GiB Block Volume은 Always Free storage 한도를 넘는 유료 자원으로 분류하고 Billing에서 추적한다.
+OCI Resource Manager의 managed state를 사용한다. 실제 tfvars와 Terraform state는 Git에 넣지 않는다. Resource Manager의 최대 Terraform 1.5.7은 `removed` block을 지원하지 않으므로 최신 성공 state를 mode 0600으로 내려받고 `retire-data-volume-state.sh`로 volume·attachment 두 주소만 제거한 state와 원본 backup을 만든다. production state import와 storage resource가 없는 config upload는 저장 hash·address diff를 확인한 같은 maintenance 작업에서 수행한다. 이후 plan에 retired output 교체 외 실제 resource delete나 새 Block Volume create가 있으면 적용하지 않는다. boot-backed 전환, reboot, rollback rehearsal 뒤 별도 파괴 승인으로 기존 volume을 삭제하고 boot+block 합계 200GB 이하와 Cost Analysis 0원을 재확인한다.
 
 Terraform은 기존 primary VNIC를 소유하지 않는다. output의 backend NSG ID를 받은 뒤 `attach-backend-nsg.sh`가 VNIC private IP와 VCN을 검증하고 기존 NSG 목록을 보존한 채 하나만 append한다. `MARKETVALLEY_CONFIRM_ATTACH=yes` 없이는 변경하지 않는다.
 

@@ -21,30 +21,6 @@ resource "oci_core_network_security_group" "backend" {
   vcn_id         = var.vcn_id
 }
 
-resource "oci_core_volume" "marketvalley_data" {
-  availability_domain  = var.availability_domain
-  compartment_id       = var.compartment_id
-  display_name         = "marketvalley-data"
-  is_auto_tune_enabled = false
-  size_in_gbs          = var.data_volume_size_gbs
-  vpus_per_gb          = 10
-
-  lifecycle {
-    prevent_destroy = true
-  }
-}
-
-resource "oci_core_volume_attachment" "marketvalley_data" {
-  attachment_type                     = "paravirtualized"
-  device                              = var.data_volume_device
-  display_name                        = "marketvalley-data"
-  instance_id                         = var.instance_id
-  is_pv_encryption_in_transit_enabled = false
-  is_read_only                        = false
-  is_shareable                        = false
-  volume_id                           = oci_core_volume.marketvalley_data.id
-}
-
 resource "oci_core_network_security_group_security_rule" "nlb_public_ingress" {
   for_each = local.public_listener_ports
 

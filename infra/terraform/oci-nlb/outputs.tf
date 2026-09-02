@@ -18,12 +18,7 @@ output "backend_network_security_group_id" {
   value       = oci_core_network_security_group.backend.id
 }
 
-output "marketvalley_data_volume_id" {
-  description = "OCID of the dedicated marketvalley data volume."
-  value       = oci_core_volume.marketvalley_data.id
-}
-
-output "marketvalley_data_volume_device" {
-  description = "Consistent device path to format and mount during the one-time host bootstrap."
-  value       = oci_core_volume_attachment.marketvalley_data.device
+output "marketvalley_storage_layout" {
+  description = "Zero-cost host storage layout required by the release control plane."
+  value       = "boot-bind-v1"
 }

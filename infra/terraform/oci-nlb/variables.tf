@@ -11,18 +11,18 @@ variable "compartment_id" {
 }
 
 variable "availability_domain" {
-  description = "Availability domain containing the existing ssumcp VM."
+  description = "Deprecated input retained while the zero-cost storage handoff is applied; no resource consumes it."
   type        = string
 }
 
 variable "instance_id" {
-  description = "OCID of the existing ssumcp VM that receives the dedicated data volume."
+  description = "Deprecated input retained while the zero-cost storage handoff is applied; no resource consumes it."
   type        = string
   sensitive   = true
 }
 
 variable "data_volume_size_gbs" {
-  description = "Hard storage boundary for rootless Docker, releases, and application cache."
+  description = "Deprecated input retained while the zero-cost storage handoff is applied; no resource consumes it."
   type        = number
   default     = 50
 
@@ -33,7 +33,7 @@ variable "data_volume_size_gbs" {
 }
 
 variable "data_volume_device" {
-  description = "OCI consistent device path reserved for the marketvalley block volume."
+  description = "Deprecated input retained while the zero-cost storage handoff is applied; no resource consumes it."
   type        = string
   default     = "/dev/oracleoci/oraclevdb"
 

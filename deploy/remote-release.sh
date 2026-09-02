@@ -95,12 +95,16 @@ require_runtime() {
     || fail "deploy user aggregate task limit must be 1024"
   [[ "$(awk '$1 == "default" { print $2 }' "${user_cgroup}/io.weight")" == "100" ]] \
     || fail "deploy user aggregate I/O weight must be 100"
-  [[ "$(findmnt -n -o FSTYPE --target "${deploy_root}")" == "ext4" ]] \
-    || fail "marketvalley releases must use the dedicated ext4 volume"
-  [[ "$(findmnt -n -o TARGET --target "${deploy_root}")" == "${deploy_root}" ]] \
-    || fail "the dedicated marketvalley volume is not mounted"
+  [[ -f /usr/local/lib/marketvalley/storage-layout.sh \
+    && ! -L /usr/local/lib/marketvalley/storage-layout.sh ]] \
+    || fail "trusted storage layout verification is unavailable"
+  [[ "$(stat -c '%u:%g:%a' /usr/local/lib/marketvalley/storage-layout.sh)" == "0:0:644" ]] \
+    || fail "trusted storage layout verification must be root-owned mode 0644"
+  # shellcheck disable=SC1091
+  . /usr/local/lib/marketvalley/storage-layout.sh
+  marketvalley_verify_storage_layout >/dev/null
   [[ "$(docker info --format '{{.DockerRootDir}}')" == "${deploy_root}/docker" ]] \
-    || fail "rootless Docker data-root is outside the dedicated volume"
+    || fail "rootless Docker data-root is outside the verified storage layout"
 
   [[ -f "${production_environment}" ]] || fail "${production_environment} is missing"
   [[ ! -L "${production_environment}" ]] || fail "production.env must not be a symbolic link"
@@ -145,16 +149,13 @@ validate_release_manifest() {
 }
 
 require_deploy_runtime() {
-  local available_kilobytes=0
+  local storage_mode=""
 
   docker buildx version >/dev/null 2>&1 || fail "Docker Buildx is not installed"
   [[ "$(docker buildx prune --help)" == *"--max-used-space"* ]] \
     || fail "Docker Buildx must support project-scoped cache limits"
-  command -v df >/dev/null 2>&1 || fail "df is not installed"
-
-  available_kilobytes="$(df -Pk "${deploy_root}" | awk 'NR == 2 {print $4}')"
-  [[ "${available_kilobytes}" =~ ^[0-9]+$ && "${available_kilobytes}" -ge 5242880 ]] \
-    || fail "at least 5 GiB of free deployment disk is required"
+  storage_mode="$(marketvalley_verify_storage_layout)"
+  marketvalley_require_storage_capacity "${storage_mode}"
 }
 
 read_environment_value() {
