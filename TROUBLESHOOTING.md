@@ -952,3 +952,17 @@ source와 owner-only control-plane 사본 일치, shell syntax, 전체 43 files�
 - compute가 Always Free여도 전체 인프라 비용이 0원이 아닐 수 있는 이유는 무엇인가?
 - 디스크가 부족할 때 신규 배포는 막되 rollback은 허용해야 하는 이유는 무엇인가?
 - systemd start 전 storage 구조를 검증하지 않으면 재부팅 뒤 어떤 stale-data 장애가 생기는가?
+
+## 2026-09-02 — 공유 Caddy 첫 병합본이 presigned upload query를 access log에 기록할 수 있었음
+
+### 상황과 영향
+
+Geuneul route source/control-plane PR을 병합했지만 production 배포 전 최종 대조에서 `/object-storage/*`가 일반 JSON access log 대상임을 확인했다. 실제 서버 reload 전이라 서명 노출은 발생하지 않았다.
+
+### 근본 원인과 해결
+
+초기 공유 edge 작업은 Origin·method·Host·credential 분리에 집중했고, 이후 Geuneul 저장소에서 추가한 query redaction과 access log 제외 계약이 두 MarketValley source of truth에 역전파되지 않았다. Geuneul upload path 전체를 `log_skip`하고 site/default logger가 모든 URI query 값을 `?REDACTED`로 바꾸도록 양쪽 Caddyfile과 회귀 검사를 동시에 수정했다.
+
+### 검증과 회귀 방지
+
+source 224 tests, owner-only control-plane 4 tests와 pinned Caddy 2.10.2 validate를 통과했다. 다음 production deploy는 source/runtime 사본과 runtime contract가 일치하고 두 main CI가 성공한 SHA만 허용한다.

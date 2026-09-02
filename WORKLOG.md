@@ -579,3 +579,9 @@
 - 안전 경계: 기존 MarketValley site, app network, secret, NLB listener와 backend set은 바꾸지 않는다. source와 control-plane contract가 다르면 owner-only deploy가 거부한다. 실제 server env 수정·Caddy reload·DNS 변경은 production 변경 승인 전이라 수행하지 않았다.
 - 검증: source/control-plane의 Caddy·Compose·remote release 사본이 byte-identical이다. 두 Compose config, pin된 Caddy 2.10.2 validate, 양쪽 remote release `bash -n`, owner-only control-plane Node 4개·Python 4개 테스트와 source deployment trust test 4개가 통과했다. 로컬 Colima에는 Compose plugin 대신 호환 `docker-compose`만 있어 해당 명령으로 같은 config를 렌더했다.
 - 남은 일: 두 저장소의 전체 gate·secret scan·PR/CI를 통과시킨 뒤, Geuneul backend stage와 live bucket 준비 후 production env에 실제 nonsecret endpoint 값을 넣고 검증된 Caddy를 reload한다. reload 전후 기존 MarketValley health와 Geuneul preflight/PUT을 모두 확인한다.
+
+## 2026-09-02 — Geuneul presigned upload query 로그 비노출 보강
+
+- 목적: 공유 Caddy를 실제 배포하기 전 presigned OCI upload URL의 임시 자격증명이 access/error log에 남지 않게 한다.
+- 변경: `/object-storage/*` access log를 `log_skip`으로 제외하고, Geuneul site logger와 global default logger에서 모든 URI query 값을 `?REDACTED`로 치환한다. path는 진단용으로 유지하고 Caddy의 credential-less proxy·exact Origin·signed Host 계약은 그대로 보존한다. source와 owner-only runtime 사본 및 정적 회귀 검사를 함께 갱신했다.
+- 검증: source Vitest 43 files·224 tests, owner-only Node 4 tests, 두 Caddyfile의 pinned Caddy 2.10.2 config validate가 성공했다. production reload는 Geuneul backend 준비와 두 PR main CI 뒤 수행한다.
