@@ -5,8 +5,8 @@
 - 목적: 기존 A1 운영 데이터와 서비스를 보존하면서 boot+block 합계 200GB를 지켜 장기 OCI 인프라 비용을 0원으로 만든다.
 - 변경: 50GiB 전용 volume resource를 Terraform 구성에서 제거하고, OCI Resource Manager와 동일한 Terraform 1.5.7로 내려받은 state의 volume·attachment 정확한 두 주소만 제거한 뒤 다시 import하는 인계 도구를 추가했다. MarketValley bootstrap·prepare·release는 전용 volume과 `boot-bind-v1`을 구분해 device, `FSROOT`, source/target inode, ext4와 `nosuid,nodev`를 검증한다. boot-backed layout은 free 40GiB·inode 사용률 90% 이하를 신규 배포에 강제하되 rollback에는 capacity gate를 적용하지 않는다. rootless Docker의 systemd `ExecStartPre`가 재부팅 때도 구조 검증을 먼저 실행한다. source와 owner-only control-plane 사본, CI와 문서를 함께 갱신했다.
 - 영향 범위: `deploy/` 운영 control-plane mirror, OCI NLB Terraform, 배포 runbook·ADR, trust-boundary 테스트와 owner-only CI
-- 검증: source·control-plane shell syntax, owner-only Node 4개·Python 4개 테스트, source 43 files·224 tests, lint·typecheck·production build·high audit를 통과했다. OCI Resource Manager와 같은 공식 Terraform 1.5.7 바이너리의 SHA-256을 확인한 뒤 state fixture, fmt·validate를 통과했다. Linux bind-mount 통합 테스트는 owner-only CI에 추가했으며 clean runner 결과는 push 뒤 확인한다.
-- 전달: 아직 commit·push·production storage 변경은 수행하지 않았다. 실제 first rsync와 짧은 MarketValley 중단, fstab cutover, reboot, Resource Manager state handoff, volume detach·delete는 순서대로 별도 검증한다.
+- 검증: source·control-plane shell syntax, owner-only Node 4개·Python 4개 테스트, source 43 files·224 tests, lint·typecheck·production build·high audit를 통과했다. OCI Resource Manager와 같은 공식 Terraform 1.5.7 바이너리의 SHA-256을 확인한 뒤 state fixture, fmt·validate를 통과했다. 첫 Linux bind-mount CI는 예상 실패를 같은 shell의 `EXIT` trap 아래 실행해 fixture까지 cleanup하며 실패했다. 예상 실패를 독립 Bash process로 격리해 부모 fixture를 보존하도록 수정했고 clean runner 재검증을 진행한다.
+- 전달: source PR #34, owner-only PR #2와 Geuneul PR #137에 준비 변경을 commit·push했다. production storage는 아직 변경하지 않았다. 실제 first rsync와 짧은 MarketValley 중단, fstab cutover, reboot, Resource Manager state handoff, volume detach·delete는 순서대로 별도 검증한다.
 - 결정과 남은 일: 운영 목표는 AWS 0원·OCI 0원이다. data volume은 rollback 관찰까지 보존하고 실제 삭제는 별도 파괴 승인 뒤 수행한다. 다음 단계는 전체 gate와 PR review 후 production pre-copy, maintenance cutover와 health 검증이다.
 
 ## 2026-09-01 — 공개 프로필의 marketvalley 역할 설명 개선

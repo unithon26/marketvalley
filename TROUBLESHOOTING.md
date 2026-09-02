@@ -909,7 +909,7 @@ SSH read-only 점검에서 boot는 약 145GiB free, 전용 volume은 약 2GiB us
 
 ### 검증·회귀 방지와 남은 위험
 
-source와 owner-only control-plane 사본 일치, shell syntax, 전체 43 files·224 tests, production build와 high audit를 통과했다. OCI Resource Manager와 같은 공식 Terraform 1.5.7 바이너리의 체크섬을 검증한 뒤 state fixture, fmt·validate를 통과했다. Linux ephemeral runner에서 올바른 bind, 잘못된 marker, 저용량 fail-closed를 실행하는 통합 테스트를 CI에 추가했다. 실제 cutover는 rootless Docker stop, open-file 0, checksum dry-run 0, mode 0600 fstab backup, health·K3s baseline, controlled reboot와 reverse-sync rollback rehearsal가 남았다. 이전 volume과 backup 삭제는 별도 파괴 승인이 필요하다.
+source와 owner-only control-plane 사본 일치, shell syntax, 전체 43 files·224 tests, production build와 high audit를 통과했다. OCI Resource Manager와 같은 공식 Terraform 1.5.7 바이너리의 체크섬을 검증한 뒤 state fixture, fmt·validate를 통과했다. Linux ephemeral runner에서 올바른 bind, 잘못된 marker, 저용량 fail-closed를 실행하는 통합 테스트를 CI에 추가했다. 첫 실행은 예상한 capacity 실패가 부모 test의 `EXIT` cleanup trap까지 실행해 fixture를 제거했다. fail-closed assertion을 별도 Bash process로 격리해 실패 효과가 부모 mount namespace의 test lifecycle로 전파되지 않게 했다. 실제 cutover는 rootless Docker stop, open-file 0, checksum dry-run 0, mode 0600 fstab backup, health·K3s baseline, controlled reboot와 reverse-sync rollback rehearsal가 남았다. 이전 volume과 backup 삭제는 별도 파괴 승인이 필요하다.
 
 ### 면접 질문
 
