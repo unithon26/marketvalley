@@ -51,10 +51,16 @@ done
 [[ "$(tr -d '[:space:]' <"${user_cgroup}/pids.max")" == "1024" ]] \
   || fail "deploy user aggregate task limit must be 1024"
 [[ -r "${user_cgroup}/io.weight" ]] || fail "deploy user aggregate I/O accounting is unavailable"
-[[ "$(findmnt -n -o FSTYPE --target /opt/marketvalley)" == "ext4" ]] \
-  || fail "/opt/marketvalley must be a dedicated ext4 mount"
-[[ "$(findmnt -n -o TARGET --target /opt/marketvalley)" == "/opt/marketvalley" ]] \
-  || fail "/opt/marketvalley is not a mount point"
+script_directory="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+storage_library="/usr/local/lib/marketvalley/storage-layout.sh"
+[[ -r "${storage_library}" ]] || storage_library="${script_directory}/storage-layout.sh"
+[[ -f "${storage_library}" && ! -L "${storage_library}" ]] || fail "trusted storage layout library is unavailable"
+[[ "$(stat -c '%u:%g:%a' "${storage_library}")" == "0:0:644" ]] \
+  || fail "trusted storage layout library must be root-owned mode 0644"
+# shellcheck disable=SC1090
+. "${storage_library}"
+storage_mode="$(marketvalley_verify_storage_layout)"
+marketvalley_require_storage_capacity "${storage_mode}"
 
 run_as_deploy() {
   runuser --user "${deploy_user}" -- \
@@ -87,7 +93,6 @@ security_options="$(run_as_deploy docker info --format '{{json .SecurityOptions}
 [[ "$(run_as_deploy docker buildx prune --help)" == *"--max-used-space"* ]] \
   || fail "Docker Buildx must support project-scoped cache limits"
 
-script_directory="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 template_path="${script_directory}/production.env.example"
 deploy_root="/opt/marketvalley"
 shared_directory="${deploy_root}/shared"

@@ -34,3 +34,59 @@
 		format json
 	}
 }
+
+{$GEUNEUL_SITE_ADDRESS} {
+	encode zstd gzip
+
+	@upload_preflight {
+		method OPTIONS
+		path /object-storage/*
+		header Origin {$GEUNEUL_FRONTEND_ORIGIN}
+		header Access-Control-Request-Method PUT
+	}
+	handle @upload_preflight {
+		header Access-Control-Allow-Origin "{$GEUNEUL_FRONTEND_ORIGIN}"
+		header Access-Control-Allow-Methods "PUT, OPTIONS"
+		header Access-Control-Allow-Headers "Content-Type, If-None-Match"
+		header Access-Control-Max-Age "600"
+		header Vary "Origin"
+		respond "" 204
+	}
+
+	@upload_put {
+		method PUT
+		path /object-storage/*
+		header Origin {$GEUNEUL_FRONTEND_ORIGIN}
+	}
+	handle @upload_put {
+		uri strip_prefix /object-storage
+		header Access-Control-Allow-Origin "{$GEUNEUL_FRONTEND_ORIGIN}"
+		header Access-Control-Expose-Headers "ETag"
+		header Vary "Origin"
+		reverse_proxy https://{$GEUNEUL_OBJECT_STORAGE_HOST} {
+			header_up Host {$GEUNEUL_OBJECT_STORAGE_HOST}
+		}
+	}
+
+	@rejected_object_storage path /object-storage/*
+	handle @rejected_object_storage {
+		respond "" 403
+	}
+
+	handle {
+		reverse_proxy {$GEUNEUL_BACKEND_UPSTREAM}
+	}
+
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

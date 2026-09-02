@@ -22,6 +22,8 @@ describe("production deployment trust boundary", () => {
     const bootstrap = readRepositoryFile("deploy/bootstrap-ubuntu-rootless.sh");
     const gateway = readRepositoryFile("deploy/deploy-gateway.sh");
     const releaseScript = readRepositoryFile("deploy/remote-release.sh");
+    const storageLayout = readRepositoryFile("deploy/storage-layout.sh");
+    const storageStart = readRepositoryFile("deploy/verify-storage-start.sh");
     const runtimeContract = readRepositoryFile("deploy/runtime-contract").trim();
 
     expect(manager).toContain('/usr/local/lib/marketvalley/remote-release.sh');
@@ -33,8 +35,8 @@ describe("production deployment trust boundary", () => {
     expect(gateway).toContain('SSH_ORIGINAL_COMMAND');
     expect(gateway).toContain('maximum_archive_bytes=268435456');
     expect(gateway).not.toContain("eval ");
-    expect(runtimeContract).toBe("marketvalley-production-v1");
-    expect(releaseScript).toContain('required_release_contract="marketvalley-production-v1"');
+    expect(runtimeContract).toBe("marketvalley-production-v2");
+    expect(releaseScript).toContain('required_release_contract="marketvalley-production-v2"');
     expect(releaseScript).toContain('release runtime contract is incompatible with this server');
     expect(releaseScript).toContain('--driver-opt memory=2g');
     expect(releaseScript).not.toContain('--driver-opt memory=3g');
@@ -48,6 +50,10 @@ describe("production deployment trust boundary", () => {
     expect(releaseScript).toContain('TURNSTILE_VERIFY_TIMEOUT_MS must be an integer between 500 and 10000');
     expect(releaseScript).toContain('RESERVATION_CAMPAIGN_MINUTE_LIMIT must not exceed');
     expect(releaseScript).toContain('production campaign lifecycle requires META_ADS_MODE=live');
+    expect(releaseScript).toContain('GEUNEUL_BACKEND_UPSTREAM must use a private IPv4 address');
+    expect(releaseScript).toContain('GEUNEUL_OBJECT_STORAGE_HOST must be an exact OCI S3 compatibility hostname');
+    expect(readRepositoryFile("deploy/Caddyfile")).toContain("@rejected_object_storage");
+    expect(readRepositoryFile("deploy/Caddyfile")).toContain("header_up Host {$GEUNEUL_OBJECT_STORAGE_HOST}");
     expect(releaseScript).not.toContain('META_DRAFT_DAILY_OWNER_LIMIT');
     expect(releaseScript).not.toContain('META_DRAFT_DAILY_GLOBAL_LIMIT');
     expect(releaseScript).toContain('validate-release-archive.py');
@@ -66,25 +72,36 @@ describe("production deployment trust boundary", () => {
     expect(bootstrap).toContain('mkfs.ext4 -F -L marketvalley');
     expect(bootstrap).toContain('"${filesystem_label}" == "marketvalley"');
     expect(bootstrap).toContain('/opt/marketvalley/docker');
-    expect(releaseScript).toContain('dedicated marketvalley volume is not mounted');
+    expect(releaseScript).toContain('marketvalley_verify_storage_layout');
+    expect(storageLayout).toContain('boot-bind-v1');
+    expect(storageLayout).toContain('/var/lib/marketvalley');
+    expect(storageLayout).toContain('MARKETVALLEY_BOOT_MINIMUM_FREE_KIB=$((40 * 1024 * 1024))');
+    expect(storageLayout).toContain('MARKETVALLEY_MAXIMUM_INODE_USE_PERCENT=90');
+    expect(storageLayout).toContain('FSROOT');
+    expect(bootstrap).toContain('ExecStartPre=/usr/local/lib/marketvalley/verify-storage-start.sh');
+    expect(storageStart).toContain('marketvalley_verify_storage_layout');
+    expect(storageStart).not.toContain('marketvalley_require_storage_capacity');
+    expect(releaseScript).toContain('marketvalley_require_storage_capacity');
     expect(releaseScript).toContain('compose up --detach --no-build app lifecycle-worker proxy');
     expect(releaseScript).toContain('compose up --detach --no-build --force-recreate lifecycle-worker');
     expect(releaseScript).toContain('"${image}" == "marketvalley:${expected_sha}"');
     expect(releaseScript).toContain('wait_for_running_lifecycle_worker "${target_sha}" || return 1');
   });
 
-  it("hard-isolates Docker storage on an attached OCI block volume", () => {
+  it("retires the paid block volume through an exact Terraform 1.5 state handoff", () => {
     const terraform = readRepositoryFile("infra/terraform/oci-nlb/main.tf");
-    const variables = readRepositoryFile("infra/terraform/oci-nlb/variables.tf");
+    const versions = readRepositoryFile("infra/terraform/oci-nlb/versions.tf");
+    const retirement = readRepositoryFile("infra/terraform/oci-nlb/retire-data-volume-state.sh");
 
-    expect(terraform).toContain('resource "oci_core_volume" "marketvalley_data"');
-    expect(terraform).toContain('resource "oci_core_volume_attachment" "marketvalley_data"');
-    expect(terraform).toContain('attachment_type                     = "paravirtualized"');
-    expect(terraform).toContain('is_pv_encryption_in_transit_enabled = false');
-    expect(terraform).toContain('vpus_per_gb          = 10');
-    expect(terraform).toMatch(/lifecycle\s*\{\s*prevent_destroy\s*=\s*true\s*\}/s);
-    expect(variables).toContain('default     = "/dev/oracleoci/oraclevdb"');
-    expect(variables).toContain('var.data_volume_size_gbs >= 50');
+    expect(terraform).not.toContain('resource "oci_core_volume" "marketvalley_data"');
+    expect(terraform).not.toContain('resource "oci_core_volume_attachment" "marketvalley_data"');
+    expect(terraform).not.toContain("removed {");
+    expect(versions).toContain('required_version = ">= 1.5.7, < 1.6.0"');
+    expect(retirement).toContain('readonly volume_address="oci_core_volume.marketvalley_data"');
+    expect(retirement).toContain('readonly attachment_address="oci_core_volume_attachment.marketvalley_data"');
+    expect(retirement).toContain('terraform_version}" == "1.5.7"');
+    expect(retirement).toContain('state rm -dry-run');
+    expect(retirement).toContain('cmp -s "${input_state}" "${backup_state}"');
   });
 
   it("uses the current OCI CLI NSG identifier without replacing VNIC memberships", () => {

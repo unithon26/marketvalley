@@ -1,5 +1,33 @@
 # Troubleshooting
 
+## 2026-09-02 — OCI Console 파일 chooser가 Resource Manager 구성 업로드를 반영하지 않음
+
+### 맥락과 영향
+
+boot-backed storage cutover 뒤 Resource Manager state에서 기존 50GiB volume·attachment를 관리 대상에서 제외하고, volume resource가 없는 Terraform 구성으로 stack을 갱신해야 했다. state import는 Console에서 성공했지만 이어진 Edit stack에서 ZIP 선택이 반영되지 않았다. 이 상태에서 Plan을 실행하면 이전 구성이 volume을 재생성할 수 있어 Plan·Apply를 중지했다.
+
+### 기대·실제 동작과 증거
+
+- 기대: Chrome의 로컬 파일 접근을 허용하고 state 또는 ZIP을 선택하면 OCI form의 `input[type=file]` 목록에 파일 1개가 나타나야 한다.
+- 실제: 자동 `setFiles`는 Chrome에서 `Not allowed`로 거부됐고, 사용자가 네이티브 picker에서 ZIP을 두 번 선택한 뒤에도 DOM의 file list는 0개였다.
+- state import job은 이와 별개로 `SUCCEEDED`했고 Terraform 1.5.7 state에 volume·attachment resource가 0개임을 확인했다. 따라서 state 내용 문제가 아니라 Console 파일 전달 경로의 문제로 격리했다.
+
+### 원인 판단과 검토한 대안
+
+직접 원인은 Chrome extension과 OCI cross-origin plugin iframe 사이의 로컬 file chooser가 선택 결과를 plugin input에 전달하지 못한 것이다. 브라우저 재연결·페이지 새로고침·Downloads 경로 복사·수동 picker를 순서대로 시도했지만 같은 결과였다. state 내용을 Cloud Shell에 paste하거나 Console 페이지 내부 인증 상태를 추출하는 방법은 비밀 노출 경계를 넓히므로 기각했다.
+
+### 해결과 회귀 방지
+
+사용자의 명시적 승인 뒤 60분 만료 OCI CLI security-token session을 격리된 mode 0700 임시 디렉터리에 생성했다. CLI로 대상 ACTIVE stack이 정확히 1개임을 확인하고 동시 Resource Manager job 0개, 기존 ETag와 구성 ZIP SHA-256를 대조한 뒤 `stack update`를 수행했다. 기존 variables는 API omission semantics로 보존하고 configuration source와 Terraform 1.5.x만 바꿨다.
+
+첫 Plan JSON은 실제 resource mutation 0개, 이전 volume output 2개 delete와 `boot-bind-v1` output 1개 create만 보였다. 검증한 plan job ID를 그대로 Apply한 뒤 state serial 23, retired resource·output 0개, 실제 resource 0 added·0 changed·0 destroyed를 확인했다. 후속 독립 Plan은 `No changes`와 resource·output mutation 0을 반환했다.
+
+CLI 인증 callback URL은 단기 token을 포함할 수 있으므로 title·URL·raw auth log를 수집하거나 문서에 남기지 않는다. 인증 탭을 즉시 닫고 작업 종료 뒤 session config·token·key·raw state·plan을 함께 폐기하며, 공개 작업 기록에는 상태·건수·해시 검증 결과만 남긴다.
+
+### 남은 위험과 예상 질문
+
+기존 50GiB volume은 rollback을 위해 아직 unmounted·attached 상태이므로 별도 파괴 승인 전에는 삭제하지 않는다. 면접에서는 Terraform 1.5.7에 `removed` block이 없을 때 어떻게 exact-address state handoff를 제한했는지, 왜 output-only Plan을 적용한 뒤 다시 No Changes Plan을 실행했는지, 단기 인증 자료의 노출 범위를 어떻게 축소했는지 설명할 수 있다.
+
 ## 2026-08-26 — 내부 광고 생성 횟수 제한으로 캠페인이 중단됨
 
 ### 맥락과 영향
@@ -867,3 +895,60 @@ Business Settings에서 추가 연결을 추측해 변경하거나 `business_man
 - 왜 `promote_pages` 실패를 무시하지 않았는가? Page 검증을 없애지 않고 서버에 고정된 Page를 직접 확인해 더 강한 fail-closed 계약으로 교체했다.
 - 왜 권한을 더 추가하지 않았는가? 직접 조회로 필요한 자산 접근이 이미 증명됐고, 불필요한 `business_management`는 최소 권한 원칙을 약화하기 때문이다.
 - 실제 광고 생성은 어떻게 안전하게 확인하는가? 내부 운영자 allowlist, durable ledger, `PAUSED` 고정, 예산 상한과 단일 종단·중복·0원 지출 검증을 함께 사용한다.
+## 2026-09-01 — Geuneul Caddy route를 한 저장소만 바꾸면 다음 MarketValley 배포가 제거함
+
+### 상황과 기대 동작
+
+기존 OCI NLB와 MarketValley Caddy를 Geuneul API에도 재사용하려 했다. 새 site block은 현재 운영 Caddy에 남아야 하고 이후 MarketValley release도 이를 보존해야 한다.
+
+### 실제 위험과 영향
+
+운영 Caddyfile은 서버에서 독립 관리되는 파일이 아니라 MarketValley owner-only release가 source `deploy/`에 control-plane `runtime/` overlay를 씌운 뒤 매 배포마다 shared Caddyfile로 복사한다. Geuneul 저장소의 예시나 서버 파일만 수정하면 당장은 동작해도 다음 MarketValley 배포가 route를 제거해 Geuneul API와 사진 업로드가 동시에 중단된다. production 적용 전 구조 검토에서 발견해 실제 중단은 없었다.
+
+### 원인과 해결
+
+공유 edge의 소유권과 변경 전파 경로가 Geuneul 저장소 밖에 있다는 점이 원인이다. source `deploy/Caddyfile`·Compose·environment example과 owner-only control-plane 사본을 함께 바꾸고 runtime contract를 v2로 올렸다. release는 source와 control-plane contract가 다르면 fail-closed한다. exact-origin PUT gateway는 다른 method·Origin을 403으로 막고 OCI upstream Host를 명시하며 credential을 보유하지 않는다.
+
+### 검증과 회귀 방지
+
+양쪽 Caddy·Compose·remote release·environment template의 byte 일치를 확인했다. pin된 Caddy validate, Compose render, remote script syntax와 source/control-plane trust tests를 통과했다. production에서는 Geuneul backend와 bucket이 준비된 뒤에만 env를 추가하고, reload 전후 기존 MarketValley health와 Geuneul origin/preflight/PUT을 함께 검증한다.
+
+### 남은 위험과 면접 질문
+
+하나의 edge process 장애가 두 hostname에 영향을 주는 결합은 남는다. 별도 load balancer 비용과 운영 복잡도보다 현재 트래픽·비용에 적합하다고 판단했으며, 장애 빈도나 부하가 커지면 edge 분리를 재검토한다.
+
+- 공유 인프라의 실제 source of truth를 어떻게 찾았는가?
+- runtime contract가 단순 파일 복사보다 rollback과 재배포 안전성을 어떻게 높이는가?
+- 자격증명 없는 upload gateway에서도 Origin·Host를 엄격히 고정해야 하는 이유는 무엇인가?
+
+## 2026-09-02 — 전용 50GiB volume이 Always Free storage 합계를 초과함
+
+### 상황과 실제 영향
+
+MarketValley가 실행 중인 OCI A1을 Geuneul도 재사용해 정상 운영비를 0원으로 유지하려 했다. live compute는 Always Free 크기인 2 OCPU·12GB였지만 boot 200GB에 전용 data volume 50GB가 붙어 boot+block 합계가 250GB였다. Oracle의 Always Free 합계 200GB보다 50GB 커 새 앱을 올리기 전부터 비용 조건을 충족하지 못했다. 초기 조사와 코드 준비 중에는 OCI 자원·서비스·데이터를 변경하지 않았다.
+
+### 증거와 근본 원인
+
+SSH read-only 점검에서 boot는 약 145GiB free, 전용 volume은 약 2GiB used였고 사용 프로세스는 `marketvalley` rootless Docker의 daemon·containerd·BuildKit으로 한정됐다. 최초 설계는 Kubernetes boot disk 고갈 방지를 위해 volume을 분리했지만 tenancy 전체 무료 storage 합계를 배포 invariant로 두지 않았다. compute가 무료 크기라는 사실을 인프라 전체가 무료라는 결론으로 확장한 것이 원인이다.
+
+### 해결과 기각 대안
+
+추가 비용 유지는 0원 요구와 충돌하고, 새 A1은 춘천 capacity가 불확실하며 기존 NLB·K3s 이전 범위도 커 기각했다. 실제 데이터가 작은 점을 이용해 200GB boot의 `/var/lib/marketvalley`로 live first pass와 완전 정지 final rsync를 수행하고 `/opt/marketvalley`에 bind mount하기로 했다. control-plane은 marker, device, `FSROOT`, inode, ext4, mount option을 검증하고 boot free 40GiB·inode 90% 보호선을 신규 배포와 health에 적용한다. rollback에는 capacity gate를 적용하지 않고, Docker `ExecStartPre`가 잘못된 mount에서 자동 시작하는 것을 막는다. OCI Resource Manager가 Terraform 1.5.7까지만 지원하므로 동일 버전으로 state의 volume·attachment 두 주소만 인계하고 실제 리소스는 유지한 채 plan을 먼저 검증한다.
+
+### 검증·회귀 방지와 남은 위험
+
+source와 owner-only control-plane 사본 일치, shell syntax, 전체 43 files·224 tests, production build와 high audit를 통과했다. OCI Resource Manager와 같은 공식 Terraform 1.5.7 바이너리의 체크섬을 검증한 뒤 state fixture, fmt·validate를 통과했다. Linux ephemeral runner에서 올바른 bind, 잘못된 marker, 저용량 fail-closed를 실행하는 통합 테스트를 CI에 추가했다. 첫 실행은 예상한 capacity 실패가 부모 test의 `EXIT` cleanup trap까지 실행해 fixture를 제거했다. fail-closed assertion을 별도 Bash process로 격리했고 후속 CI가 통과했다. production에서는 약 51,000개 파일·2.02GB를 boot-backed target으로 무중단 1차 복사했고 boot free 약 140GiB, rootless 컨테이너 4개와 공개 health가 정상이었다. 기존 K3s workload 2개는 CPU 부족으로 Pending이라 reboot 위험으로 분리 기록했다. 다섯 번째 maintenance에서 final checksum 0과 boot-backed 전환을 완료했고 controlled reboot 뒤에도 mount·fstab·`ExecStartPre`, 컨테이너 4개·public health와 K3s Ready가 재현됐다. 이전 volume과 backup 삭제는 별도 파괴 승인이 필요하다.
+
+첫 production cutover는 rootless 설치에 존재하지 않는 `docker.socket` unit을 `docker.service`와 함께 정지해 systemd 오류가 발생했고 데이터 전환 전에 자동 복구했다. 두 번째는 core daemon 종료 직후 open file을 한 번만 검사해 아직 정리 중인 descriptor를 실패로 판정했다. 이 경로의 명시적 `exit`는 Bash `ERR` trap을 호출하지 않아 자동 restart도 생략됐다. 전용 volume mount와 UUID fstab가 그대로임을 검증하고 Docker를 수동 시작해 컨테이너 4개와 public health를 복구했다. 후속 절차는 실제 존재하는 service만 정지하고 open file 0을 bounded wait하며, 성공 flag가 없는 모든 shell 종료에 `EXIT` rollback을 적용한다.
+
+세 번째 시도에서 bounded wait가 끝까지 0이 되지 않은 원인은 Docker 잔여 process가 아니라 maintenance가 잡은 `gateway.lock`과 `deployment.lock` 자체였다. 두 lock이 unmount할 바로 그 volume 안에 있어 lock FD 유지와 open-file 0은 동시에 성립할 수 없다. `EXIT` rollback은 기존 mount·fstab·marker와 Docker를 정상 복구했다. 수정 절차는 두 lock을 잡은 동안 root-owned forced-command gateway를 mode 000으로 닫고 기존 gateway·manager·release process가 0인지 확인한 뒤 lock FD를 해제한다. 이후 새 접근은 실패하므로 open-file 0과 unmount가 가능하고, 성공·rollback 모두 gateway를 검증된 mode 0755 파일로 복원한다.
+
+네 번째 시도는 gateway 차단, open-file 0, final rsync, checksum 0, bind mount, 새 Docker와 app health까지 통과했다. 그러나 마지막 `prepare-host.sh`가 전송 bundle에 없어 host validation 호출에서 실패했다. 새 mount에서 Docker가 이미 시작된 뒤였으므로 `EXIT` rollback은 boot-backed 최신 상태를 임시 mount한 기존 volume으로 reverse rsync·checksum한 다음 fstab·marker·gateway를 복원했다. 컨테이너 4개와 public health가 정상인 것을 재확인했다. 후속 bundle은 host validator와 그 입력 template까지 포함하고 전체 파일의 결합 SHA-256을 로컬·서버에서 비교한다.
+
+다섯 번째 시도는 완전한 8-file bundle로 gateway 차단, open-file 0, final checksum 0, bind mount, 구조·capacity·host 검증과 app health를 모두 통과했다. controlled reboot 뒤 boot ID가 바뀐 상태에서도 `FSROOT=/var/lib/marketvalley`, root와 같은 device, source/target inode, `nosuid,nodev`, fstab bind entry 하나, Docker `ExecStartPre`, 컨테이너 4개와 public health가 재현됐다. K3s node는 Ready이고 기존 CPU 부족 Pending 2개는 동일했다. 새 release manager의 `current`는 아직 production.env에 없는 Geuneul 변수 때문에 fail-closed했으며 서비스에는 영향이 없다. Geuneul 환경 반영 전까지 deploy gateway 사용을 중지하고 같은 변경에서 복구한다.
+
+### 면접 질문
+
+- compute가 Always Free여도 전체 인프라 비용이 0원이 아닐 수 있는 이유는 무엇인가?
+- 디스크가 부족할 때 신규 배포는 막되 rollback은 허용해야 하는 이유는 무엇인가?
+- systemd start 전 storage 구조를 검증하지 않으면 재부팅 뒤 어떤 stale-data 장애가 생기는가?

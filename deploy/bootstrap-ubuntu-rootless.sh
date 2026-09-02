@@ -12,6 +12,7 @@ readonly docker_archive_sha256="43d143448adf2c2787704e7d7704fd6d62d367a54c5edaef
 readonly docker_gpg_sha256="1500c1f56fa9e26b9b8f42452a553675796ade0807cdce11975eb98170b3a570"
 
 temporary_directory=""
+storage_marker_temporary=""
 
 fail() {
   printf 'marketvalley rootless bootstrap error: %s\n' "$1" >&2
@@ -19,6 +20,10 @@ fail() {
 }
 
 cleanup() {
+  if [[ -n "${storage_marker_temporary}" \
+    && "${storage_marker_temporary}" == /etc/.marketvalley-storage-layout.* ]]; then
+    rm -f -- "${storage_marker_temporary}"
+  fi
   if [[ -n "${temporary_directory}" && "${temporary_directory}" == /tmp/marketvalley-rootless.* ]]; then
     rm -rf -- "${temporary_directory}"
   fi
@@ -107,55 +112,79 @@ awk -F: -v user="${deploy_user}" '$1 == user && $3 >= 65536 { found = 1 } END { 
 awk -F: -v user="${deploy_user}" '$1 == user && $3 >= 65536 { found = 1 } END { exit !found }' /etc/subgid \
   || fail "deploy user needs at least 65536 subordinate GIDs"
 
-data_device="${MARKETVALLEY_DATA_DEVICE:-/dev/oracleoci/oraclevdb}"
+storage_mode="${MARKETVALLEY_STORAGE_MODE:-dedicated-volume-v1}"
 data_mount="/opt/marketvalley"
-[[ "${data_device}" =~ ^/dev/oracleoci/oraclevd[b-z]$ ]] \
-  || fail "MARKETVALLEY_DATA_DEVICE must be a non-boot OCI consistent device path"
-[[ -b "${data_device}" ]] || fail "the dedicated marketvalley block device is unavailable"
-device_real="$(readlink -f "${data_device}")"
-boot_device_real="$(readlink -f /dev/oracleoci/oraclevda)"
-[[ -b "${device_real}" && "${device_real}" != "${boot_device_real}" ]] \
-  || fail "refusing to format the boot device"
-[[ "$(lsblk -dn -o TYPE "${device_real}")" == "disk" ]] \
-  || fail "the marketvalley data device must be a whole disk"
-[[ "$(lsblk -nr -o NAME "${device_real}" | wc -l | tr -d '[:space:]')" == "1" ]] \
-  || fail "the marketvalley data device must not contain partitions"
-device_size_bytes="$(blockdev --getsize64 "${device_real}")"
-(( device_size_bytes >= 50 * 1024 * 1024 * 1024 && device_size_bytes <= 150 * 1024 * 1024 * 1024 )) \
-  || fail "the marketvalley data volume must be between 50 and 150 GiB"
+script_directory="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+. "${script_directory}/storage-layout.sh"
 
-filesystem_type="$(blkid -s TYPE -o value "${device_real}" 2>/dev/null || true)"
-filesystem_label="$(blkid -s LABEL -o value "${device_real}" 2>/dev/null || true)"
-if [[ -z "${filesystem_type}" ]]; then
-  [[ "${MARKETVALLEY_CONFIRM_FORMAT_DEVICE:-}" == "yes" ]] \
-    || fail "set MARKETVALLEY_CONFIRM_FORMAT_DEVICE=yes to format the empty dedicated volume"
-  mkfs.ext4 -F -L marketvalley -m 0 "${device_real}"
-  filesystem_type="$(blkid -s TYPE -o value "${device_real}")"
-  filesystem_label="$(blkid -s LABEL -o value "${device_real}")"
-fi
-[[ "${filesystem_type}" == "ext4" && "${filesystem_label}" == "marketvalley" ]] \
-  || fail "the data device contains an unexpected filesystem"
-filesystem_uuid="$(blkid -s UUID -o value "${device_real}")"
-[[ "${filesystem_uuid}" =~ ^[0-9a-fA-F-]{16,64}$ ]] || fail "the data filesystem UUID is invalid"
+case "${storage_mode}" in
+  dedicated-volume-v1)
+    data_device="${MARKETVALLEY_DATA_DEVICE:-/dev/oracleoci/oraclevdb}"
+    [[ "${data_device}" =~ ^/dev/oracleoci/oraclevd[b-z]$ ]] \
+      || fail "MARKETVALLEY_DATA_DEVICE must be a non-boot OCI consistent device path"
+    [[ -b "${data_device}" ]] || fail "the dedicated marketvalley block device is unavailable"
+    device_real="$(readlink -f "${data_device}")"
+    boot_device_real="$(readlink -f /dev/oracleoci/oraclevda)"
+    [[ -b "${device_real}" && "${device_real}" != "${boot_device_real}" ]] \
+      || fail "refusing to format the boot device"
+    [[ "$(lsblk -dn -o TYPE "${device_real}")" == "disk" ]] \
+      || fail "the marketvalley data device must be a whole disk"
+    [[ "$(lsblk -nr -o NAME "${device_real}" | wc -l | tr -d '[:space:]')" == "1" ]] \
+      || fail "the marketvalley data device must not contain partitions"
+    device_size_bytes="$(blockdev --getsize64 "${device_real}")"
+    (( device_size_bytes >= 50 * 1024 * 1024 * 1024 && device_size_bytes <= 150 * 1024 * 1024 * 1024 )) \
+      || fail "the marketvalley data volume must be between 50 and 150 GiB"
 
-install -d -m 0750 -o "${deploy_user}" -g "${deploy_user}" "${data_mount}"
-if ! mountpoint -q "${data_mount}"; then
-  [[ -z "$(find "${data_mount}" -mindepth 1 -maxdepth 1 -print -quit)" ]] \
-    || fail "the unmounted marketvalley data directory is not empty"
-  fstab_entry="UUID=${filesystem_uuid} ${data_mount} ext4 defaults,_netdev,nofail,nodev,nosuid,noatime 0 2"
-  existing_mount_entries="$(awk -v mount_path="${data_mount}" '$2 == mount_path { print }' /etc/fstab)"
-  if [[ -n "${existing_mount_entries}" && "${existing_mount_entries}" != "${fstab_entry}" ]]; then
-    fail "an unexpected /opt/marketvalley fstab entry already exists"
-  fi
-  if [[ -z "${existing_mount_entries}" ]]; then
-    printf '%s\n' "${fstab_entry}" >>/etc/fstab
-  fi
-  mount "${data_mount}"
-fi
-[[ "$(findmnt -n -o FSTYPE --target "${data_mount}")" == "ext4" ]] \
-  || fail "the marketvalley data mount must use ext4"
-[[ "$(findmnt -n -o UUID --target "${data_mount}")" == "${filesystem_uuid}" ]] \
-  || fail "an unexpected filesystem is mounted at /opt/marketvalley"
+    filesystem_type="$(blkid -s TYPE -o value "${device_real}" 2>/dev/null || true)"
+    filesystem_label="$(blkid -s LABEL -o value "${device_real}" 2>/dev/null || true)"
+    if [[ -z "${filesystem_type}" ]]; then
+      [[ "${MARKETVALLEY_CONFIRM_FORMAT_DEVICE:-}" == "yes" ]] \
+        || fail "set MARKETVALLEY_CONFIRM_FORMAT_DEVICE=yes to format the empty dedicated volume"
+      mkfs.ext4 -F -L marketvalley -m 0 "${device_real}"
+      filesystem_type="$(blkid -s TYPE -o value "${device_real}")"
+      filesystem_label="$(blkid -s LABEL -o value "${device_real}")"
+    fi
+    [[ "${filesystem_type}" == "ext4" && "${filesystem_label}" == "marketvalley" ]] \
+      || fail "the data device contains an unexpected filesystem"
+    filesystem_uuid="$(blkid -s UUID -o value "${device_real}")"
+    [[ "${filesystem_uuid}" =~ ^[0-9a-fA-F-]{16,64}$ ]] || fail "the data filesystem UUID is invalid"
+
+    install -d -m 0750 -o "${deploy_user}" -g "${deploy_user}" "${data_mount}"
+    if ! mountpoint -q "${data_mount}"; then
+      [[ -z "$(find "${data_mount}" -mindepth 1 -maxdepth 1 -print -quit)" ]] \
+        || fail "the unmounted marketvalley data directory is not empty"
+      fstab_entry="UUID=${filesystem_uuid} ${data_mount} ext4 defaults,_netdev,nofail,nodev,nosuid,noatime 0 2"
+      existing_mount_entries="$(awk -v mount_path="${data_mount}" '$2 == mount_path { print }' /etc/fstab)"
+      if [[ -n "${existing_mount_entries}" && "${existing_mount_entries}" != "${fstab_entry}" ]]; then
+        fail "an unexpected /opt/marketvalley fstab entry already exists"
+      fi
+      if [[ -z "${existing_mount_entries}" ]]; then
+        printf '%s\n' "${fstab_entry}" >>/etc/fstab
+      fi
+      mount "${data_mount}"
+    fi
+    [[ "$(findmnt -n -o UUID --target "${data_mount}")" == "${filesystem_uuid}" ]] \
+      || fail "an unexpected filesystem is mounted at /opt/marketvalley"
+    storage_marker_temporary="$(mktemp /etc/.marketvalley-storage-layout.XXXXXX)"
+    printf '%s\n' 'dedicated-volume-v1' >"${storage_marker_temporary}"
+    chown root:root "${storage_marker_temporary}"
+    chmod 0644 "${storage_marker_temporary}"
+    mv -- "${storage_marker_temporary}" "${MARKETVALLEY_STORAGE_MARKER}"
+    storage_marker_temporary=""
+    ;;
+  boot-bind-v1)
+    [[ "${MARKETVALLEY_CONFIRM_BOOT_BIND:-}" == "yes" ]] \
+      || fail "set MARKETVALLEY_CONFIRM_BOOT_BIND=yes only after the reviewed storage cutover"
+    ;;
+  *)
+    fail "MARKETVALLEY_STORAGE_MODE must be dedicated-volume-v1 or boot-bind-v1"
+    ;;
+esac
+
+[[ "$(marketvalley_verify_storage_layout)" == "${storage_mode}" ]] \
+  || fail "the mounted storage layout does not match MARKETVALLEY_STORAGE_MODE"
+marketvalley_require_storage_capacity "${storage_mode}"
 chown "${deploy_user}:${deploy_user}" "${data_mount}"
 chmod 0750 "${data_mount}"
 
@@ -241,11 +270,18 @@ run_as_deploy() {
 }
 
 run_as_deploy dockerd-rootless-setuptool.sh install --force
+install -d -m 0755 /usr/local/lib/marketvalley
+install -m 0644 -o root -g root "${script_directory}/storage-layout.sh" \
+  /usr/local/lib/marketvalley/storage-layout.sh
+install -m 0755 -o root -g root "${script_directory}/verify-storage-start.sh" \
+  /usr/local/lib/marketvalley/verify-storage-start.sh
 install -d -m 0755 -o "${deploy_user}" -g "${deploy_user}" \
   "${deploy_home}/.config/systemd/user/docker.service.d"
 printf '%s\n' \
   '[Unit]' \
   'ConditionPathIsMountPoint=/opt/marketvalley' \
+  '[Service]' \
+  'ExecStartPre=/usr/local/lib/marketvalley/verify-storage-start.sh' \
   >"${deploy_home}/.config/systemd/user/docker.service.d/marketvalley-data.conf"
 chown "${deploy_user}:${deploy_user}" \
   "${deploy_home}/.config/systemd/user/docker.service.d/marketvalley-data.conf"
@@ -254,8 +290,6 @@ run_as_deploy systemctl --user enable --now docker.service
 [[ "$(run_as_deploy docker info --format '{{.DockerRootDir}}')" == "/opt/marketvalley/docker" ]] \
   || fail "rootless Docker data-root is outside the dedicated volume"
 
-script_directory="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-install -d -m 0755 /usr/local/lib/marketvalley
 install -m 0755 -o root -g root "${script_directory}/deploy-gateway.sh" \
   /usr/local/lib/marketvalley/deploy-gateway.sh
 install -m 0755 -o root -g root "${script_directory}/release-manager.sh" \

@@ -1,5 +1,23 @@
 # 작업 기록
 
+## 2026-09-02 — OCI Always Free storage 전환 준비
+
+- 목적: 기존 A1 운영 데이터와 서비스를 보존하면서 boot+block 합계 200GB를 지켜 장기 OCI 인프라 비용을 0원으로 만든다.
+- 변경: 50GiB 전용 volume resource를 Terraform 구성에서 제거하고, OCI Resource Manager와 동일한 Terraform 1.5.7로 내려받은 state의 volume·attachment 정확한 두 주소만 제거한 뒤 다시 import하는 인계 도구를 추가했다. MarketValley bootstrap·prepare·release는 전용 volume과 `boot-bind-v1`을 구분해 device, `FSROOT`, source/target inode, ext4와 `nosuid,nodev`를 검증한다. boot-backed layout은 free 40GiB·inode 사용률 90% 이하를 신규 배포에 강제하되 rollback에는 capacity gate를 적용하지 않는다. rootless Docker의 systemd `ExecStartPre`가 재부팅 때도 구조 검증을 먼저 실행한다. source와 owner-only control-plane 사본, CI와 문서를 함께 갱신했다.
+- 영향 범위: `deploy/` 운영 control-plane mirror, OCI NLB Terraform, 배포 runbook·ADR, trust-boundary 테스트와 owner-only CI
+- 검증: source·control-plane shell syntax, owner-only Node 4개·Python 4개 테스트, source 43 files·224 tests, lint·typecheck·production build·high audit를 통과했다. OCI Resource Manager와 같은 공식 Terraform 1.5.7 바이너리의 SHA-256을 확인한 뒤 state fixture, fmt·validate를 통과했다. 첫 Linux bind-mount CI는 예상 실패를 같은 shell의 `EXIT` trap 아래 실행해 fixture까지 cleanup하며 실패했다. 예상 실패를 독립 Bash process로 격리했고 후속 owner-only CI, source quality·Vercel, Geuneul backend·frontend·OCI ARM64·CodeQL·gitleaks·Vercel 검사가 모두 통과했다.
+- 전달: source PR #34, owner-only PR #2와 Geuneul PR #137에 준비 변경을 commit·push했다. Tailscale SSH 재인증 뒤 production의 약 51,000개 파일·2.02GB를 `/var/lib/marketvalley`로 서비스 중단 없이 1차 복사했다. 다섯 번째 maintenance에서 final checksum 0, boot-backed bind, host validation과 컨테이너 health가 통과했고 controlled reboot 뒤에도 `ExecStartPre`, mount·inode·fstab, 컨테이너 4개·공개 health와 K3s Ready가 재현됐다. 기존 50GiB volume은 unmounted 상태로 rollback용 보존 중이다.
+- 운영 시도: 명시적 중단 승인 뒤 첫 cutover는 존재하지 않는 rootless `docker.socket` unit 정지 오류를 만나 데이터 전환 전에 자동 복구했다. 두 번째는 Docker 정지 뒤 open-file 0을 즉시 요구해 종료됐고, 명시적 `exit`가 Bash `ERR` trap을 실행하지 않아 기존 전용 mount를 확인한 뒤 Docker를 수동 재시작했다. 세 번째의 bounded wait는 gateway·deployment lock 자체가 이전 volume 안의 open file이라 0이 될 수 없음을 드러냈고 `EXIT` rollback이 정상 동작했다. 네 번째는 final sync·checksum·bind mount·새 Docker health까지 통과했지만 마지막 host 검증 파일이 업로드 묶음에서 누락돼 rollback됐다. 이때 새 mount 변경분을 이전 volume으로 역동기화하고 전용 mount·컨테이너 4개·공개 health·gateway를 복구했다.
+- 결정과 남은 일: 운영 목표는 AWS 0원·OCI 0원이다. 기존 K3s workload 2개의 CPU 부족 Pending은 재부팅 전후 동일했다. 새 release manager는 아직 없는 Geuneul production 변수 때문에 `current`를 fail-closed하므로 Geuneul 환경 반영 전까지 deploy gateway 운영을 중지한다. 다음은 OCI 로그인 뒤 Resource Manager state handoff와 Geuneul restore이며, data volume detach·삭제는 별도 파괴 승인 뒤 수행한다.
+
+## 2026-09-02 — OCI Resource Manager storage state handoff 완료
+
+- 목적: boot-backed 전환을 완료한 운영 host와 Terraform managed state를 일치시켜 이후 Plan이 유료 Block Volume을 재생성하지 않게 한다.
+- 작업: OCI Resource Manager에서 Terraform 1.5.7 state를 mode 0600으로 내려받아 전용 volume·attachment 정확한 두 주소만 제거했다. 원본과 byte-identical backup을 보존한 뒤 state import job을 성공시켰고, volume resource가 없는 5파일 Terraform 구성 ZIP을 ETag 조건으로 stack에 반영했다. 기존 stack 변수는 변경하지 않았다.
+- 검증: import state는 serial 22, Terraform 1.5.7, retired resource 0개였다. 첫 Plan의 JSON과 로그에서 실제 resource add·change·destroy가 모두 0임을 확인하고, 이 plan을 적용해 이전 volume output 2개를 지우고 `marketvalley_storage_layout=boot-bind-v1`을 저장했다. post-apply state는 serial 23, retired resource·output 0개, 실제 resource 변경 0개였고 독립 후속 Plan이 `No changes` 및 resource·output 변경 0을 반환했다.
+- 전달: Resource Manager import·Plan·Apply·No Changes Plan job이 모두 `SUCCEEDED`했다. Chrome 파일 chooser가 로컬 state·ZIP 전달을 거부해 60분 만료 OCI CLI session으로 구성 ZIP만 전송했고, 전송용 Downloads 복사본은 검증 후 제거했다.
+- 남은 일: 기존 50GiB volume은 아직 unmounted·attached rollback 본으로 남아 있다. 별도 파괴 승인 뒤 attachment·volume을 삭제하고 boot+block 합계 200GB 이하와 Cost Analysis 0원을 재확인한다. Geuneul production 변수·데이터 restore, Vercel cutover·종단 검증과 AWS 안전 정리도 이어서 완료한다.
+
 ## 2026-09-01 — 공개 프로필의 marketvalley 역할 설명 개선
 
 - 목적: 저장소와 GitHub 프로필을 보는 외부인이 내부 타입명 없이 홍성주의 Backend·AI·Platform 책임과 제품 기여를 이해하게 한다.
@@ -554,3 +572,10 @@
 - 실패와 해결: `main` push `9d6c4d5`의 GitHub Actions run `32827728636`은 이전 `/` HTML에서 인증 초기 상태를 찾다가 실패했다. 인증 검사를 삭제하지 않고 실제 경계인 `/dashboard` build artifact를 검사하도록 수정했으며 자세한 원인은 `TROUBLESHOOTING.md`에 기록했다.
 - 검증: focused `pnpm test:auth-bundle`, `pnpm check`의 lint·typecheck·단위 테스트 26파일 115개, 루트 랜딩 production Chromium E2E 1개가 통과했다. 첫 전체 production E2E는 이전 route를 참조한 3개가 실패하고 18개가 통과해 테스트 경로를 보정했다. 최종 configured bundle smoke, production build, Chromium E2E 21개, coverage, high audit, peer dependency와 diff 검사가 모두 통과했다. 커버리지는 statements 83.58%, branches 76.19%, functions 90.13%, lines 87.93%다.
 - 전달과 남은 일: 변경은 로컬 작업 트리에 있다. `main` push와 GitHub Actions 성공을 확인한 뒤 해당 커밋을 별도 발표 저장소의 무자격증명 fixture snapshot으로 고정한다.
+## 2026-09-01 — 공유 OCI Caddy에 격리된 Geuneul edge route 준비
+
+- 목적: MarketValley가 소유한 기존 OCI NLB·Caddy 80/443를 Geuneul 마이그레이션에서도 재사용하되, 다음 MarketValley 배포가 새 route를 덮어쓰거나 두 애플리케이션의 runtime·credential을 결합하지 않게 한다.
+- 변경: source `deploy/`와 owner-only control plane의 Caddy·Compose·production env 계약을 함께 runtime contract v2로 올렸다. 별도 Geuneul hostname은 host private high-port의 독립 rootless backend로 전달한다. `/object-storage/*`는 exact Vercel Origin의 preflight와 PUT만 받고 다른 Origin/method는 403으로 거부하며, prefix만 제거한 signed path/query와 정확한 OCI upstream Host를 전달한다. Caddy에는 storage credential을 추가하지 않았다.
+- 안전 경계: 기존 MarketValley site, app network, secret, NLB listener와 backend set은 바꾸지 않는다. source와 control-plane contract가 다르면 owner-only deploy가 거부한다. 실제 server env 수정·Caddy reload·DNS 변경은 production 변경 승인 전이라 수행하지 않았다.
+- 검증: source/control-plane의 Caddy·Compose·remote release 사본이 byte-identical이다. 두 Compose config, pin된 Caddy 2.10.2 validate, 양쪽 remote release `bash -n`, owner-only control-plane Node 4개·Python 4개 테스트와 source deployment trust test 4개가 통과했다. 로컬 Colima에는 Compose plugin 대신 호환 `docker-compose`만 있어 해당 명령으로 같은 config를 렌더했다.
+- 남은 일: 두 저장소의 전체 gate·secret scan·PR/CI를 통과시킨 뒤, Geuneul backend stage와 live bucket 준비 후 production env에 실제 nonsecret endpoint 값을 넣고 검증된 Caddy를 reload한다. reload 전후 기존 MarketValley health와 Geuneul preflight/PUT을 모두 확인한다.
