@@ -1,6 +1,11 @@
 <p align="center">
-  <img src="public/brand/marketvalley-logo.svg" width="320" alt="marketvalley" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/marketvalley-logo-dark.svg" />
+    <img src="public/brand/marketvalley-logo.svg" width="320" alt="market valley" />
+  </picture>
 </p>
+
+<h3 align="center">🏆 UNITHON 2026 매니패스트 특별상</h3>
 
 <p align="center">
   아이디어 한 번으로 랜딩·카드뉴스·Meta 광고·실제 반응 리포트까지 이어지는 자동 시장검증 서비스
@@ -18,8 +23,6 @@
 </p>
 
 # marketvalley
-
-> UNITHON 2026 매니패스트 특별상 공식 수상
 
 marketvalley는 첫 시장 반응을 확인하려는 예비창업가와 1인 사업자를 위한 서비스다. 문제 배경과
 솔루션을 한 번 입력하면 같은 검증 가설에서 공개 랜딩, Instagram 카드뉴스 5장, 광고 문구와 Meta
